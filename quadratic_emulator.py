@@ -7,51 +7,11 @@ Various flux derivative stuff
 
 import numpy as np
 import math
-import smooth
-import scipy.interpolate
-import sys
+from smooth import rebin
 import matplotlib.pyplot as plt
-import matplotlib.backends
-import re
-
-def smooth_rebin(data, xaxis,newx=np.array([]), smoothing=11):
-    """ Smooth and rebin data points """
-    #Window_len of 9-13 seems about right; 7 is still pretty noisy, and higher than 13
-    #tends to start changing the shape of the curve.
-    smoothed=smooth.smooth(data,window_len=smoothing,window='kaiser')
-    if np.size(newx) > 0:
-        intp=scipy.interpolate.InterpolatedUnivariateSpline(np.log(xaxis),smoothed)
-        newdata=intp(np.log(newx))
-        return newdata
-    else:
-        return smoothed
-
-def wheref(array, value):
-    """ A where function to find where a floating point value is equal to another"""
-    #Floating point inaccuracy.
-    eps=1e-7
-    return np.where((array > value-eps)*(array < value+eps))
-
-def rebin(data, xaxis,newx):
-    """Just rebins the data"""
-    if newx[0] < xaxis[0] or newx[-1]> xaxis[-1]:
-        raise ValueError("A value in newx is beyond the interpolation range")
-    intp=scipy.interpolate.InterpolatedUnivariateSpline(np.log(xaxis),data)
-    newdata=intp(np.log(newx))
-    return newdata
-
-def save_figure(path):
-    """Saves the figure, automatically determining file extension"""
-    bk=matplotlib.backends.backend
-    if path == "":
-        return
-    elif bk == 'TkAgg' or bk == 'Agg' or bk == 'GTKAgg':
-        path = path+".png"
-    elif bk == 'PDF' or bk == 'pdf':
-        path = path+".pdf"
-    elif bk == 'PS' or bk == 'ps':
-        path = path+".ps"
-    return plt.savefig(path)
+from save_figure import save_figure
+from wheref import wheref
+import os.path
 
 def corr_table(table, dvecs,table_name):
     """Little function to adjust a table so it has a different central value"""
@@ -61,8 +21,8 @@ def corr_table(table, dvecs,table_name):
     np.savetxt(pkd+table_name,new,("%1.3g","%1.3g","%1.3g","%1.3g","%1.3g","%1.3g","%1.3g","%1.3g","%1.3g","%1.3g","%1.3g"))
     return new
 
-class power_spec(object):
-    """ A class to be derived from by flux and matter power_spec classes. Stores various helper methods."""
+class EmulatedQuantity(object):
+    """ A class to be derived from by flux and matter power spectrum emulation classes. Stores various helper methods."""
     def __init__(self, Snaps = (), Zz=np.array([]),sdsskbins=np.array([]),knotpos=np.array([]), om=0.267, H0=0.71,box=60.0,base="/home/spb41/Lyman-alpha/MinParametricRecon/runs/",suf="/", ext=".txt"):
         if len(Snaps) != np.size(Zz):
             raise ValueError("There are "+str(len(Snaps))+" snapshots, but "+str(np.size(Zz))+"redshifts given.")
@@ -137,21 +97,21 @@ class power_spec(object):
         #Conversion factor between s/km and h/Mpc is (1+z)/H(z)
         return 100*self.H0*math.sqrt(self.om*(1+zz)**3+(1-self.om))
 
-    def loaddata(self, file, box):
+    def loaddata(self, filename, box):
         """ Do correct units conversion to return k and one-d power """
         #Adjust Fourier convention.
-        flux_power=np.loadtxt(file)
+        flux_power=np.loadtxt(filename)
         scale=self.H0/box
         k=flux_power[1:,0]*scale*2.0*math.pi
         PF=flux_power[1:,1]/scale
         return (k, PF)
 
-    def plot_z(self,Knot,redshift,title="",ylabel="", legend=True):
+    def plot_z(self,a_knot,redshift,title="",ylabel="", legend=True):
         """ Plot comparisons between a bunch of sims on one graph
             plot_z(Redshift, Sims to use ( eg, A1.14).
             Note this will clear current figures."""
         #Load best-fit
-        (simk,BFPk)=self.loadpk(Knot.bstft+self.suf+self.pre+self.GetSnap(redshift)+self.ext,self.bfbox)
+        (simk,BFPk)=self.loadpk(a_knot.bstft+self.suf+self.pre+self.GetSnap(redshift)+self.ext,self.bfbox)
         #Setup figure plot.
         ind=wheref(self.Zz, redshift)
         plt.figure(ind[0][0])
@@ -162,13 +122,12 @@ class power_spec(object):
         plt.xlabel(r"$k\; (\mathrm{Mpc}^{-1})$")
         line=np.array([])
         legname=np.array([])
-        for sim in Knot.names:
+        for sim in a_knot.names:
             (k,Pk)=self.loadpk(sim+self.suf+self.pre+self.GetSnap(redshift)+self.ext,self.box)
             oi = np.where(simk <= k[-1])
             ti = np.where(simk[oi] >= k[0])
             relP=rebin(Pk, k, simk[oi][ti])
             relP=relP/rebin(BFPk, simk, simk[oi][ti])
-#                         relP=smooth_rebin(relP,simk)
             line=np.append(line, plt.semilogx(simk[oi][ti]/self.H0,relP,linestyle="-"))
             legname=np.append(legname,sim)
         if legend:
@@ -178,12 +137,12 @@ class power_spec(object):
         plt.xlim(simk[0]*0.8, 10)
         return
 
-    def plot_all(self, Knot,zzz=np.array([]), out=""):
+    def plot_all(self, a_knot,zzz=np.array([]), out=""):
         """ Plot a whole suite of snapshots: plot_all(Knot, outdir) """
         if np.size(zzz) == 0:
             zzz=self.Zz    #lolz
         for z in zzz:
-            self.plot_z(Knot,z)
+            self.plot_z(a_knot,z)
             if out != "":
                 save_figure(out+self.figprefix+str(z))
         return
@@ -198,14 +157,14 @@ class power_spec(object):
         plt.title("Power spectrum at z="+str(redshift))
         return(k_g, Pk_g)
 
-    def plot_power_all(self, Knot,zzz=np.array([]), out=""):
+    def plot_power_all(self, a_knot,zzz=np.array([]), out=""):
         """ Plot absolute power for all redshifts """
         if np.size(zzz) == 0:
             zzz=self.Zz    #lolz
         for z in zzz:
             ind=wheref(self.Zz, z)
             plt.figure(ind[0][0])
-            for sim in Knot.names:
+            for sim in a_knot.names:
                 self.plot_power(sim,z)
             if out != "":
                 save_figure(out+self.figprefix+str(z))
@@ -221,7 +180,6 @@ class power_spec(object):
         relP=rebin(twoP, twok, onek[onei][twoi])
         relP=relP/rebin(oneP, onek, onek[onei][twoi])
         onek=onek[onei][twoi]
-#                 relP=smooth_rebin(relP,onek)
         plt.title("Relative Power spectra "+one+" and "+two)
         plt.ylabel(r"$P_2(k)/P_1(k)$")
         plt.xlabel(r"$k\; (h\,\mathrm{Mpc}^{-1})$")
@@ -322,7 +280,7 @@ class power_spec(object):
             save_figure(out)
         return plt.gcf()
 
-    def GetFlat(self,dir, si=0.0):
+    def GetFlat(self,dirname, si=0.0):
         """Get a power spectrum in the flat format we use
             for inputting some cosmomc tables"""
         Pk_sdss=np.empty([11, 12])
@@ -330,7 +288,7 @@ class power_spec(object):
         #SiIII corr now done on the fly in lya_sdss_viel.f90
         for i in np.arange(0,np.size(self.Snaps)-1):
             scale=self.Hubble(self.Zz[i])/(1.0+self.Zz[i])
-            (k,Pk)=self.loadpk(dir+self.Snaps[i]+self.ext, self.box)
+            (k,Pk)=self.loadpk(dirname+self.Snaps[i]+self.ext, self.box)
             Fbar=math.exp(-0.0023*(1+self.Zz[i])**3.65)
             a=si/(1-Fbar)
             #The SiIII correction is kind of oscillatory, so we want
@@ -362,7 +320,7 @@ class power_spec(object):
             relP=rebin(twoP, twok, onek[onei][twoi])
             relP=relP/rebin(oneP, onek, onek[onei][twoi])
             onek=onek[onei][twoi]
-            relP=smooth_rebin(relP,onek,self.GetSDSSkbins(z))
+            relP=rebin(relP,onek,self.GetSDSSkbins(z))
             i=i+1
             diff[-i,:]=relP
         diff=np.transpose(diff)
@@ -449,7 +407,7 @@ class power_spec(object):
             mat=np.vstack([pdif**2, pdif, qdif**2, qdif] ).T
         else:
             mat=np.vstack([pdif**2, pdif] ).T
-        (derivs, residues,rank, sing)=np.linalg.lstsq(mat, PFdif)
+        (derivs, _,_, _)=np.linalg.lstsq(mat, PFdif)
         return derivs
 
     def Get_Error_z(self, Sim, bstft,box, derivs, params, redshift,qarams=np.empty([])):
@@ -523,27 +481,25 @@ class power_spec(object):
         if legend:
             plt.legend(line, legname,bbox_to_anchor=(0., 0, 1., .25), loc=3,ncol=3, mode="expand", borderaxespad=0.)
 
-class flux_pow(power_spec):
+class FluxPow(EmulatedQuantity):
     """ A class written to store the various methods related to calculating of the flux derivatives and plotting of the flux power spectra"""
     figprefix="/flux-figure"
     kbins=np.array([])
-    def __init__(self, Snaps = (),Zz=np.array([]),sdsskbins=np.array([]),knotpos=np.array([]), om=0.266, H0=0.71,box=60.0,kmax=4.0,base="/home/spb41/Lyman-alpha/MinParametricRecon/runs/",bf="best-fit/",suf="flux-power/", ext="_flux_power.txt"):
-        power_spec.__init__(self, Snaps,Zz,sdsskbins,knotpos, om, H0,box,base,suf, ext)
-        (k_bf,Pk_bf)= self.loadpk(bf+suf+"snapshot_000"+self.ext,self.bfbox)
+    def __init__(self, Snaps = (),Zz=np.array([]),sdsskbins=np.array([]),knotpos=np.array([]), om=0.266, H0=0.71,box=60.0,kmax=4.0,base="",bf="best-fit/",suf="flux-power/", ext="_flux_power.txt"):
+        if base == "":
+            base=os.path.expanduser("~/Lyman-alpha/MinParametricRecon/runs/")
+        EmulatedQuantity.__init__(self, Snaps,Zz,sdsskbins,knotpos, om, H0,box,base,suf, ext)
+        (k_bf,_)= self.loadpk(bf+suf+"snapshot_000"+self.ext,self.bfbox)
         ind=np.where(k_bf <= kmax)
         self.kbins=k_bf[ind]
 
     def plot_z(self,Sims,redshift,title="Relative Flux Power",ylabel=r"$\mathrm{P}_\mathrm{F}(k,p)\,/\,\mathrm{P}_\mathrm{F}(k,p_0)$", legend=True):
-        power_spec.plot_z(self,Sims,redshift,title,ylabel,legend)
+        EmulatedQuantity.plot_z(self,Sims,redshift,title,ylabel,legend)
         if legend:
             kbins=self.GetSDSSkbins(redshift)
             plt.axvspan(kbins[0], kbins[-1], color="#B0B0B0")
         plt.ylim(self.ymin,self.ymax)
         plt.xlim(self.kbins[0]*0.8, 10)
-
-    def smooth_rebin(self, inarr,k,newk):
-        """Wrapper around smooth_rebin to allow us not to do it."""
-        return smooth_rebin(inarr, k, newk)
 
     def Getkbins(self):
         """Get the kbins to interpolate onto"""
@@ -568,179 +524,7 @@ class flux_pow(power_spec):
         PF=flux_power[1:,1]/scale
         return (k, PF)
 
-
-class matter_pow(power_spec):
-    """ A class to plot matter power spectra """
-    ob=0.0
-    #For plotting
-    ymin=0.4
-    ymax=1.6
-    figprefix="/matter-figure"
-    def __init__(self, Snaps=(),Zz=np.array([]),sdsskbins=np.array([]),knotpos=np.array([]), om=0.266,ob=0.0449, H0=0.71,box=60.0,base="/home/spb41/Lyman-alpha/MinParametricRecon/runs/",suf="matter-power/", ext=".0", matpre="PK-by-"):
-        power_spec.__init__(self, Snaps,Zz,sdsskbins,knotpos, om, H0,box,base,suf,ext)
-        self.ob=ob
-        self.pre=matpre
-
-    def plot_z(self,Sims,redshift,title="Relative Matter Power",ylabel=r"$\mathrm{P}(k,p)\,/\,\mathrm{P}(k,p_0)$"):
-        power_spec.plot_z(self,Sims,redshift,title,ylabel)
-
-    def loadpk(self, path,box):
-        """Load a Pk. Different function due to needing to be different for each class"""
-        #Load baryon P(k)
-        matter_power=np.loadtxt(self.base+path)
-        scale=self.H0/box
-        #Adjust Fourier convention.
-        simk=matter_power[1:,0]*scale*2.0*math.pi
-        Pkbar=matter_power[1:,1]/scale**3
-        #Load DM P(k)
-        matter_power=np.loadtxt(self.base+re.sub("by","DM",path))
-        PkDM=matter_power[1:,1]/scale**3
-        Pk=(Pkbar*self.ob+PkDM*(self.om-self.ob))/self.om
-        return (simk,Pk)
-
-    def plot_power(self,path, redshift,camb_filename=""):
-        """ Plot absolute power spectrum, not relative"""
-        (k_g, Pk_g)=power_spec.plot_power(self,path,redshift)
-        sigma=2.0
-        pkg=np.loadtxt(self.base+path+self.suf+self.pre+self.GetSnap(redshift)+self.ext)
-        samp_err=pkg[1:,2]
-        sqrt_err=np.array(np.sqrt(samp_err))
-        plt.loglog(k_g,Pk_g*(1+sigma*(2.0/sqrt_err+1.0/samp_err)),linestyle="-.",color="black")
-        plt.loglog(k_g,Pk_g*(1-sigma*(2.0/sqrt_err+1.0/samp_err)),linestyle="-.",color="black")
-        if camb_filename != "":
-            camb=np.loadtxt(camb_filename)
-            #Adjust Fourier convention.
-            k=camb[:,0]*self.H0
-            #NOW THERE IS NO h in the T anywhere.
-            Pk=camb[:,1]
-            plt.loglog(k/self.H0, Pk, linestyle="--")
-        plt.xlim(0.01,k_g[-1]*1.1)
-        return(k_g, Pk_g)
-
-class flux_pdf(power_spec):
-    """The PDF is an instance of the power_spec class. Perhaps poor naming"""
-    def __init__(self, Snaps=("snapshot_006","snapshot_007","snapshot_008","snapshot_009","snapshot_010","snapshot_011"), Zz=np.array([3.0,2.8,2.6,2.4,2.2,2.0]), sdsskbins=np.arange(0,20),knotpos=np.array([]), om=0.266,ob=0.0449, H0=0.71,box=48.0,base="/home/spb41/Lyman-alpha/MinParametricRecon/runs/",suf="flux-pdf/", ext="_flux_pdf.txt",):
-        power_spec.__init__(self, Snaps,Zz,sdsskbins,knotpos, om, H0,box,base,suf,ext)
-
-    def loadpk(self, path, box):
-        flux_pdf = np.loadtxt(self.base+path)
-        return(flux_pdf[:,0], flux_pdf[:,1])
-
-    def plot_compare_two(self, one, onebox, two,twobox,colour=""):
-        """ Compare two power spectra directly. Smooths result.
-        plot_compare_two(first P(k), second P(k))"""
-        (onek,oneP)=self.loadpk(one,onebox)
-        (twok,twoP)=self.loadpk(two,twobox)
-        relP=oneP/twoP
-        plt.title("Relative flux PDF "+one+" and "+two)
-        plt.ylabel(r"$F_2(k)/F_1(k)$")
-        plt.xlabel(r"$Flux$")
-        line=plt.semilogy(onek,relP)
-        return line
-
-    def plot_power(self,path, redshift):
-        """ Plot absolute power spectrum, not relative"""
-        (k,Pdf)=self.loadpk(path+self.suf+self.pre+self.GetSnap(redshift)+self.ext,self.box)
-        plt.semilogy(k,Pdf, color="black", linewidth="1.5")
-        plt.ylabel("P(k) /(h-3 Mpc3)")
-        plt.xlabel("k /(h MPc-1)")
-        plt.title("PDF at z="+str(redshift))
-        return(k, Pdf)
-
-    def smooth_rebin(self, inarr,k,newk):
-        """Wrapper around smooth_rebin to allow us not to do it."""
-        return inarr
-
-    def calc_z(self, redshift,s_knot):
-        """ Calculate the flux derivatives for a single redshift
-                Output: (kbins d2P...kbins dP (flat vector of length 2x21))"""
-        #Array to store answers.
-        #Format is: k x (dP, d²P, χ²)
-        npvals=np.size(s_knot.pvals)
-        nk=21
-        results=np.zeros(2*nk)
-        pdifs=s_knot.pvals-s_knot.p0
-        #This is to rescale by the mean flux, for generating mean flux tables.
-        ###
-        #tau_eff=0.0023*(1+redshift)**3.65
-        #tmin=0.2*((1+redshift)/4.)**2
-        #tmax=0.5*((1+redshift)/4.)**4
-        #teffs=tmin+s_knot.pvals*(tmax-tmin)/30.
-        #pdifs=teffs/tau_eff-1.
-        ###
-        ured=np.ceil(redshift*5)/5.
-        lred=np.floor(redshift*5)/5.
-        usnap=self.GetSnap(ured)
-        lsnap=self.GetSnap(lred)
-        #Load the data
-        (k,uPFp0)=self.loadpk(s_knot.bstft+self.suf+usnap+self.ext,s_knot.bfbox)
-        uPower=np.zeros((npvals,np.size(k)))
-        for i in np.arange(0,np.size(s_knot.names)):
-            (k,uPower[i,:])=self.loadpk(s_knot.names[i]+self.suf+usnap+self.ext, s_knot.bfbox)
-        (k,lPFp0)=self.loadpk(s_knot.bstft+self.suf+lsnap+self.ext,s_knot.bfbox)
-        lPower=np.zeros((npvals,np.size(k)))
-        for i in np.arange(0,np.size(s_knot.names)):
-            (k,lPower[i,:])=self.loadpk(s_knot.names[i]+self.suf+lsnap+self.ext, s_knot.bfbox)
-        PowerFluxes=5*((redshift-lred)*uPower+(ured-redshift)*lPower)
-        PFp0=5*((redshift-lred)*uPFp0+(ured-redshift)*lPFp0)
-        #So now we have an array of data values.
-        #Pass each k value to flux_deriv in turn.
-        for k in np.arange(0,nk):
-            (dPF, d2PF,chi2)=self.flux_deriv(PowerFluxes[:,k]/PFp0[k], pdifs)
-            results[k]=d2PF
-            results[nk+k]=dPF
-        return results
-
-    def Getkbins(self):
-        """Get the kbins to interpolate onto"""
-        return np.arange(0,20,1)+0.5
-
-    def plot_z(self,Knot,redshift,title="",ylabel=""):
-        """ Plot comparisons between a bunch of sims on one graph
-                plot_z(Redshift, Sims to use ( eg, A1.14).
-                Note this will clear current figures."""
-        #Load best-fit
-        (simk,BFPk)=self.loadpk(Knot.bstft+self.suf+self.pre+self.GetSnap(redshift)+self.ext,self.bfbox)
-        #Setup figure plot.
-        ind=wheref(self.Zz, redshift)
-        plt.figure(ind[0][0])
-        plt.clf()
-        if title != '':
-            plt.title(title+" at z="+str(redshift),)
-        plt.ylabel(ylabel)
-        plt.xlabel(r"$\mathcal{F}$")
-        line=np.array([])
-        legname=np.array([])
-        for sim in Knot.names:
-            (k,Pk)=self.loadpk(sim+self.suf+self.pre+self.GetSnap(redshift)+self.ext,self.box)
-            line=np.append(line, plt.semilogy(simk,Pk/BFPk,linestyle="-", linewidth=1.5))
-            legname=np.append(legname,sim)
-        plt.legend(line,legname)
-        return
-
-    def GetFlat(self,dir):
-        """Get a power spectrum in the flat format we use
-        for inputting some cosmomc tables"""
-        Pk_sdss=np.empty([11, 12])
-        #For z=2.07 we need to average snap_011 and snap_010
-        z=2.07
-        (k,PF_a)=self.loadpk(dir+self.suf+"snapshot_011"+self.ext, self.box)
-        (k,PF_b)=self.loadpk(dir+self.suf+"snapshot_010"+self.ext, self.box)
-        PF1=(z-2.0)*5*(PF_b-PF_a)+PF_a
-        z=2.52
-        (k,PF_a)=self.loadpk(dir+self.suf+"snapshot_009"+self.ext, self.box)
-        (k,PF_b)=self.loadpk(dir+self.suf+"snapshot_008"+self.ext, self.box)
-        PF2=(z-2.4)*5*(PF_b-PF_a)+PF_a
-        z=2.94
-        (k,PF_a)=self.loadpk(dir+self.suf+"snapshot_007"+self.ext, self.box)
-        (k,PF_b)=self.loadpk(dir+self.suf+"snapshot_006"+self.ext, self.box)
-        PF3=(z-2.8)*5*(PF_b-PF_a)+PF_a
-        PDF = np.array([PF1,PF2,PF3])
-        np.savetxt(sys.stdout,PDF.T("%1.8f","%1.8f","%1.8f"))
-        return (PF1, PF2, PF3)
-
-
-class knot(object):
+class Knot(object):
     """A basic structure class to store a number of simulation runs, with parameter values."""
     def __init__(self, sims, pvals=np.array([]), p0=0., bstft="",bfbox=60.,qvals=np.array([]),q0=0.):
         self.names=sims
@@ -769,21 +553,16 @@ class knot(object):
         else:
             raise ValueError("No snapshot with p="+str(pval))
 
-class flux_interp:
+class InterpResult(object):
     """A class to store the calculated flux derivatives"""
-    #Derivs is stored in: params x redshifts x kbins x [dP, d2P, x2]
-    derivs=np.array([])
-    p0=np.array([])
-    q0=np.array([])
-    Zz=np.array([])
-    kbins=np.array([])
-    def __init__(self,flux, Knots):
+    def __init__(self,interpolator, Knots):
         """Initialization done from flux_pow class lets us keep all the messy I/O in there."""
+        #Derivs is stored in: params x redshifts x kbins x [dP, d2P, x2]
         if np.shape(Knots) == ():
             Knots=(Knots,)
         Knots=np.array(Knots)
-        self.kbins=flux.Getkbins()
-        tmp=np.fliplr(flux.calc_all(Knots[0],self.kbins))
+        self.kbins=interpolator.Getkbins()
+        tmp=np.fliplr(interpolator.calc_all(Knots[0],self.kbins))
         self.derivs=np.empty(np.shape(Knots)+np.shape(tmp))
         self.derivs[0]=tmp
         if np.size(Knots[0].p0) > 1:
@@ -792,14 +571,14 @@ class flux_interp:
             self.q0=np.empty([np.size(Knots),np.size(Knots[0].q0)])
             self.q0[0,:]=np.array(Knots[0].q0)
             for i in np.arange(1,np.size(Knots)):
-                self.derivs[i]=np.fliplr(flux.calc_all(Knots[i],self.kbins))
+                self.derivs[i]=np.fliplr(interpolator.calc_all(Knots[i],self.kbins))
                 self.p0[i,:]=np.array(Knots[i].p0)
                 self.q0[i,:]=np.array(Knots[i].q0)
         else:
             self.p0=np.empty(np.shape(Knots))
             self.p0[0]=np.array(Knots[0].p0)
             for i in np.arange(1,np.size(Knots)):
-                self.derivs[i]=np.fliplr(flux.calc_all(Knots[i],self.kbins))
+                self.derivs[i]=np.fliplr(interpolator.calc_all(Knots[i],self.kbins))
                 self.p0[i]=np.array(Knots[i].p0)
 
         self.Zz=np.flipud(flux.Zz)
@@ -832,7 +611,7 @@ class flux_interp:
                 curve=curve+self.GetPFSingleKnot(i, redshift,prms[i])
         return curve
 
-    def Get_MV_Tables(self,j,flux):
+    def Get_MV_Tables(self,j,s_interpolator):
         """Get tables in the format Matteo uses for CosmoMC"""
         ind = np.where(self.Zz >= 2.2)
         Zz=self.Zz[ind]
@@ -841,11 +620,11 @@ class flux_interp:
         # ???
         tmp=self.derivs[j,0:,ind][0].T
         nco=np.shape(self.derivs)[1]/nk
-        nsk=np.size(flux.GetSDSSkbins(Zz[0]))
+        nsk=np.size(s_interpolator.GetSDSSkbins(Zz[0]))
         deriv_r=np.zeros([nco*nsk,nz])
         for q in np.arange(nco):
             for i in np.arange(0,nz):
-                deriv_r[q*nsk:(q+1)*nsk,i]=rebin(tmp[q*nk:(q+1)*nk,i],self.kbins,flux.GetSDSSkbins(Zz[i]))
+                deriv_r[q*nsk:(q+1)*nsk,i]=rebin(tmp[q*nk:(q+1)*nk,i],self.kbins,s_interpolator.GetSDSSkbins(Zz[i]))
         return deriv_r
 
     def Get_PDF_Tables(self, pdf,s_knot):
@@ -862,12 +641,12 @@ class flux_interp:
             fd[:,i]=pdf.calc_z(pz[i], s_knot)
         return fd
 
-class matteo_flux_interp(flux_interp):
+class MatteoInterpResult(InterpResult):
     """Load pre-calculated tables in the style Matteo uses"""
-    def __init__(self, file, p0):
+    def __init__(self, filename, p0):
         #The format is: rows are k bins, columns are redshift bins.
         #First 12x11 rows are the second order coeffs, second are the first order coeffs.
-        data=np.loadtxt(file)
+        data=np.loadtxt(filename)
         self.derivs=np.zeros((1,24,11))
         self.derivs[0]=data
         self.Zz=np.flipud(np.array([4.2,4.0,3.8,3.6,3.4,3.2,3.0,2.8,2.6,2.4,2.2]))
@@ -887,15 +666,13 @@ class matteo_flux_interp(flux_interp):
         return (t/tbf[ind]-1)*(self.derivs[0][ind, :,0])+(self.derivs[0][ind,:,1])*(t/tbf[ind]-1)**2
 
 if __name__=='__main__':
-    flux=flux_pow()
-    matter=matter_pow()
-    fpdf=flux_pdf()
-    A_knot=knot(("A0.54/","A0.74/","A0.84/","A1.04/", "A1.14/","A1.34/"), (0.54,0.74,0.84,1.04,1.14,1.34),0.94,"best-fit/", 60)
-    AA_knot=knot(("AA0.54/","AA0.74/","AA1.14/","AA1.34/"), (0.54,0.74,1.14,1.34),0.94,"boxcorr400/", 120)
-    B_knot=knot(("B0.33/","B0.53/","B0.73/", "B0.83/", "B1.03/","B1.13/", "B1.33/"), (0.33,0.53,0.73,0.83,1.03, 1.13,1.33),0.93,"best-fit/", 60)
-    C_knot=knot(("C0.11/", "C0.31/","C0.51/","C0.71/","C1.11/","C1.31/","C1.51/"),(0.11, 0.31,0.51,0.71, 1.11,1.31,1.51),0.91,"bf2/", 60)
-    D_knot=knot(("D0.50/","D0.70/","D1.10/","D1.20/", "D1.30/", "D1.50/", "D1.70/"),(0.50, 0.70,1.10,1.20,1.30, 1.50, 1.70),0.90,"bfD/", 48)
-    interp=flux_interp(flux, (AA_knot, B_knot, C_knot, D_knot))
+    flux=FluxPow()
+    A_knot=Knot(("A0.54/","A0.74/","A0.84/","A1.04/", "A1.14/","A1.34/"), (0.54,0.74,0.84,1.04,1.14,1.34),0.94,"best-fit/", 60)
+    AA_knot=Knot(("AA0.54/","AA0.74/","AA1.14/","AA1.34/"), (0.54,0.74,1.14,1.34),0.94,"boxcorr400/", 120)
+    B_knot=Knot(("B0.33/","B0.53/","B0.73/", "B0.83/", "B1.03/","B1.13/", "B1.33/"), (0.33,0.53,0.73,0.83,1.03, 1.13,1.33),0.93,"best-fit/", 60)
+    C_knot=Knot(("C0.11/", "C0.31/","C0.51/","C0.71/","C1.11/","C1.31/","C1.51/"),(0.11, 0.31,0.51,0.71, 1.11,1.31,1.51),0.91,"bf2/", 60)
+    D_knot=Knot(("D0.50/","D0.70/","D1.10/","D1.20/", "D1.30/", "D1.50/", "D1.70/"),(0.50, 0.70,1.10,1.20,1.30, 1.50, 1.70),0.90,"bfD/", 48)
+    interp=InterpResult(flux, (AA_knot, B_knot, C_knot, D_knot))
 #Thermal parameters for models
 
 #Models where gamma is varied
@@ -922,5 +699,5 @@ if __name__=='__main__':
     bf2ag=np.array([1.0184905 ,1.0332849 ,1.0404092 ,1.0538235 ,1.0598905 ,1.0695964 ,1.0771414 ,1.0827464 ,1.0904784 ,1.0964669 ,1.1009428,1.1068357])
     bf2at=np.array([26914.856, 27497.555, 28407.030, 28357.785, 28919.376, 28610.038, 28478.749, 28484.856, 27841.160, 27335.328, 26933.453,26099.643])/1e3
 
-    G_knot=knot(("bf2z/","bf2b/","bf2c/","bf2d/", "bf2T15/","bf2T35/","bf2T45/","bf2a/"),(bf2zg,bf2bg,bf2cg,bf2dg,T15g,T35g,T45g,bf2ag),bf2g,"bf2/",60, (bf2zt,bf2bt,bf2ct,bf2dt,T15t,T35t,T45t,bf2at),bf2t)
-    g_int=flux_interp(flux,(G_knot))
+    G_knot=Knot(("bf2z/","bf2b/","bf2c/","bf2d/", "bf2T15/","bf2T35/","bf2T45/","bf2a/"),(bf2zg,bf2bg,bf2cg,bf2dg,T15g,T35g,T45g,bf2ag),bf2g,"bf2/",60, (bf2zt,bf2bt,bf2ct,bf2dt,T15t,T35t,T45t,bf2at),bf2t)
+    g_int=InterpResult(flux,(G_knot))

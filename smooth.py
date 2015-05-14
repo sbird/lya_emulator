@@ -5,6 +5,18 @@
 import numpy as np
 import scipy.interpolate
 
+def bounded_rebin(onek, oneP, twok, twoP, kbins):
+    """Get the difference between two simulation power spectra, carefully rebinning"""
+    onei = np.where(onek <= twok[-1])
+    twoi= np.where (onek[onei] >= twok[0])
+    relP=rebin(twoP, twok, onek[onei][twoi])
+    relP=relP/rebin(oneP, onek, onek[onei][twoi])
+    onek=onek[onei][twoi]
+    relP_r=np.ones(np.size(kbins))
+    ind = np.where(kbins > onek[0])
+    relP_r[ind]=rebin(relP,onek,kbins[ind])
+    return relP_r
+
 def rebin(data, xaxis,newx):
     """Just rebins the data"""
     if newx[0] < xaxis[0] or newx[-1]> xaxis[-1]:

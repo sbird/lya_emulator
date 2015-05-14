@@ -6,6 +6,7 @@ Secondary Emulators for the flux PDF and the matter power spectrum, all using th
 """
 import numpy as np
 from quadratic_emulator import EmulatedQuantity
+from plot_emulator import PlotEmulatedQuantity
 import matplotlib.pyplot as plt
 from wheref import wheref
 import math
@@ -38,7 +39,7 @@ class FluxPdf(EmulatedQuantity):
         plt.title("Relative flux PDF "+one+" and "+two)
         plt.ylabel(r"$F_2(k)/F_1(k)$")
         plt.xlabel(r"$Flux$")
-        line=plt.semilogy(onek,relP)
+        line=plt.semilogy(onek,relP, color=colour)
         return line
 
     def plot_power(self,path, redshift, colour="black"):
@@ -143,7 +144,7 @@ class FluxPdf(EmulatedQuantity):
         return (PF1, PF2, PF3)
 
 
-class MatterPow(EmulatedQuantity):
+class MatterPow(EmulatedQuantity, PlotEmulatedQuantity):
     """ A class to load and plot matter power spectra """
     def __init__(self, Snaps=(),Zz=np.array([]),sdsskbins=np.array([]),knotpos=np.array([]), om=0.266,ob=0.0449, H0=0.71,box=60.0,base="/home/spb41/Lyman-alpha/MinParametricRecon/runs/",suf="matter-power/", ext=".0", matpre="PK-by-"):
         EmulatedQuantity.__init__(self, Snaps,Zz,sdsskbins,knotpos, om, H0,box,base,suf,ext)
@@ -172,7 +173,7 @@ class MatterPow(EmulatedQuantity):
 
     def plot_power(self,path, redshift,camb_filename=""):
         """ Plot absolute power spectrum, not relative"""
-        (k_g, Pk_g)=EmulatedQuantity.plot_power(self,path,redshift)
+        (k_g, Pk_g)=super(MatterPow, self).plot_power(path,redshift)
         sigma=2.0
         pkg=np.loadtxt(self.base+path+self.suf+self.pre+self.GetSnap(redshift)+self.ext)
         samp_err=pkg[1:,2]

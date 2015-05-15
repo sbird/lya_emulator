@@ -137,15 +137,10 @@ class QuadraticEmulator(object):
         (derivs, _,_, _)=np.linalg.lstsq(mat, PFdif)
         return derivs
 
-    def _calc_coeffs(self, bfnum, sims, paramname):
-        """
-            Calculate the flux derivatives for a single redshift, for a single shifting parameter
-            Input:
-                bfnum - which of the simulations to use as the one to expand around
-                sims - list of simulations. Must be of Simulation type above, ie, define a get_quantity, a get_params and a get_bins.
-            Output: (kbins d2P...kbins dP (flat vector of length 2xkbins))
-        """
-        #Get the quantity we want to interpolate: this will be an array of different scales.
+    def _get_changes(self, bfnum, sims, paramname):
+        """Get the change in parameters, delta p and the corresponding change
+        in the flux power spectrum, delta P_F, rebinned to match the desired output bins"""
+        #Get the quantity we want to interpolate: this will be an array of different kbins.
         #So to_interp is (nsims, nbins)
         assert np.size(sims) > bfnum
         to_interp = [ss.get_quantity() for ss in sims]
@@ -171,7 +166,18 @@ class QuadraticEmulator(object):
         params -= params[bfnum]
         #Make sure this parameter does change for the passed simulations
         assert np.any(params != 0)
-        #So now we have an array of data values.
+        return (dto_interp, params)
+
+    def _calc_coeffs(self, bfnum, sims, paramname):
+        """
+            Calculate the flux derivatives for a single redshift, for a single shifting parameter
+            Input:
+                bfnum - which of the simulations to use as the one to expand around
+                sims - list of simulations. Must be of Simulation type above, ie, define a get_quantity, a get_params and a get_bins.
+            Output: (kbins d2P...kbins dP (flat vector of length 2xkbins))
+        """
+        #Get the change in the interpoaltion value with parameter
+        (dto_interp, params) = self._get_changes(bfnum, sims, paramname)
         #Pass each k value to flux_deriv in turn.
         # Format of returned data from flux_derivs is (a,b) where it fits to:
         # dto_interp = a params**2 + b params

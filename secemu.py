@@ -13,6 +13,23 @@ import math
 import re
 import os.path
 
+def corr_table(table, dvecs,table_name):
+    """Little function to adjust a table so it has a different central value"""
+    new=np.array(table)
+    new[12:,:] = table[12:,:]+2*table[0:12,:]*dvecs
+    pkd="/home/spb41/cosmomc-src/cosmomc/data/lya-interp/"
+    np.savetxt(pkd+table_name,new,("%1.3g","%1.3g","%1.3g","%1.3g","%1.3g","%1.3g","%1.3g","%1.3g","%1.3g","%1.3g","%1.3g"))
+    return new
+
+def MacDonaldPF(sdss, zz, Hubblez):
+    """Load the SDSS power spectrum"""
+    psdss=sdss[np.where(sdss[:,0] == zz)][:,1:3]
+    fbar=math.exp(-0.0023*(1+zz)**3.65)
+    #multiply by the hubble parameter to be in 1/(km/s)
+    scale=Hubblez/(1.0+zz)
+    PF=psdss[:,1]*fbar**2/scale
+    k=psdss[:,0]*scale
+    return (k, PF)
 
 class EmulatedQuantity(object):
     """ A class to be derived from by flux and matter power spectrum emulation classes. Stores various helper methods."""

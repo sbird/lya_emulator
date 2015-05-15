@@ -190,9 +190,9 @@ if __name__=='__main__':
     omega0 = 0.2669
     hubble0 = 0.71
     #I checked that these are the same parameters for all 4 knots
-    bestfit_params = {'A':0.94434469,'B': 0.93149282,'C': 0.91868144,'D': 0.9060194}
+    bestfit_params = {'AA':0.94434469,'B': 0.93149282,'C': 0.91868144,'D': 0.9060194}
     quads = {}
-    for snap in (5,):
+    for snap in zzz.keys():
         AA_knot = Knot("AA",basedir, bestfit="boxcorr400",snapnum=snap,zz=zzz[snap], om=omega0, H0=hubble0, bf_params=bestfit_params, box=120.)
         B_knot = Knot("B",basedir, bestfit="best-fit",snapnum=snap,zz=zzz[snap], om=omega0, H0=hubble0, bf_params=bestfit_params, box=60.)
         C_knot = Knot("C",basedir, bestfit="bf2",snapnum=snap,zz=zzz[snap], om=omega0, H0=hubble0, bf_params=bestfit_params, box=60.)

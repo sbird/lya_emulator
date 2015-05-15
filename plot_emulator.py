@@ -210,3 +210,11 @@ class PlotEmulatedQuantity(EmulatedQuantity):
             save_figure(out)
         return plt.gcf()
 
+    def sdss_plot_z(self,Sims,redshift,title="Relative Flux Power",ylabel=r"$\mathrm{P}_\mathrm{F}(k,p)\,/\,\mathrm{P}_\mathrm{F}(k,p_0)$", legend=True):
+        self.plot_z(self,Sims,redshift,title,ylabel,legend)
+        if legend:
+            kbins=self.GetSDSSkbins(redshift)
+            plt.axvspan(kbins[0], kbins[-1], color="#B0B0B0")
+        plt.ylim(self.ymin,self.ymax)
+        plt.xlim(self.kbins[0]*0.8, 10)
+

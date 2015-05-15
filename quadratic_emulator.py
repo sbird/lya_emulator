@@ -156,38 +156,20 @@ class QuadraticEmulator(object):
         #Pass each k value to flux_deriv in turn.
         # Format of returned data from flux_derivs is (a,b) where it fits to:
         # dto_interp = a params**2 + b params
-        results =np.array([self._flux_deriv(dto_interp[:,k], dparams) for k in xrange(np.size(self.sdsskbins))])
+        results =np.array([self._flux_deriv(dto_interp[:,k], dparams) for k in xrange(np.shape(dto_interp)[1])])
         #So results should have shape
         assert np.shape(results) == (np.size(self.sdsskbins), 2)
         return results
 
-def make_2010_emulator():
-    """
-        Make an emulator for the four cosmological knots in the 2010 simulations,
-        for all redshift outputs.
-    """
-    #Parameters of the 2010 simulations
-    #Note how every knot has a different best-fit simulation!
-    #As I recall there was a bug with the B knots that made small scales wrong somehow, so I had to use bf2 for the C knot.
-    #The other two are just to allow for different box sizes
-    basedir = "/home/spb/codes/Lyman-alpha/MinParametricRecon/runs/"
+def get_err(simdir, simparams, emulator, om, box, H0):
+    """Get the difference between an interpolated flux power spectrum and the real flux power spectrum for a simulation with the same parameter"""
+    err = {}
     zzz = { n : 4.2-0.2*n for n in xrange(12) }
-    omega0 = 0.2669
-    hubble0 = 0.71
-    #I checked that these are the same parameters for all 4 knots
-    bestfit_params = {'AA':0.94434469,'B': 0.93149282,'C': 0.91868144,'D': 0.9060194}
-    quads = {}
     for snap in zzz.keys():
-        AA_knot = Knot("AA",basedir, bestfit="boxcorr400",snapnum=snap,zz=zzz[snap], om=omega0, H0=hubble0, bf_params=bestfit_params, box=120.)
-        B_knot = Knot("B",basedir, bestfit="best-fit",snapnum=snap,zz=zzz[snap], om=omega0, H0=hubble0, bf_params=bestfit_params, box=60.)
-        C_knot = Knot("C",basedir, bestfit="bf2",snapnum=snap,zz=zzz[snap], om=omega0, H0=hubble0, bf_params=bestfit_params, box=60.)
-        D_knot = Knot("D",basedir, bestfit="bfD",snapnum=snap,zz=zzz[snap], om=omega0, H0=hubble0, bf_params=bestfit_params, box=48.)
-        #Best-fit model to use when not computing differences.
-        #There are also hr2a, hr3, hr4 and hr4a directories with flux power spectra in them.
-        #I have no memory of what these files are - there are no simulation snapshots.
-        emubf = FluxPowSimulation(os.path.join(basedir, "hr2"), snap, bestfit_params, zz=zzz[snap], om=omega0, box=60., H0=hubble0)
-        quads[snap] = QuadraticEmulator((AA_knot, B_knot, C_knot, D_knot),emubf)
-    return quads
-
-if __name__=='__main__':
-    make_2010_emulator()
+        tester = FluxPowSimulation(simdir, snap, simparams, zz=zzz[snap], om=om, box=box, H0=H0)
+        emulated = emulator[snap].get_interpolated(simparams)
+        lowest = np.where(emulator[snap].sdsskbins > tester.get_bins()[0])[0][0]
+        realpf = np.array(emulated)
+        realpf[lowest:] = rebin(tester.get_quantity(), tester.get_bins(), emulator[snap].sdsskbins[lowest:])
+        err[snap] = (realpf - emulated)/emulated
+    return err

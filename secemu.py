@@ -176,10 +176,13 @@ class EmulatedQuantity(object):
         if ind[0][0] > 0:
             test2[0:ind[0][0]]=test2[ind[0][0]]
         if np.size(qarams) > 0:
-            guess=derivs.GetPF(params, redshift,qarams)+1.0
+            guess=derivs.GetPF(params, redshift,qarams)
         else:
-            guess=derivs.GetPF(params, redshift)+1.0
-        return np.array((test2/guess))[0][0]
+            guess=derivs.GetPF(params, redshift)
+        #This looks like a bug...should be test2/guess-1, not test2/(guess+1)?
+        return np.array((test2/(guess+1.0))[0][0]
+        return np.array(test2/guess-1.0)[0][0]
+
     def compare_two_table(self,onedir, twodir):
         """Do the above 12 times to get a correction table"""
         nk=np.size(self.sdsskbins)

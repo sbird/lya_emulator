@@ -2,7 +2,8 @@
 # vim: set fileencoding=UTF-8 :
 
 """
-Various flux derivative stuff
+An emulator to interpolate between flux power spectra computed for the Lyman alpha forest.
+Fits the change in the flux power spectrum with a quadratic function.
 """
 
 import numpy as np
@@ -19,14 +20,14 @@ def Hubble(zz, om, H0):
 
 class FluxPowSimulation(object):
     """Class for loading and storing a flux power spectrum. This should handle all file loading, etc, but not rebinning"""
-    def __init__(self, filename, params, zz, om, H0=0.7, box=60.):
+    def __init__(self, simdir, snap, params, zz, om, H0=0.7, box=60.):
         self.H0 = H0
         self.box=box
-        self.filename = filename
+        self.filename = os.path.join(simdir,"flux-power/snapshot_"+str(snap).rjust(3,'0')+"_flux_power.txt")
         self.params = params
-        (self.k, self.PF) = self.loadpk(zz, H0, om)
+        (self.k, self.PF) = self._loadpk(zz, H0, om)
 
-    def loadpk(self, zz, H0, om):
+    def _loadpk(self, zz, H0, om):
         """Load a flux power spectrum in s/km units, from a text file."""
         #Get table from file in Fourier units
         flux_power=np.loadtxt(self.filename)
@@ -71,15 +72,12 @@ class Knot(object):
         params = [ float(mm.groups()[0]) for mm in matches ]
         #Build a list of simulations, loading the flux power spectrum each time
         self.sims = []
-        filename = os.path.join("flux-power", "snapshot_"+str(snapnum).rjust(3,'0')+"_flux_power.txt")
         for (dd, pp) in zip(dirs, params):
             pdict = dict(bf_params)
             pdict[name] = pp
-            simdir = os.path.join(dd, filename)
-            self.sims.append(FluxPowSimulation(simdir, pdict, zz=zz, om=om, box=box, H0=H0) )
+            self.sims.append(FluxPowSimulation(dd, snapnum, pdict, zz=zz, om=om, box=box, H0=H0) )
         bfbase = os.path.join(base, bestfit)
-        bf = os.path.join(bfbase, filename)
-        self.sims.append(FluxPowSimulation(bf, bf_params, zz=zz, om=om, box=box, H0=H0))
+        self.sims.append(FluxPowSimulation(bfbase, snapnum, bf_params, zz=zz, om=om, box=box, H0=H0))
         self.bfnum=-1
 
 class QuadraticEmulator(object):
@@ -163,7 +161,11 @@ class QuadraticEmulator(object):
         assert np.shape(results) == (np.size(self.sdsskbins), 2)
         return results
 
-if __name__=='__main__':
+def make_2010_emulator():
+    """
+        Make an emulator for the four cosmological knots in the 2010 simulations,
+        for all redshift outputs.
+    """
     #Parameters of the 2010 simulations
     #Note how every knot has a different best-fit simulation!
     #As I recall there was a bug with the B knots that made small scales wrong somehow, so I had to use bf2 for the C knot.
@@ -183,6 +185,9 @@ if __name__=='__main__':
         #Best-fit model to use when not computing differences.
         #There are also hr2a, hr3, hr4 and hr4a directories with flux power spectra in them.
         #I have no memory of what these files are - there are no simulation snapshots.
-        hr2 = os.path.join("hr2/flux-power", "snapshot_"+str(snap).rjust(3,'0')+"_flux_power.txt")
-        emubf = FluxPowSimulation(os.path.join(basedir, hr2), bestfit_params, zz=zzz[snap], om=omega0, box=60, H0=hubble0)
+        emubf = FluxPowSimulation(os.path.join(basedir, "hr2"), snap, bestfit_params, zz=zzz[snap], om=omega0, box=60., H0=hubble0)
         quads[snap] = QuadraticEmulator((AA_knot, B_knot, C_knot, D_knot),emubf)
+    return quads
+
+if __name__=='__main__':
+    make_2010_emulator()

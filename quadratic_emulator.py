@@ -129,20 +129,15 @@ class QuadraticEmulator(object):
         kbins = sims[bfnum].get_bins()
         assert np.shape(to_interp) == (np.size(sims), np.size(kbins))
         #Rebin the flux power for the k values we want
-        try:
-            bto_interp = np.array([rebin(tt, kbins, self.sdsskbins) for tt in to_interp])
-            #Compute differences in the interpolated quantity
-            dto_interp = bto_interp/bto_interp[bfnum,:] - 1.0
-        except ValueError:
-            #This will happen when we try to interpolate outside the allowed range.
-            #Happens with a box is smaller than 60 Mpc.
-            #Can also happen when the smallest kbin is too large, but won't handle that right now.
-            lowest = np.where(self.sdsskbins > kbins[0])[0][0]
-            #Set all changes outside the interpolation range to zero.
-            bto_interp = np.array([rebin(tt, kbins, self.sdsskbins[lowest:]) for tt in to_interp])
-            dto_interp = np.zeros((np.size(sims), np.size(self.sdsskbins)))
-            dto_interp[:,lowest:] = bto_interp/bto_interp[bfnum,:] - 1.0
-
+        #Avoid rebinning outside the allowed range.
+        #Happens with a box is smaller than 60 Mpc.
+        lowest = np.where(self.sdsskbins > kbins[0])[0][0]
+        assert lowest < np.size(self.sdsskbins)
+        #Set all changes outside the interpolation range to zero.
+        bto_interp = np.array([rebin(tt, kbins, self.sdsskbins[lowest:]) for tt in to_interp])
+        dto_interp = np.zeros((np.size(sims), np.size(self.sdsskbins)))
+        dto_interp[:,lowest:] = bto_interp/bto_interp[bfnum,:] - 1.0
+        #Compute change in parameters
         params = np.array([ss.get_param(paramname) for ss in sims])
         #Compute parameter differences
         params -= params[bfnum]
@@ -159,11 +154,11 @@ class QuadraticEmulator(object):
             Output: (kbins d2P...kbins dP (flat vector of length 2xkbins))
         """
         #Get the change in the interpoaltion value with parameter
-        (dto_interp, params) = self._get_changes(bfnum, sims, paramname)
+        (dto_interp, dparams) = self._get_changes(bfnum, sims, paramname)
         #Pass each k value to flux_deriv in turn.
         # Format of returned data from flux_derivs is (a,b) where it fits to:
         # dto_interp = a params**2 + b params
-        results =np.array([self._flux_deriv(dto_interp[:,k], params) for k in xrange(np.size(self.sdsskbins))])
+        results =np.array([self._flux_deriv(dto_interp[:,k], dparams) for k in xrange(np.size(self.sdsskbins))])
         #So results should have shape
         assert np.shape(results) == (np.size(self.sdsskbins), 2)
         return results

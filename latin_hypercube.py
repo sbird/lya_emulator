@@ -18,7 +18,6 @@ def remove_single_parameter(center, prior_points):
     not_taken = np.setdiff1d(range(np.size(center)), already_taken)
     new_center = center[not_taken]
     assert np.size(new_center) == np.size(center) - np.size(prior_points)
-    raise Exception
     return new_center
 
 def lhscentered(n, samples, prior_points = None):
@@ -51,7 +50,6 @@ def lhscentered(n, samples, prior_points = None):
         #Remove all values within cells covered by prior samples for this parameter.
         #The prior samples must also be a latin hypercube!
         new_center = remove_single_parameter(_center, prior_points[:,j])
-        print(new_center)
         H[:, j] = np.random.permutation(new_center)
     Hp = np.vstack((prior_points, H))
     assert np.shape(Hp) == (samples, n)
@@ -65,11 +63,28 @@ def map_from_unit_cube(param_vec, param_limits):
     param_limits - the maximal limits of the parameters to choose.
     """
     assert (np.size(param_vec),2) == np.shape(param_limits)
-    assert np.all(0 <= param_vec <= 1)
+    assert np.all((0 <= param_vec)*(param_vec <= 1))
     assert np.all(param_limits[:,0] < param_limits[:,1])
     new_params = param_limits[:,0] + param_vec*(param_limits[:,1] - param_limits[:,0])
     assert np.all(new_params < param_limits[:,1])
     assert np.all(new_params > param_limits[:,0])
+    return new_params
+
+def map_to_unit_cube(param_vec, param_limits):
+    """
+    Map a parameter vector to the unit cube from the original dimensions of the space.
+    Arguments:
+    param_vec - the vector of parameters to map.
+    param_limits - the limits of the allowed parameters.
+    Returns:
+    vector of parameters, all in [0,1].
+    """
+    assert (np.size(param_vec),2) == np.shape(param_limits)
+    assert np.all(param_vec < param_limits[:,1])
+    assert np.all(param_vec > param_limits[:,0])
+    assert np.all(param_limits[:,0] < param_limits[:,1])
+    new_params = (param_vec-param_limits[:,0])/(param_limits[:,1] - param_limits[:,0])
+    assert np.all((0 <= new_params)*(new_params <= 1))
     return new_params
 
 def weight_cube(sample, means, sigmas):

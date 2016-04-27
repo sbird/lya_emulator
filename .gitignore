@@ -1,1 +1,8 @@
 *.pyc
+*.aux
+*.blg
+*.bbl
+*.log
+*.out
+*.synctex.gz
+*.backup

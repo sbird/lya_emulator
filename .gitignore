@@ -4,5 +4,8 @@
 *.bbl
 *.log
 *.out
+emulator_notes.pdf
+emulatore_notesNotes.bib
+.*.sw[po]
 *.synctex.gz
 *.backup

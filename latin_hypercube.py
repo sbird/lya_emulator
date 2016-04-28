@@ -15,13 +15,10 @@ def _default_metric_func(lhs):
     This is the sum of the Euclidean distances between each point and the closest other point."""
     #First find minimum distance between every two points
     nsamples, ndims = np.shape(lhs)
-    #This is an array of the square of the distance between every two points, with dimensions (nsamp, nsamp)
-    dists = np.array([np.sum((lhs - ll)**2,axis=1) for ll in lhs])
-    assert np.shape(dists) == (nsamples, nsamples)
-    #This is an array containing, for every point, the minimum distance to another point
-    minn = np.array([np.min(dists[(i+1):,i]) for i in range(nsamples-1)])
+    #This is an array of the minimum squared distance between every two points.
+    #We only compute minima for the upper triangle, because of symmetry.
+    minn = np.array([np.min(np.sum((lhs[j+1:,:] - lhs[j,:])**2,axis=1)) for j in range(nsamples-1)])
     assert np.shape(minn) == (nsamples - 1,)
-    assert np.all(minn > 0)
     return np.sqrt(np.sum(minn))
 
 def maximinlhs(n, samples, prior_points = None, metric_func = None, maxlhs = 10000):

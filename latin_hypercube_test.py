@@ -51,3 +51,25 @@ def test_lhscentered():
         #Check that we can do higher dimensional hypercubes
     x4 = latin_hypercube.lhscentered(7,100)
     _gen_hyp_check(x4)
+
+def test_default_metric():
+    """Test the default metric function is returning something reasonable."""
+    #First generate a bad hypercube.
+    a = np.linspace(0,1,5)
+    cc = (a[1:] + a[:-1])/2.
+    #This has all entries along the diagonal!
+    lhs = np.vstack([cc, cc]).T
+    #Shuffle the second parameter, which should make it better.
+    lhs2 = np.vstack([cc, np.roll(cc,2)]).T
+    #Check that this better hypercube is actually better.
+    assert latin_hypercube._default_metric_func(lhs) < latin_hypercube._default_metric_func(lhs2)
+    #Check that it doesn't matter which order the parameters are in.
+    lhs3 = np.vstack([np.roll(cc,2), cc]).T
+    assert latin_hypercube._default_metric_func(lhs3) == latin_hypercube._default_metric_func(lhs2)
+
+def test_maximin():
+    """Test that the maximin finder is working."""
+    xmax = latin_hypercube.maximinlhs(2,8)
+    #Occasionally this may fail purely because we didn't converge.
+    #Hopefully this is rare.
+    assert xmax[1] > 1.5

@@ -91,7 +91,10 @@ def lhscentered(n, samples, prior_points = None):
     for j in range(n):
         #Remove all values within cells covered by prior samples for this parameter.
         #The prior samples must also be a latin hypercube!
-        new_center = remove_single_parameter(_center, prior_points[:,j])
+        if npriors > 0:
+            new_center = remove_single_parameter(_center, prior_points[:,j])
+        else:
+            new_center = _center
         H[:, j] = np.random.permutation(new_center)
     Hp = np.vstack((prior_points, H))
     assert np.shape(Hp) == (samples, n)

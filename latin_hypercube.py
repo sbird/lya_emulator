@@ -1,11 +1,52 @@
 """
-This file contains functions pick a set of samples from a parameter space
-which, when evaluated, will allow us to best reconstruct the likelihood.
+This file contains functions which pick a set of samples from a parameter space
+which will allow a Gaussian process to best interpolate the samples to new positions in parameter space.
 Several schemes for this are possible.
+
+We use rejection-sampled latin hypercubes.
 """
 
 from scipy.stats.distributions import norm
 import numpy as np
+
+
+def _default_metric_func(lhs):
+    """Default metric function for the maximinlhs, below.
+    This is the sum of the Euclidean distances between each point and the closest other point."""
+    #First find minimum distance between every two points
+    nsamples, ndims = np.shape(lhs)
+    #This is an array of the square of the distance between every two points, with dimensions (nsamp, nsamp)
+    dists = np.array([np.sum((lhs - lhs[j,:])**2,axis=1) for j in range(nsamples)])
+    assert np.shape(dists) == (nsamples, nsamples)
+    #This is an array containing, for every point, the minimum distance to another point
+    minn = np.array([np.min(dists[(i+1):,i]) for i in range(nsamples-1)])
+    assert np.shape(minn) == (nsamples - 1,)
+    assert np.all(minn > 0)
+    return np.sqrt(np.sum(minn))
+
+def maximinlhs(n, samples, prior_points = None, metric_func = None, maxlhs = 10000):
+    """Generate multiple latin hypercubes and pick the one that maximises the metric function.
+    Arguments:
+    n: dimensionality of the cube to sample [0-1]^n
+    samples: total number of samples.
+    prior_points: List of previously evaluated points. If None, totally repopulate the space.
+    metric_func: Function with which to judge the 'goodness' of the generated latin hypercube.
+    Should be a scalar function of one hypercube sample set.
+    maxlhs: Maximum number of latin hypercube to generate before picking the best one."""
+    #Use the default metric if none is specified.
+    if metric_func is None:
+        metric_func = _default_metric_func
+    #Minimal metric is zero.
+    metric = 0
+    #Don't generate more test hypercubes than there are points in the space
+    maxlhs = np.max([maxlhs, (samples//2)**n])
+    for _ in range(maxlhs):
+        new = lhscentered(n, samples, prior_points = prior_points)
+        new_metric = metric_func(new)
+        if new_metric > metric:
+            metric = new_metric
+            current = new
+    return current,metric
 
 def remove_single_parameter(center, prior_points):
     """Remove all values within cells covered by prior samples for a particular parameter.
@@ -96,10 +137,8 @@ def weight_cube(sample, means, sigmas):
     #This samples from the inverse CDF
     return norm(loc=means, scale=sigmas).ppf(sample)
 
-def sample_unit_cube(ndims, prior_points):
-    """Produce an even sampling of the unit cube.
-    Prior points should be included by adding a series of points
-    before the LHS generated ones."""
+
+
 
 #Wrap the plotting scripts in a try block so it succeeds on X-less clusters
 try:

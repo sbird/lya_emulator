@@ -8,7 +8,7 @@ def test_from_and_to_unit_cube():
     param_limits = np.array([-1*np.ones(5), 4*np.ones(5)]).T
     param_vec = np.random.random_sample(5)
     new_params = latin_hypercube.map_to_unit_cube(param_vec,param_limits)
-    assert np.all((0 <= new_params)*(new_params <= 1))
+    assert np.all((new_params >= 0)*(new_params <= 1))
     new_new_params = latin_hypercube.map_from_unit_cube(new_params,param_limits)
     assert np.all(param_vec - new_new_params <= 1e-12)
 
@@ -47,7 +47,7 @@ def test_lhscentered():
     _gen_hyp_check(x2)
     #Check that we can do higher dimensional hypercubes
     x3 = latin_hypercube.lhscentered(7,15)
-    _gen_hyp_check(x2)
+    _gen_hyp_check(x3)
         #Check that we can do higher dimensional hypercubes
     x4 = latin_hypercube.lhscentered(7,100)
     _gen_hyp_check(x4)

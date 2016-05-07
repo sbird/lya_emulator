@@ -14,7 +14,7 @@ def _default_metric_func(lhs):
     """Default metric function for the maximinlhs, below.
     This is the sum of the Euclidean distances between each point and the closest other point."""
     #First find minimum distance between every two points
-    nsamples, ndims = np.shape(lhs)
+    nsamples, _ = np.shape(lhs)
     #This is an array of the minimum squared distance between every two points.
     #We only compute minima for the upper triangle, because of symmetry.
     minn = np.array([np.min(np.sum((lhs[j+1:,:] - lhs[j,:])**2,axis=1)) for j in range(nsamples-1)])
@@ -105,7 +105,7 @@ def map_from_unit_cube(param_vec, param_limits):
     param_limits - the maximal limits of the parameters to choose.
     """
     assert (np.size(param_vec),2) == np.shape(param_limits)
-    assert np.all((0 <= param_vec)*(param_vec <= 1))
+    assert np.all((param_vec >= 0)*(param_vec <= 1))
     assert np.all(param_limits[:,0] < param_limits[:,1])
     new_params = param_limits[:,0] + param_vec*(param_limits[:,1] - param_limits[:,0])
     assert np.all(new_params < param_limits[:,1])
@@ -126,7 +126,7 @@ def map_to_unit_cube(param_vec, param_limits):
     assert np.all(param_vec > param_limits[:,0])
     assert np.all(param_limits[:,0] < param_limits[:,1])
     new_params = (param_vec-param_limits[:,0])/(param_limits[:,1] - param_limits[:,0])
-    assert np.all((0 <= new_params)*(new_params <= 1))
+    assert np.all((new_params >= 0)*(new_params <= 1))
     return new_params
 
 def weight_cube(sample, means, sigmas):
@@ -137,9 +137,6 @@ def weight_cube(sample, means, sigmas):
     """
     #This samples from the inverse CDF
     return norm(loc=means, scale=sigmas).ppf(sample)
-
-
-
 
 #Wrap the plotting scripts in a try block so it succeeds on X-less clusters
 try:

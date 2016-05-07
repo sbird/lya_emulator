@@ -17,7 +17,8 @@ def get_hypercube_samples(param_limits, nsamples, prior_points = None):
     if prior_points != None:
         prior_points = [map_to_unit_cube(pp, param_limits) for pp in prior_points]
     (sample_points, _) = maximinlhs(ndim, nsamples, prior_points=prior_points)
-    remapped = [map_from_unit_cube(pp, param_limits) for pp in sample_points]
+    remapped = np.array([map_from_unit_cube(pp, param_limits) for pp in sample_points])
+    assert np.shape(remapped) == (nsamples, ndim)
     return remapped
 
 def get_random_samples(param_limits, nsamples):
@@ -25,8 +26,9 @@ def get_random_samples(param_limits, nsamples):
     Mostly for testing purposes, as well as evaluating how much better our hypercube does."""
     ndim,nlims = np.shape(param_limits)
     assert nlims == 2
-    sample_points =  np.random.random_sample(ndim*nsamples).reshape(ndim,nsamples)
-    remapped = [map_from_unit_cube(pp, param_limits) for pp in sample_points]
+    sample_points =  np.random.random_sample(ndim*nsamples).reshape(nsamples, ndim)
+    remapped = np.array([map_from_unit_cube(pp, param_limits) for pp in sample_points])
+    assert np.shape(remapped) == (nsamples, ndim)
     return remapped
 
 def _default_metric_func(lhs):

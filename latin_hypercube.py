@@ -9,6 +9,25 @@ We use rejection-sampled latin hypercubes.
 from scipy.stats.distributions import norm
 import numpy as np
 
+def get_hypercube_samples(param_limits, nsamples, prior_points = None):
+    """This function is the main wrapper. Given limits on a set of
+    parameters (and optionally some prior points), it will generate a hypercube design."""
+    ndim,nlims = np.shape(param_limits)
+    assert nlims == 2
+    if prior_points != None:
+        prior_points = [map_to_unit_cube(pp, param_limits) for pp in prior_points]
+    (sample_points, _) = maximinlhs(ndim, nsamples, prior_points=prior_points)
+    remapped = [map_from_unit_cube(pp, param_limits) for pp in sample_points]
+    return remapped
+
+def get_random_samples(param_limits, nsamples):
+    """This function randomly samples the parameters within the allowed space.
+    Mostly for testing purposes, as well as evaluating how much better our hypercube does."""
+    ndim,nlims = np.shape(param_limits)
+    assert nlims == 2
+    sample_points =  np.random.random_sample(ndim*nsamples).reshape(ndim,nsamples)
+    remapped = [map_from_unit_cube(pp, param_limits) for pp in sample_points]
+    return remapped
 
 def _default_metric_func(lhs):
     """Default metric function for the maximinlhs, below.

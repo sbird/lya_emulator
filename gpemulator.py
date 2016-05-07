@@ -14,7 +14,7 @@ def build_fake_fluxes(nsamples):
     params = latin_hypercube.get_hypercube_samples(param_limits, nsamples)
     flux_vectors = [linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2]) for pp in params]
     gp_sk = SkLearnGP(params, flux_vectors)
-    random_samples = latin_hypercube.get_random_samples(param_limits, nsamples/2.)
+    random_samples = latin_hypercube.get_random_samples(param_limits, nsamples//2)
     random_test_flux_vectors = [linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2]) for pp in random_samples]
     predicted_flux_sk = gp_sk.predict(random_samples)
     gp_george = GeorgeGP(params, flux_vectors)
@@ -38,7 +38,7 @@ class SkLearnGP(object):
 class GeorgeGP(object):
     """An emulator using the george Gaussian Process code."""
     def __init__(self, params, flux_vectors):
-        kernel = george.kernels.ExpSquaredKernel(1.0)
+        kernel = george.kernels.ExpSquaredKernel(1.0, ndim=np.shape(params)[1])
         self.gp = george.GP(kernel)
         self.gp.compute(params)
         self.flux_vectors = flux_vectors

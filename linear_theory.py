@@ -5,14 +5,15 @@ import math
 import numpy as np
 import camb
 
-def flux_power_3d(matter_power, mu, bias_flux=-0.14, beta_flux=-0.2):
-    """The 3D flux power from the matter power, assuming the forest is a biased tracer."""
-    return (bias_flux + (1+mu**2)*beta_flux )**2 * matter_power
 
-def flux_power_1d(matter_power, kvals, *, bias_flux=-0.14, beta_flux=-0.2):
+def flux_power_3d(matpow, mu, bias_flux=-0.14, beta_flux=-0.2):
+    """The 3D flux power from the matter power, assuming the forest is a biased tracer."""
+    return (bias_flux + (1+mu**2)*beta_flux )**2 * matpow
+
+def flux_power_1d(matpow, kvals, *, bias_flux=-0.14, beta_flux=-0.2):
     """The 1D flux power spectrum from the matter power, the integral of the 3D.
     Result has units of L."""
-    P3D = flux_power_3d(matter_power, 1, bias_flux=bias_flux, beta_flux=beta_flux)
+    P3D = flux_power_3d(matpow, 1, bias_flux=bias_flux, beta_flux=beta_flux)
     return kvals, np.array([np.trapz(P3D[i:]*kvals[i:], kvals[i:]) for i in range(np.size(kvals))])/math.pi/2
 
 def matter_power(*, hub = 0.7, omega_b = 0.049, omega_c = 0.25, ns=0.965, As = 2.41e-9, zz=3.):
@@ -32,5 +33,6 @@ def matter_power(*, hub = 0.7, omega_b = 0.049, omega_c = 0.25, ns=0.965, As = 2
 def get_flux_power(*, hub = 0.7, omega_b = 0.049, omega_c = 0.25, ns=0.965, As = 2.41e-9, zz=3., bias_flux=-0.14, beta_flux=-0.2):
     """Get a flux power spectrum from cosmology."""
     (kh, pk) = matter_power(hub = hub, omega_b = omega_b, omega_c = omega_c, ns=ns, As = As, zz=zz)
-    pf = flux_power_1d(pk, kh, bias_flux=bias_flux, beta_flux=beta_flux)
+    kvals, pf = flux_power_1d(pk[::10], kh[::10], bias_flux=bias_flux, beta_flux=beta_flux)
+    #Return a smaller number of bins
     return pf

@@ -35,4 +35,4 @@ def get_flux_power(*, hub = 0.7, omega_b = 0.049, omega_c = 0.25, ns=0.965, As =
     (kh, pk) = matter_power(hub = hub, omega_b = omega_b, omega_c = omega_c, ns=ns, As = As, zz=zz)
     kvals, pf = flux_power_1d(pk[::10], kh[::10], bias_flux=bias_flux, beta_flux=beta_flux)
     #Return a smaller number of bins
-    return pf
+    return kvals,pf

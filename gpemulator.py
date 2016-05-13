@@ -25,7 +25,7 @@ def init_lnlike(nsamples, data=None):
     data = SDSSData()
     #Get unique values
     flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2], zz=data.get_redshifts(), kf=data.get_kf()) for pp in params])
-    gp = SkLearnGP(tau_means = params[0], ns = params[1], As = params[2], kf=data.kf, flux_vectors=flux_vectors)
+    gp = SkLearnGP(tau_means = params[:,0], ns = params[:,1], As = params[:,2], kf=data.kf, flux_vectors=flux_vectors)
     return gp, data
 
 def build_fake_fluxes(nsamples):
@@ -33,30 +33,32 @@ def build_fake_fluxes(nsamples):
     param_limits = np.array([[-1., 0], [0.9, 1.0], [1.5e-9, 3.0e-9]])
     params = latin_hypercube.get_hypercube_samples(param_limits, nsamples)
     data = SDSSData()
-    zzs = [2.,3]
-    flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2], kf=data.get_kf(), zz=zzs) for pp in params])
-    gp = SkLearnGP(tau_means = params[0], ns=params[1], As=params[2], kf=data.kf, flux_vectors=flux_vectors)
+    flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2], kf=data.get_kf(), zz=data.get_redshifts()) for pp in params])
+    gp = SkLearnGP(tau_means = params[:,0], ns=params[:,1], As=params[:,2], kf=data.kf, flux_vectors=flux_vectors)
     random_samples = latin_hypercube.get_random_samples(param_limits, nsamples//2)
-    random_test_flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2], kf=data.get_kf(),zz=zzs) for pp in random_samples])
+    random_test_flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2], kf=data.get_kf(),zz=data.get_redshifts()) for pp in random_samples])
     diff_sk = gp.get_predict_error(random_samples, random_test_flux_vectors)
     return gp, diff_sk
 
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
     def __init__(self, *, tau_means, ns, As, kf, flux_vectors):
-        params = [tau_means, ns, As]
+        params = np.array([tau_means, ns, As]).T
         self._siIIIform = self._siIIIcorr(kf)
+        flux_vectors = flux_vectors.reshape(np.size(tau_means),-1)
+        assert np.shape(flux_vectors) == (np.size(tau_means), np.size(kf))
         self.gp = gaussian_process.GaussianProcess()
         self.gp.fit(params, flux_vectors)
 
     def predict(self, *, tau_means, ns, As, fSiIII):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
-        params = [tau_means, ns, As]
+        params = np.array([tau_means, ns, As]).T
         flux_predict , cov = self.gp.predict(params) * self.SiIIIcorr(fSiIII, tau_means)
         return flux_predict, cov
 
     def get_predict_error(self, test_params, test_exact):
         """Get the difference between the predicted GP interpolation and some exactly computed test parameters."""
+        test_exact = test_exact.reshape(np.shape(test_params)[0],-1)
         return self.gp.score(test_params, test_exact)
 
     def _siIIIcorr(self, kf):
@@ -104,8 +106,8 @@ class SDSSData(object):
 
     def get_kf(self):
         """Get the (unique) flux k values"""
-        return np.array(list(set(self.kf)))
+        return np.sort(np.array(list(set(self.kf))))
 
     def get_redshifts(self):
-        """Get the (unique) redshift bins"""
-        return np.array(list(set(self.redshifts)))
+        """Get the (unique) redshift bins, sorted in decreasing redshift"""
+        return np.sort(np.array(list(set(self.redshifts))))[::-1]

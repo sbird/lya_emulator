@@ -23,7 +23,8 @@ def init_lnlike(nsamples, data=None):
     param_limits = np.array([[-2., 0], [0.5, 1.5], [1.5e-8, 8.0e-9]])
     params = latin_hypercube.get_hypercube_samples(param_limits, nsamples)
     data = SDSSData()
-    flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2], zz=np.array(set(data.redshifts))) for pp in params])
+    #Get unique values
+    flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2], zz=data.get_redshifts(), kf=data.get_kf()) for pp in params])
     gp = SkLearnGP(tau_means = params[0], ns = params[1], As = params[2], kf=data.kf, flux_vectors=flux_vectors)
     return gp, data
 
@@ -31,10 +32,12 @@ def build_fake_fluxes(nsamples):
     """Simple function using linear test case to build an emulator."""
     param_limits = np.array([[-1., 0], [0.9, 1.0], [1.5e-9, 3.0e-9]])
     params = latin_hypercube.get_hypercube_samples(param_limits, nsamples)
-    kf,flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2]) for pp in params])
-    gp = SkLearnGP(tau_means = params[0], ns=params[1], As=params[2],kf=kf,flux_vectors=flux_vectors)
+    data = SDSSData()
+    zzs = [2.,3]
+    flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2], kf=data.get_kf(), zz=zzs) for pp in params])
+    gp = SkLearnGP(tau_means = params[0], ns=params[1], As=params[2], kf=data.kf, flux_vectors=flux_vectors)
     random_samples = latin_hypercube.get_random_samples(param_limits, nsamples//2)
-    random_test_flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2]) for pp in random_samples])
+    random_test_flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2], kf=data.get_kf(),zz=zzs) for pp in random_samples])
     diff_sk = gp.get_predict_error(random_samples, random_test_flux_vectors)
     return gp, diff_sk
 
@@ -99,3 +102,10 @@ class SDSSData(object):
         covar = np.loadtxt(covarfile)
         self.invcovar = np.linalg.inv(covar)
 
+    def get_kf(self):
+        """Get the (unique) flux k values"""
+        return np.array(list(set(self.kf)))
+
+    def get_redshifts(self):
+        """Get the (unique) redshift bins"""
+        return np.array(list(set(self.redshifts)))

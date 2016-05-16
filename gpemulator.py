@@ -53,7 +53,8 @@ class SkLearnGP(object):
     def predict(self, *, tau_means, ns, As, fSiIII):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         params = np.array([tau_means, ns, As]).T
-        flux_predict , cov = self.gp.predict(params) * self.SiIIIcorr(fSiIII, tau_means)
+        flux_predict , cov = self.gp.predict(params,eval_MSE=True)
+        flux_predict *= self.SiIIIcorr(fSiIII, tau_means)
         return flux_predict, cov
 
     def get_predict_error(self, test_params, test_exact):

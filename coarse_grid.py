@@ -20,7 +20,7 @@ class Params(object):
         assert len(params) == len(self.param_names)
         name = ""
         for nn,pp in zip(self.param_names, params):
-            name += nn+str(np.round(pp,2))
+            name += nn+'%.1e' % pp
         return name
 
 def lnlike_linear(params, *, gp=None, data=None):

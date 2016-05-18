@@ -13,7 +13,7 @@ class Params(object):
     def __init__(self):
         self.param_names = ['ns', 'As', 'heat_slope', 'heat_amp', 'hub']
         #Not sure what the limits on heat_slope should be.
-        self.param_limits = np.array([[0.6, 1.5], [1.5e-8, 4.0e-9], [0., 0.5],[0.25,3],[0.65,0.75]])
+        self.param_limits = np.array([[0.6, 1.5], [1.5e-9, 4.0e-9], [0., 0.5],[0.25,3],[0.65,0.75]])
 
     def build_dirname(self,params):
         """Make a directory name for a given set of parameter values"""
@@ -49,7 +49,7 @@ def gen_simulations(nsamples,basedir, npart=256.,box=60,):
     """Initialise the emulator by generating simulations for various parameters."""
     params = Params()
     with open(os.path.join(basedir, "emulator_params.txt"),'w') as saved_params:
-        saved_params.write(params.param_names)
+        saved_params.write(str(params.param_names))
         toeval = latin_hypercube.get_hypercube_samples(params.param_limits, nsamples)
         #Generate ICs for each set of parameter inputs
         for ev in toeval:

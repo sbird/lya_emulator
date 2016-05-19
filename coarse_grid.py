@@ -6,7 +6,7 @@ import numpy as np
 
 # import gpemulator
 import latin_hypercube
-from SimulationRunner import lyasimulation
+from SimulationRunner import lyasimulation,clusters
 
 class Params(object):
     """Small class to store parameter names and limits"""
@@ -48,13 +48,14 @@ def lnlike_linear(params, *, gp=None, data=None):
 def gen_simulations(nsamples,basedir, npart=256.,box=60,):
     """Initialise the emulator by generating simulations for various parameters."""
     params = Params()
+    LymanAlphaSim = clusters.hypatia_mpi_decorate(lyasimulation.LymanAlphaSim)
     with open(os.path.join(basedir, "emulator_params.txt"),'w') as saved_params:
-        saved_params.write(str(params.param_names))
+        saved_params.write(str(params.param_names)+"\n")
         toeval = latin_hypercube.get_hypercube_samples(params.param_limits, nsamples)
         #Generate ICs for each set of parameter inputs
         for ev in toeval:
             outdir = os.path.join(basedir, params.build_dirname(ev))
-            saved_params.write(str(ev)+"  :  "+outdir)
+            saved_params.write(str(ev)+"  :  "+outdir+"\n")
             assert params.param_names[0] == 'ns'
             assert params.param_names[1] == 'As'
             assert params.param_names[2] == 'heat_slope'

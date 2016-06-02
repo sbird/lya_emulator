@@ -56,7 +56,7 @@ def maximinlhs(n, samples, prior_points = None, metric_func = None, maxlhs = 100
     if metric_func is None:
         metric_func = _default_metric_func
     #Minimal metric is zero.
-    metric = 0
+    metric = -1
     group = 1000
     for _ in range(maxlhs//group):
         new = [lhscentered(n, samples, prior_points = prior_points) for _ in range(group)]

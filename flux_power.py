@@ -16,7 +16,7 @@ class MySpectra(object):
         #Use the right values for SDSS or BOSS.
         self.spec_res = 200.
 
-    def _get_spectra_snap(self, snap, base):
+    def _get_spectra_snap(self, snap, base, redshifts):
         """Get a snapshot with generated HI spectra"""
         try:
             #First try to reload a savefile
@@ -24,8 +24,10 @@ class MySpectra(object):
         except IOError:
             #If we couldn't, regenerate the spectra
             ss = spectra.Spectra(snap, base, self.cofm, self.axis, res=self.spec_res/4, savefile="lya_forest_spectra.hdf5",spec_res = self.spec_res,reload_file=True)
-            ss.get_tau("H",1,1215)
-            ss.save_file()
+            #Now if the redshift is something we want, generate the flux power
+            if np.min(np.abs(ss.red - redshifts)) < 0.05:
+                ss.get_tau("H",1,1215)
+                ss.save_file()
         return ss
 
     def get_flux_power(self, base):
@@ -36,15 +38,15 @@ class MySpectra(object):
         fluxlist = []
         for snap in range(100):
             try:
-                ss = self._get_spectra_snap(snap, base)
+                ss = self._get_spectra_snap(snap, base,zout)
                 #Now if the redshift is something we want, generate the flux power
                 if np.min(np.abs(ss.red - zout)) < 0.05:
                     fluxlist.append(ss.get_flux_power_1D("H",1,1215))
             except IOError:
                 #We ran out of snapshots
                 break
-            #Make sure we have enough outputs
-            assert len(fluxlist) == np.size(zout)
-            flux_power = np.array(fluxlist)
+        #Make sure we have enough outputs
+        assert len(fluxlist) == np.size(zout)
+        flux_power = np.array(fluxlist)
         return flux_power
 

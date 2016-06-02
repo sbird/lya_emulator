@@ -46,7 +46,7 @@ class Params(object):
 
     def get_dirs(self):
         """Get the list of directories in this emulator."""
-        return self.sample_dirs
+        return [os.path.join(os.path.join(self.basedir, dd),"output") for dd in self.sample_dirs]
 
     def get_parameters(self):
         """Get the list of parameter vectors in this emulator."""

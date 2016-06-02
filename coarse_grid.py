@@ -12,10 +12,12 @@ from SimulationRunner import lyasimulation,clusters
 
 class Params(object):
     """Small class to store parameter names and limits"""
-    def __init__(self):
+    def __init__(self, basedir):
         self.param_names = ['ns', 'As', 'heat_slope', 'heat_amp', 'hub']
         #Not sure what the limits on heat_slope should be.
         self.param_limits = np.array([[0.6, 1.5], [1.5e-9, 4.0e-9], [0., 0.5],[0.25,3],[0.65,0.75]])
+        self.sample_params = []
+        self.basedir = basedir
 
     def build_dirname(self,params):
         """Make a directory name for a given set of parameter values"""
@@ -25,35 +27,45 @@ class Params(object):
             name += nn+'%.1e' % pp
         return name
 
-    def dump(self,basedir, dumpfile="emulator_params.json"):
+    def dump(self, dumpfile="emulator_params.json"):
         """Dump parameters to a textfile."""
-        with open(os.path.join(basedir, dumpfile), 'w') as jsout:
+        #Arrays can't be serialised so convert them back and forth to lists
+        self.param_limits = self.param_limits.tolist()
+        self.sample_params = self.sample_params.tolist()
+        with open(os.path.join(self.basedir, dumpfile), 'w') as jsout:
             json.dump(self.__dict__, jsout)
+        self.param_limits = np.array(self.param_limits)
+        self.sample_params = np.array(self.sample_params)
 
-    def load(self,basedir, dumpfile="emulator_params.json"):
+    def load(self,dumpfile="emulator_params.json"):
         """Load parameters from a textfile."""
-        with open(os.path.join(basedir, dumpfile), 'w') as jsin:
+        with open(os.path.join(self.basedir, dumpfile), 'r') as jsin:
             self.__dict__ = json.load(jsin)
+        self.param_limits = np.array(self.param_limits)
+        self.sample_params = np.array(self.sample_params)
 
     def get_dirs(self):
         """Get the list of directories in this emulator."""
-        return self.sample_points.values()
+        return self.sample_dirs
 
     def get_parameters(self):
         """Get the list of parameter vectors in this emulator."""
-        #These are ordered, right?
-        assert self.get_dirs()[0] == self.sample_points[self.sample_points.keys()[0]]
-        return np.array(self.sample_points.keys())
+        return self.sample_params
 
-    def gen_simulations(self, nsamples,basedir, npart=256.,box=60,):
+    def build_params(self, nsamples):
+        """Build a list of directories and parameters from a hyercube sample"""
+        self.sample_params = latin_hypercube.get_hypercube_samples(self.param_limits, nsamples)
+        self.sample_dirs = [self.build_dirname(ev) for ev in toeval]
+
+    def gen_simulations(self, nsamples, npart=256.,box=60,):
         """Initialise the emulator by generating simulations for various parameters."""
         LymanAlphaSim = clusters.hypatia_mpi_decorate(lyasimulation.LymanAlphaSim)
-        toeval = latin_hypercube.get_hypercube_samples(self.param_limits, nsamples)
-        self.sample_points = dict((ev, self.build_dirname(ev)) for ev in toeval)
-        self.dump(basedir)
+        if len(self.sample_params) != nsamples:
+            self.build_params(nsamples)
+        self.dump(self.basedir)
         #Generate ICs for each set of parameter inputs
-        for ev in toeval:
-            outdir = os.path.join(basedir, self.sample_points[ev])
+        for ev,edir in zip(self.sample_params, self.sample_dirs):
+            outdir = os.path.join(self.basedir, edir)
             assert self.param_names[0] == 'ns'
             assert self.param_names[1] == 'As'
             assert self.param_names[2] == 'heat_slope'
@@ -81,8 +93,8 @@ def lnlike_linear(params, *, gp=None, data=None):
 def init_lnlike(basedir, data=None):
     """Initialise the emulator by loading the flux power spectra from the simulations."""
     #Parameter names
-    params = Params()
-    params.load(basedir)
+    params = Params(basedir)
+    params.load()
     data = gpemulator.SDSSData()
     #Glob the directories? Or load from a text file?
     #Get unique values

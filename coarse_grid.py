@@ -1,5 +1,6 @@
 """Generate a coarse grid for the emulator and test it"""
 from __future__ import print_function
+import os
 import os.path
 import json
 import numpy as np
@@ -18,6 +19,8 @@ class Params(object):
         self.param_limits = np.array([[0.6, 1.5], [1.5e-9, 4.0e-9], [0., 0.5],[0.25,3],[0.65,0.75]])
         self.sample_params = []
         self.basedir = basedir
+        if not os.path.exists(basedir):
+            os.mkdir(basedir)
 
     def build_dirname(self,params):
         """Make a directory name for a given set of parameter values"""
@@ -55,14 +58,14 @@ class Params(object):
     def build_params(self, nsamples):
         """Build a list of directories and parameters from a hyercube sample"""
         self.sample_params = latin_hypercube.get_hypercube_samples(self.param_limits, nsamples)
-        self.sample_dirs = [self.build_dirname(ev) for ev in toeval]
+        self.sample_dirs = [self.build_dirname(ev) for ev in self.sample_params]
 
     def gen_simulations(self, nsamples, npart=256.,box=60,):
         """Initialise the emulator by generating simulations for various parameters."""
         LymanAlphaSim = clusters.hypatia_mpi_decorate(lyasimulation.LymanAlphaSim)
         if len(self.sample_params) != nsamples:
             self.build_params(nsamples)
-        self.dump(self.basedir)
+        self.dump()
         #Generate ICs for each set of parameter inputs
         for ev,edir in zip(self.sample_params, self.sample_dirs):
             outdir = os.path.join(self.basedir, edir)
@@ -78,6 +81,14 @@ class Params(object):
             except RuntimeError as e:
                 print(str(e), " while building: ",outdir)
         return
+
+    def get_emulator(self):
+        """Build an emulator from the desired parameter values and simulations"""
+        myspec = flux_power.MySpectra()
+        flux_vectors = np.array([myspec.get_flux_power(pp) for pp in self.get_dirs()])
+        pvals = self.get_parameters()
+        gp = gpemulator.SkLearnGP(tau_means = pvals[:,0], ns = pvals[:,1], As = pvals[:,2], kf=data.kf, flux_vectors=flux_vectors)
+        return gp
 
 def lnlike_linear(params, *, gp=None, data=None):
     """A simple emcee likelihood function for the Lyman-alpha forest using the
@@ -95,12 +106,7 @@ def init_lnlike(basedir, data=None):
     #Parameter names
     params = Params(basedir)
     params.load()
+    gp = params.get_emulator()
     data = gpemulator.SDSSData()
-    #Glob the directories? Or load from a text file?
-    #Get unique values
-    myspec = flux_power.MySpectra()
-    flux_vectors = np.array([myspec.get_flux_power(pp) for pp in params.get_dirs()])
-    pvals = params.get_parameters()
-    gp = gpemulator.SkLearnGP(tau_means = pvals[:,0], ns = pvals[:,1], As = pvals[:,2], kf=data.kf, flux_vectors=flux_vectors)
     return gp, data
 

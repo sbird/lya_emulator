@@ -87,7 +87,7 @@ class Params(object):
         myspec = flux_power.MySpectra()
         flux_vectors = np.array([myspec.get_flux_power(pp) for pp in self.get_dirs()])
         pvals = self.get_parameters()
-        gp = gpemulator.SkLearnGP(tau_means = pvals[:,0], ns = pvals[:,1], As = pvals[:,2], kf=data.kf, flux_vectors=flux_vectors)
+        gp = gpemulator.SkLearnGP(params=pvals, kf=data.kf, flux_vectors=flux_vectors)
         return gp
 
 def lnlike_linear(params, *, gp=None, data=None):

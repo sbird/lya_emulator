@@ -5,7 +5,7 @@ from sklearn import gaussian_process
 
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
-    def __init__(self, *, tau_means, ns, As, kf, flux_vectors):
+    def __init__(self, *, params, kf, flux_vectors):
         params = np.array([tau_means, ns, As]).T
         self._siIIIform = self._siIIIcorr(kf)
         flux_vectors = flux_vectors.reshape(np.size(tau_means),-1)
@@ -13,9 +13,8 @@ class SkLearnGP(object):
         self.gp = gaussian_process.GaussianProcess()
         self.gp.fit(params, flux_vectors)
 
-    def predict(self, *, tau_means, ns, As, fSiIII):
+    def predict(self, params):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
-        params = np.array([tau_means, ns, As]).T
         flux_predict , cov = self.gp.predict(params,eval_MSE=True)
         flux_predict *= self.SiIIIcorr(fSiIII, tau_means)
         return flux_predict, cov

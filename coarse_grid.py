@@ -4,6 +4,7 @@ import os
 import os.path
 import json
 import numpy as np
+import matplotlib.pyplot as plt
 # import emcee
 
 import gpemulator
@@ -109,4 +110,20 @@ def init_lnlike(basedir, data=None):
     gp = params.get_emulator()
     data = gpemulator.SDSSData()
     return gp, data
+
+def plot_test_interpolate(emulatordir,testdir):
+    """Make a plot showing the interpolation error."""
+    params = Params(emulatordir)
+    params.load()
+    gp = params.get_emulator()
+    params_test = Params(testdir)
+    params_test.load()
+    myspec = flux_power.MySpectra()
+    for pp,dd in zip(params_test.get_parameters(),params_test.get_dirs()):
+        predicted,_ = gp.predict(pp)
+        exact = myspec.get_flux_power(dd)
+        ratio = predicted.reshape(np.shape(exact))/exact
+        for rr in ratio:
+            plt.loglog(rr)
+    plt.show()
 

@@ -2,6 +2,7 @@
 from __future__ import print_function
 import os.path
 import numpy as np
+import scipy.interpolate
 import spectra
 
 class MySpectra(object):
@@ -35,13 +36,13 @@ class MySpectra(object):
         self.axis = ss.axis
         #Now if the redshift is something we want, generate the flux power
         if np.min(np.abs(ss.red - self.zout)) < 0.05:
-            flux_power = ss.get_flux_power_1D("H",1,1215)
+            kf, flux_power = ss.get_flux_power_1D("H",1,1215)
             if reload_file:
                 ss.save_file()
-            return flux_power
-        return np.array([])
+            return kf,flux_power
+        return np.array([]),np.array([])
 
-    def get_flux_power(self, base):
+    def get_flux_power(self, base, kf):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
         fluxlist = []
@@ -49,10 +50,12 @@ class MySpectra(object):
             if not os.path.exists(os.path.join(base,"snapdir_"+str(snap).rjust(3,'0'))):
                 #We ran out of snapshots
                 break
-            flux_power = self._get_spectra_snap(snap, base)
+            kf_sim,flux_power_sim = self._get_spectra_snap(snap, base)
             #Now if the redshift is something we want, generate the flux power
-            if np.size(flux_power) > 2:
-                fluxlist.append(flux_power)
+            if np.size(flux_power_sim) > 2:
+                #Rebin flux power to have desired k bins
+                rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)
+                fluxlist.append(rebinned(kf))
         #Make sure we have enough outputs
         assert len(fluxlist) == np.size(self.zout)
         flux_power = np.array(fluxlist)

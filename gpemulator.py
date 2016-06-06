@@ -6,17 +6,16 @@ from sklearn import gaussian_process
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
     def __init__(self, *, params, kf, flux_vectors):
-        params = np.array([tau_means, ns, As]).T
         self._siIIIform = self._siIIIcorr(kf)
-        flux_vectors = flux_vectors.reshape(np.size(tau_means),-1)
-        assert np.shape(flux_vectors) == (np.size(tau_means), np.size(kf))
+        flux_vectors = flux_vectors.reshape(np.size(params[:,0]),-1)
+        assert np.shape(flux_vectors) == (np.size(params[:,0]), np.size(kf))
         self.gp = gaussian_process.GaussianProcess()
         self.gp.fit(params, flux_vectors)
 
-    def predict(self, params):
+    def predict(self, params,fSiIII=0.):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         flux_predict , cov = self.gp.predict(params,eval_MSE=True)
-        flux_predict *= self.SiIIIcorr(fSiIII, tau_means)
+#         flux_predict *= self.SiIIIcorr(fSiIII,tau_means)
         return flux_predict, cov
 
     def get_predict_error(self, test_params, test_exact):

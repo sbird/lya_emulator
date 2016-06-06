@@ -83,12 +83,13 @@ class Params(object):
                 print(str(e), " while building: ",outdir)
         return
 
-    def get_emulator(self):
-        """Build an emulator from the desired parameter values and simulations"""
+    def get_emulator(self, kf):
+        """Build an emulator from the desired parameter values and simulations.
+        kf gives the desired k bins in s/km."""
         myspec = flux_power.MySpectra()
-        flux_vectors = np.array([myspec.get_flux_power(pp) for pp in self.get_dirs()])
+        flux_vectors = np.array([myspec.get_flux_power(pp,kf) for pp in self.get_dirs()])
         pvals = self.get_parameters()
-        gp = gpemulator.SkLearnGP(params=pvals, kf=data.kf, flux_vectors=flux_vectors)
+        gp = gpemulator.SkLearnGP(params=pvals, kf=kf, flux_vectors=flux_vectors)
         return gp
 
 def lnlike_linear(params, *, gp=None, data=None):
@@ -107,21 +108,22 @@ def init_lnlike(basedir, data=None):
     #Parameter names
     params = Params(basedir)
     params.load()
-    gp = params.get_emulator()
     data = gpemulator.SDSSData()
+    gp = params.get_emulator(data.kf)
     return gp, data
 
 def plot_test_interpolate(emulatordir,testdir):
     """Make a plot showing the interpolation error."""
     params = Params(emulatordir)
     params.load()
-    gp = params.get_emulator()
+    data = gpemulator.SDSSData()
+    gp = params.get_emulator(data.kf)
     params_test = Params(testdir)
     params_test.load()
     myspec = flux_power.MySpectra()
     for pp,dd in zip(params_test.get_parameters(),params_test.get_dirs()):
         predicted,_ = gp.predict(pp)
-        exact = myspec.get_flux_power(dd)
+        exact = myspec.get_flux_power(dd,data.kf)
         ratio = predicted.reshape(np.shape(exact))/exact
         for rr in ratio:
             plt.loglog(rr)

@@ -125,7 +125,10 @@ def plot_test_interpolate(emulatordir,testdir):
         predicted,_ = gp.predict(pp)
         exact = myspec.get_flux_power(dd,data.get_kf())
         ratio = predicted.reshape(np.shape(exact))/exact
-        for rr in ratio:
-            plt.loglog(rr)
+        for i,rr in enumerate(ratio):
+            plt.loglog(data.get_kf(),rr,label=myspec.zout[i])
+    plt.xlabel(r"$k_F$ (s/km)")
+    plt.ylabel(r"Predicted/Exact")
+    plt.legend(loc=0)
     plt.show()
 

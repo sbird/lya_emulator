@@ -46,15 +46,19 @@ class MySpectra(object):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
         fluxlist = []
-        for snap in range(100):
-            if not os.path.exists(os.path.join(base,"snapdir_"+str(snap).rjust(3,'0'))):
+        for snap in range(1000):
+            snapdir = os.path.join(base,"snapdir_"+str(snap).rjust(3,'0'))
+            if not os.path.exists(snapdir):
                 #We ran out of snapshots
                 break
-            kf_sim,flux_power_sim = self._get_spectra_snap(snap, base)
+            try:
+                kf_sim,flux_power_sim = self._get_spectra_snap(snap, base)
+            except IOError:
+                raise IOError("Could not load snapshot: "+snapdir)
             #Now if the redshift is something we want, generate the flux power
             if np.size(flux_power_sim) > 2:
                 #Rebin flux power to have desired k bins
-                rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)
+                rebinned=scipy.interpolate.interpolate.interp1d(kf_sim[1:],flux_power_sim[1:])
                 fluxlist.append(rebinned(kf))
         #Make sure we have enough outputs
         assert len(fluxlist) == np.size(self.zout)

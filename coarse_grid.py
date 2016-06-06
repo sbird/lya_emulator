@@ -109,7 +109,7 @@ def init_lnlike(basedir, data=None):
     params = Params(basedir)
     params.load()
     data = gpemulator.SDSSData()
-    gp = params.get_emulator(data.kf)
+    gp = params.get_emulator(data.get_kf())
     return gp, data
 
 def plot_test_interpolate(emulatordir,testdir):
@@ -117,13 +117,13 @@ def plot_test_interpolate(emulatordir,testdir):
     params = Params(emulatordir)
     params.load()
     data = gpemulator.SDSSData()
-    gp = params.get_emulator(data.kf)
+    gp = params.get_emulator(data.get_kf())
     params_test = Params(testdir)
     params_test.load()
     myspec = flux_power.MySpectra()
     for pp,dd in zip(params_test.get_parameters(),params_test.get_dirs()):
         predicted,_ = gp.predict(pp)
-        exact = myspec.get_flux_power(dd,data.kf)
+        exact = myspec.get_flux_power(dd,data.get_kf())
         ratio = predicted.reshape(np.shape(exact))/exact
         for rr in ratio:
             plt.loglog(rr)

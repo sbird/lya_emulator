@@ -17,7 +17,7 @@ class Params(object):
     def __init__(self, basedir):
         self.param_names = ['ns', 'As', 'heat_slope', 'heat_amp', 'hub']
         #Not sure what the limits on heat_slope should be.
-        self.param_limits = np.array([[0.6, 1.5], [1.5e-9, 4.0e-9], [0., 0.5],[0.25,3],[0.65,0.75]])
+        self.param_limits = np.array([[0.6, 1.5], [1.5e-9, 4.0e-9], [0., 0.5],[0.25,2],[0.65,0.75]])
         self.sample_params = []
         self.basedir = basedir
         if not os.path.exists(basedir):

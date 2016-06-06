@@ -180,7 +180,6 @@ class EmulatedQuantity(object):
         else:
             guess=derivs.GetPF(params, redshift)
         #This looks like a bug...should be test2/guess-1, not test2/(guess+1)?
-        return np.array((test2/(guess+1.0))[0][0]
         return np.array(test2/guess-1.0)[0][0]
 
     def compare_two_table(self,onedir, twodir):

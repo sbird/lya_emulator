@@ -5,10 +5,10 @@
 Routines specific to the simulations run in 2010.
 Create the emulator, and plot it's errors
 """
-import quadratic_emulator as qe
-import matplotlib.pyplot as plt
 import os.path
+import matplotlib.pyplot as plt
 import numpy as np
+import quadratic_emulator as qe
 
 def plot_err(simdir, simparams, emulator, om, box, H0):
     """Plot the percent error for a variety of redshift bins"""
@@ -30,7 +30,7 @@ def make_2010_emulator(bestfitdir="hr2", bestfitbox=60., sdsskbins=np.array([]))
     #As I recall there was a bug with the B knots that made small scales wrong somehow, so I had to use bf2 for the C knot.
     #The other two are just to allow for different box sizes
     basedir = "/home/spb/codes/Lyman-alpha/MinParametricRecon/runs/"
-    zzz = { n : 4.2-0.2*n for n in xrange(12) }
+    zzz = { n : 4.2-0.2*n for n in range(12) }
     omega0 = 0.2669
     hubble0 = 0.71
     #I checked that these are the same parameters for all 4 knots

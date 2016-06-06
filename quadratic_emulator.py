@@ -6,12 +6,12 @@ An emulator to interpolate between flux power spectra computed for the Lyman alp
 Fits the change in the flux power spectrum with a quadratic function.
 """
 
-import numpy as np
 import math
-from smooth import rebin
 import os.path
 import glob
 import re
+import numpy as np
+from smooth import rebin
 
 def Hubble(zz, om, H0):
     """ Hubble parameter. Hubble(Redshift) """
@@ -156,7 +156,7 @@ class QuadraticEmulator(object):
         #Pass each k value to flux_deriv in turn.
         # Format of returned data from flux_derivs is (a,b) where it fits to:
         # dto_interp = a params**2 + b params
-        results =np.array([self._flux_deriv(dto_interp[:,k], dparams) for k in xrange(np.shape(dto_interp)[1])])
+        results =np.array([self._flux_deriv(dto_interp[:,k], dparams) for k in range(np.shape(dto_interp)[1])])
         #So results should have shape
         assert np.shape(results) == (np.size(self.sdsskbins), 2)
         return results
@@ -164,7 +164,7 @@ class QuadraticEmulator(object):
 def get_err(simdir, simparams, emulator, om, box, H0):
     """Get the difference between an interpolated flux power spectrum and the real flux power spectrum for a simulation with the same parameter"""
     err = {}
-    zzz = { n : 4.2-0.2*n for n in xrange(12) }
+    zzz = { n : 4.2-0.2*n for n in range(12) }
     for snap in zzz.keys():
         tester = FluxPowSimulation(simdir, snap, simparams, zz=zzz[snap], om=om, box=box, H0=H0)
         emulated = emulator[snap].get_interpolated(simparams)

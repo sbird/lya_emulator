@@ -4,6 +4,8 @@ import os
 import os.path
 import json
 import numpy as np
+import matplotlib
+matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 # import emcee
 

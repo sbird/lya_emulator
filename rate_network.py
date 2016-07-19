@@ -6,23 +6,18 @@ import scipy.interpolate as interp
 class RateNetwork(object):
     """A rate network for neutral hydrogen following
     Katz, Weinberg & Hernquist 1996, eq. 28-32."""
-    def __init__(self,redshift, photo_factor = 1., helium=0.24, converge = 1e-5):
+    def __init__(self,redshift, photo_factor = 1., converge = 1e-5):
         self.recomb = RecombRates()
         self.photo = PhotoRates()
         self.photo_factor = photo_factor
-        self.helium = helium
         #proton mass in g
-        self.protonmass=1.67262178e-24
+        self.protonmass = 1.67262178e-24
         self.redshift = redshift
         self.converge = converge
         zz = [0, 1, 2, 3, 4, 5, 6, 7,8]
         #Tables for the self-shielding correction. Note these are not well-measured for z > 5!
         gray_opac = [2.59e-18,2.37e-18,2.27e-18, 2.15e-18, 2.02e-18, 1.94e-18, 1.82e-18, 1.71e-18, 1.60e-18]
         self.Gray_ss = interp.InterpolatedUnivariateSpline(zz, gray_opac)
-
-    def get_nH(self, density):
-        """The hydrogen atom number density"""
-        return density * (1 - self.helium) / self.protonmass
 
     def _nH0(self, nh, temp, ne):
         """The neutral hydrogen number density. Eq. 33 of KWH."""
@@ -36,48 +31,46 @@ class RateNetwork(object):
         return nh - self._nH0(nh, temp, ne)
 
     def _nHep(self, nh, temp, ne):
-        """The ionised helium number density. Eq. 35 of KWH."""
-        yy = self.helium / 4 / (1 - self.helium)
+        """The ionised helium number density, divided by the helium number fraction. Eq. 35 of KWH."""
         alphaHep = self.recomb.alphaHep(temp) + self.recomb.alphad(temp)
         alphaHepp = self.recomb.alphaHepp(temp)
         photofac = self.photo_factor*self.self_shield_corr(nh, temp)
         GammaHe0 = self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)/ne*photofac
         GammaHep = self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)/ne*photofac
-        return yy * nh / (1 + alphaHep / GammaHe0 + GammaHep/alphaHepp)
+        return nh / (1 + alphaHep / GammaHe0 + GammaHep/alphaHepp)
 
     def _nHe0(self, nh, temp, ne):
-        """The neutral helium number density. Eq. 36 of KWH."""
+        """The neutral helium number density, divided by the helium number fraction. Eq. 36 of KWH."""
         alphaHep = self.recomb.alphaHep(temp) + self.recomb.alphad(temp)
         photofac = self.photo_factor*self.self_shield_corr(nh, temp)
         GammaHe0 = self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)/ne*photofac
         return self._nHep(nh, temp, ne) * alphaHep / GammaHe0
 
     def _nHepp(self, nh, temp, ne):
-        """The doubly ionised helium number density. Eq. 37 of KWH."""
+        """The doubly ionised helium number density, divided by the helium number fraction. Eq. 37 of KWH."""
         photofac = self.photo_factor*self.self_shield_corr(nh, temp)
         GammaHep = self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)/ne*photofac
         alphaHepp = self.recomb.alphaHepp(temp)
         return self._nHep(nh, temp, ne) * GammaHep / alphaHepp
 
-    def _ne(self, nh, temp, ne):
+    def _ne(self, nh, temp, ne, helium=0.24):
         """The electron number density. Eq. 38 of KWH."""
-        return self._nHp(nh, temp, ne) + self._nHep(nh, temp, ne) + 2*self._nHepp(nh, temp, ne)
+        yy = helium / 4 / (1 - helium)
+        return self._nHp(nh, temp, ne) + yy * self._nHep(nh, temp, ne) + 2* yy * self._nHepp(nh, temp, ne)
 
-    def get_equilib_ne(self, density, temp):
+    def get_equilib_ne(self, nh, temp,helium=0.24):
         """Solve the system of equations for photo-ionisation equilibrium,
         starting with ne = nH and continuing until convergence."""
-        nh = self.get_nH(density)
         ne = nh
-        nenew = self._ne(nh, temp, ne)
+        nenew = self._ne(nh, temp, ne, helium=helium)
         while np.abs(nenew - ne)/np.max([ne,1e-30]) > self.converge:
             ne = nenew
-            nenew = self._ne(nh, temp, ne)
+            nenew = self._ne(nh, temp, ne, helium=helium)
         return ne
 
-    def get_neutral_fraction(self, density, temp):
+    def get_neutral_fraction(self, nh, temp, helium=0.24):
         """Get the neutral hydrogen fraction at a given temperature and density."""
-        ne = self.get_equilib_ne(density, temp)
-        nh = self.get_nH(density)
+        ne = self.get_equilib_ne(nh, temp, helium=helium)
         return self._nH0(nh, temp, ne) / nh
 
     def self_shield_corr(self, nh, temp):

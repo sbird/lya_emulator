@@ -20,6 +20,24 @@ class RateNetwork(object):
         gray_opac = [2.59e-18,2.37e-18,2.27e-18, 2.15e-18, 2.02e-18, 1.94e-18, 1.82e-18, 1.71e-18, 1.60e-18]
         self.Gray_ss = interp.InterpolatedUnivariateSpline(zz, gray_opac)
 
+    def get_equilib_ne(self, nh, ienergy,helium=0.24):
+        """Solve the system of equations for photo-ionisation equilibrium,
+        starting with ne = nH and continuing until convergence."""
+        ne = nh
+        temp = self.get_temp(ienergy, ne, helium)
+        nenew = self._ne(nh, temp, ne, helium=helium)
+        while np.abs(nenew - ne)/np.max([ne,1e-30]) > self.converge:
+            ne = nenew
+            temp = self.get_temp(ienergy, ne, helium)
+            nenew = self._ne(nh, temp, ne, helium=helium)
+        return ne
+
+    def get_neutral_fraction(self, nh, ienergy, helium=0.24):
+        """Get the neutral hydrogen fraction at a given temperature and density."""
+        ne = self.get_equilib_ne(nh, ienergy, helium=helium)
+        temp = self.get_temp(ienergy, ne, helium)
+        return self._nH0(nh, temp, ne) / nh
+
     def _nH0(self, nh, temp, ne):
         """The neutral hydrogen number density. Eq. 33 of KWH."""
         alphaHp = self.recomb.alphaHp(temp)
@@ -59,21 +77,6 @@ class RateNetwork(object):
         yy = helium / 4 / (1 - helium)
         return self._nHp(nh, temp, ne) + yy * self._nHep(nh, temp, ne) + 2* yy * self._nHepp(nh, temp, ne)
 
-    def get_equilib_ne(self, nh, temp,helium=0.24):
-        """Solve the system of equations for photo-ionisation equilibrium,
-        starting with ne = nH and continuing until convergence."""
-        ne = nh
-        nenew = self._ne(nh, temp, ne, helium=helium)
-        while np.abs(nenew - ne)/np.max([ne,1e-30]) > self.converge:
-            ne = nenew
-            nenew = self._ne(nh, temp, ne, helium=helium)
-        return ne
-
-    def get_neutral_fraction(self, nh, temp, helium=0.24):
-        """Get the neutral hydrogen fraction at a given temperature and density."""
-        ne = self.get_equilib_ne(nh, temp, helium=helium)
-        return self._nH0(nh, temp, ne) / nh
-
     def _self_shield_corr(self, nh, temp):
         """Photoionisation rate as  a function of density from Rahmati 2012, eq. 14.
         Calculates Gamma_{Phot} / Gamma_{UVB}.
@@ -93,6 +96,41 @@ class RateNetwork(object):
         T4 = temp/1e4
         G12 = self.photo.gH0(redshift)/1e-12
         return 6.73e-3 * (self.Gray_ss(redshift) / 2.49e-18)**(-2./3)*(T4)**0.17*(G12)**(2./3)*(self.f_bar/0.17)**(-1./3)
+
+    def get_temp(self, ienergy, ne, helium=0.24):
+        """Compute temperature (in K) from internal energy and electron density.
+           Uses: internal energy
+                 electron abundance
+                 hydrogen mass fraction (0.76)
+           Internal energy is in J/kg, internal gadget units, == 10^-10 ergs/g.
+           Factor to convert U (J/kg) to T (K) : U = N k T / (γ - 1)
+           T = U (γ-1) μ m_P / k_B
+           where k_B is the Boltzmann constant
+           γ is 5/3, the perfect gas constant
+           m_P is the proton mass
+
+           μ = 1 / (mean no. molecules per unit atomic weight)
+             = 1 / (X + Y /4 + E)
+             where E = Ne * X, and Y = (1-X).
+             Can neglect metals as they are heavy.
+             Leading contribution is from electrons, which is already included
+             [+ Z / (12->16)] from metal species
+             [+ Z/16*4 ] for OIV from electrons."""
+        #convert U (J/kg) to T (K) : U = N k T / (γ - 1)
+        #T = U (γ-1) μ m_P / k_B
+        #where k_B is the Boltzmann constant
+        #γ is 5/3, the perfect gas constant
+        #m_P is the proton mass
+        #μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
+        #Internal energy units are 10^-10 erg/g
+        hy_mass = 1 - helium
+        muienergy = 4 / (hy_mass * (3 + 4*ne) + 1)*ienergy
+        #Boltzmann constant (cgs)
+        boltzmann=1.38066e-16
+        gamma=5./3
+        #So for T in K, boltzmann in erg/K, internal energy has units of erg/g
+        temp = (gamma-1) * self.protonmass / boltzmann * muienergy
+        return temp
 
 class RecombRates(object):
     """Recombination rates and collisional ionization rates, as a function of temperature.

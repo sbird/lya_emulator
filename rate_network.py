@@ -18,8 +18,6 @@ class RateNetwork(object):
         zz = [0, 1, 2, 3, 4, 5, 6, 7,8]
         #Tables for the self-shielding correction. Note these are not well-measured for z > 5!
         gray_opac = [2.59e-18,2.37e-18,2.27e-18, 2.15e-18, 2.02e-18, 1.94e-18, 1.82e-18, 1.71e-18, 1.60e-18]
-        gamma_UVB = [3.99e-14, 3.03e-13, 6e-13, 5.53e-13, 4.31e-13, 3.52e-13, 2.678e-13,  1.81e-13, 9.43e-14]
-        self.Gamma_ss = interp.InterpolatedUnivariateSpline(zz, gamma_UVB)
         self.Gray_ss = interp.InterpolatedUnivariateSpline(zz, gray_opac)
 
     def get_nH(self, density):
@@ -93,14 +91,13 @@ class RateNetwork(object):
 
     def self_shield_dens(self,redshift, temp):
         """Calculate the critical self-shielding density. Rahmati 202 eq. 13.
-        gray_opac and gamma_UVB are parameters of the UVB used.
+        gray_opac is a parameter of the UVB used.
         gray_opac is in cm^2 (2.49e-18 is HM01 at z=3)
-        gamma_UVB in 1/s (1.16e-12 is HM01 at z=3)
         temp is particle temperature in K
         f_bar is the baryon fraction. 0.17 is roughly 0.045/0.265
         Returns density in atoms/cm^3"""
         T4 = temp/1e4
-        G12 = self.Gamma_ss(redshift)/1e-12
+        G12 = self.photo.gH0(redshift)/1e-12
         return 6.73e-3 * (self.Gray_ss(redshift) / 2.49e-18)**(-2./3)*(T4)**0.17*(G12)**(2./3)
         #Do not include the omega_b correction.
         #*(self.f_bar/0.17)**(-1./3)

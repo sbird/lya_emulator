@@ -6,10 +6,11 @@ import scipy.interpolate as interp
 class RateNetwork(object):
     """A rate network for neutral hydrogen following
     Katz, Weinberg & Hernquist 1996, eq. 28-32."""
-    def __init__(self,redshift, photo_factor = 1., converge = 1e-5):
+    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-5):
         self.recomb = RecombRates()
         self.photo = PhotoRates()
         self.photo_factor = photo_factor
+        self.f_bar = f_bar
         #proton mass in g
         self.protonmass = 1.67262178e-24
         self.redshift = redshift
@@ -23,7 +24,7 @@ class RateNetwork(object):
         """The neutral hydrogen number density. Eq. 33 of KWH."""
         alphaHp = self.recomb.alphaHp(temp)
         GammaeH0 = self.recomb.GammaeH0(temp)
-        photofac = self.photo_factor*self.self_shield_corr(nh, temp)
+        photofac = self.photo_factor*self._self_shield_corr(nh, temp)
         return nh * alphaHp/ (alphaHp + GammaeH0 + self.photo.gH0(self.redshift)/ne)*photofac
 
     def _nHp(self, nh, temp, ne):
@@ -34,7 +35,7 @@ class RateNetwork(object):
         """The ionised helium number density, divided by the helium number fraction. Eq. 35 of KWH."""
         alphaHep = self.recomb.alphaHep(temp) + self.recomb.alphad(temp)
         alphaHepp = self.recomb.alphaHepp(temp)
-        photofac = self.photo_factor*self.self_shield_corr(nh, temp)
+        photofac = self.photo_factor*self._self_shield_corr(nh, temp)
         GammaHe0 = self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)/ne*photofac
         GammaHep = self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)/ne*photofac
         return nh / (1 + alphaHep / GammaHe0 + GammaHep/alphaHepp)
@@ -42,13 +43,13 @@ class RateNetwork(object):
     def _nHe0(self, nh, temp, ne):
         """The neutral helium number density, divided by the helium number fraction. Eq. 36 of KWH."""
         alphaHep = self.recomb.alphaHep(temp) + self.recomb.alphad(temp)
-        photofac = self.photo_factor*self.self_shield_corr(nh, temp)
+        photofac = self.photo_factor*self._self_shield_corr(nh, temp)
         GammaHe0 = self.recomb.GammaeHe0(temp) + self.photo.gHe0(self.redshift)/ne*photofac
         return self._nHep(nh, temp, ne) * alphaHep / GammaHe0
 
     def _nHepp(self, nh, temp, ne):
         """The doubly ionised helium number density, divided by the helium number fraction. Eq. 37 of KWH."""
-        photofac = self.photo_factor*self.self_shield_corr(nh, temp)
+        photofac = self.photo_factor*self._self_shield_corr(nh, temp)
         GammaHep = self.recomb.GammaeHep(temp) + self.photo.gHep(self.redshift)/ne*photofac
         alphaHepp = self.recomb.alphaHepp(temp)
         return self._nHep(nh, temp, ne) * GammaHep / alphaHepp
@@ -73,16 +74,16 @@ class RateNetwork(object):
         ne = self.get_equilib_ne(nh, temp, helium=helium)
         return self._nH0(nh, temp, ne) / nh
 
-    def self_shield_corr(self, nh, temp):
+    def _self_shield_corr(self, nh, temp):
         """Photoionisation rate as  a function of density from Rahmati 2012, eq. 14.
         Calculates Gamma_{Phot} / Gamma_{UVB}.
         Inputs: hydrogen density, temperature
             n_H
         The coefficients are their best-fit from appendix A."""
-        nSSh = 1.003*self.self_shield_dens(self.redshift, temp)
+        nSSh = 1.003*self._self_shield_dens(self.redshift, temp)
         return 0.98*(1+(nh/nSSh)**1.64)**-2.28+0.02*(1+nh/nSSh)**-0.84
 
-    def self_shield_dens(self,redshift, temp):
+    def _self_shield_dens(self,redshift, temp):
         """Calculate the critical self-shielding density. Rahmati 202 eq. 13.
         gray_opac is a parameter of the UVB used.
         gray_opac is in cm^2 (2.49e-18 is HM01 at z=3)
@@ -91,9 +92,7 @@ class RateNetwork(object):
         Returns density in atoms/cm^3"""
         T4 = temp/1e4
         G12 = self.photo.gH0(redshift)/1e-12
-        return 6.73e-3 * (self.Gray_ss(redshift) / 2.49e-18)**(-2./3)*(T4)**0.17*(G12)**(2./3)
-        #Do not include the omega_b correction.
-        #*(self.f_bar/0.17)**(-1./3)
+        return 6.73e-3 * (self.Gray_ss(redshift) / 2.49e-18)**(-2./3)*(T4)**0.17*(G12)**(2./3)*(self.f_bar/0.17)**(-1./3)
 
 class RecombRates(object):
     """Recombination rates and collisional ionization rates, as a function of temperature.

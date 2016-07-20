@@ -5,7 +5,7 @@ import scipy.interpolate as interp
 
 class RateNetwork(object):
     """A rate network for neutral hydrogen following
-    Katz, Weinberg & Hernquist 1996, eq. 28-32."""
+    Katz, Weinberg & Hernquist 1996, astro-ph/9509107, eq. 28-32."""
     def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-5):
         self.recomb = RecombRates()
         self.photo = PhotoRates()

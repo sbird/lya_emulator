@@ -6,8 +6,8 @@ import scipy.interpolate as interp
 class RateNetwork(object):
     """A rate network for neutral hydrogen following
     Katz, Weinberg & Hernquist 1996, astro-ph/9509107, eq. 28-32."""
-    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-5):
-        self.recomb = RecombRates()
+    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-5, selfshield=True):
+        self.recomb = RecombRatesVerner96()
         self.photo = PhotoRates()
         self.photo_factor = photo_factor
         self.f_bar = f_bar
@@ -153,9 +153,10 @@ class RateNetwork(object):
         temp = (gamma-1) * self.protonmass / boltzmann * muienergy
         return temp
 
-class RecombRates(object):
+class RecombRatesCen92(object):
     """Recombination rates and collisional ionization rates, as a function of temperature.
-    Currently KWH 06, astro-ph/9509107, Table 2."""
+    This is taken from KWH 06, astro-ph/9509107, Table 2, based on Cen 1992.
+    Illustris uses these rates."""
     def alphaHp(self,temp):
         """Recombination rate for H+, ionized hydrogen, in cm^3/s.
         Temp in K."""
@@ -188,9 +189,90 @@ class RecombRates(object):
         """Collisional ionization rate for H0 in cm^3/s. Temp in K"""
         return 5.68e-12 * np.sqrt(temp) * np.exp(-631515.0/temp) / (1+ np.sqrt(temp/1e5))
 
+class RecombRatesVerner96(object):
+    """Recombination rates and collisional ionization rates, as a function of temperature.
+     Recombination rates are the fit from Verner & Ferland 1996 (astro-ph/9509083).
+     Collisional rates are the fit from Voronov 1997 (http://www.sciencedirect.com/science/article/pii/S0092640X97907324).
+
+     In a very photoionised medium this changes the neutral hydrogen abundance by approximately 10% compared to Cen 1992.
+     These rates are those used by Nyx.
+    """
+    def _Verner96Fit(self, temp, aa, bb, temp0, temp1):
+        """Formula used as a fitting function in Verner & Ferland 1996 (astro-ph/9509083)."""
+        sqrttt0 = np.sqrt(temp/temp0)
+        sqrttt1 = np.sqrt(temp/temp1)
+        return aa / ( sqrttt0 * (1 + sqrttt0)**(1-bb)*(1+sqrttt1)**(1+bb) )
+
+    def alphaHp(self,temp):
+        """Recombination rate for H+, ionized hydrogen, in cm^3/s.
+        The V&F 96 fitting formula is accurate to < 1% in the worst case.
+        Temp in K."""
+        #See line 1 of V&F96 table 1.
+        return self._Verner96Fit(temp, aa=7.982e-11, bb=0.748, temp0=3.148, temp1=7.036e+05)
+
+    def alphaHep(self,temp):
+        """Recombination rate for He+, ionized helium, in cm^3/s.
+        Accurate to ~2% for T < 10^6 and 5% for T< 10^10.
+        Temp in K."""
+        #VF96 give two rates. The first is more accurate for T < 10^6, the second is valid up to T = 10^10.
+        #We use the most accurate allowed. See lines 2 and 3 of Table 1 of VF96.
+        lowTfit = self._Verner96Fit(temp, aa=3.294e-11, bb=0.6910, temp0=1.554e+01, temp1=3.676e+07)
+        highTfit = self._Verner96Fit(temp, aa=9.356e-10, bb=0.7892, temp0=4.266e-02, temp1=4.677e+06)
+        #Note that at 10^6K the two fits differ by ~10%. This may lead one to disbelieve the quoted accuracies!
+        #We thus switch over at a slightly lower temperature.
+        #The two fits cross at T ~ 3e5K.
+        swtmp = 7e5
+        deltat = 1e5
+        upper = swtmp + deltat
+        lower = swtmp - deltat
+        #In order to avoid a sharp feature at 10^6 K, we linearly interpolate between the two fits around 10^6 K.
+        interpfit = (lowTfit * (upper - temp) + highTfit * (temp - lower))/(2*deltat)
+        return (temp < lower)*lowTfit + (temp > upper)*highTfit + (upper > temp)*(temp > lower)*interpfit
+
+    def alphad(self, temp):
+        """Recombination rate for dielectronic recombination, in cm^3/s. This is the value from Cen 1992.
+        An updated value should probably be sought.
+        Temp in K."""
+        return 1.9e-3 / np.power(temp,1.5) * np.exp(-4.7e5/temp)*(1+0.3*np.exp(-9.4e4/temp))
+
+    def alphaHepp(self, temp):
+        """Recombination rate for doubly ionized helium, in cm^3/s. Accurate to 2%.
+        Temp in K."""
+        #See line 4 of V&F96 table 1.
+        return self._Verner96Fit(temp, aa=1.891e-10, bb=0.7524, temp0=9.370, temp1=2.774e6)
+
+    def _Voronov96Fit(self, temp, dE, PP, AA, XX, KK):
+        """Fitting function for collisional rates. Eq. 1 of Voronov 1997. Accurate to 10%,
+        but data is only accurate to 50%."""
+        bolevk = 8.61734e-5 # Boltzmann constant in units of eV/K
+        UU = dE / (bolevk * temp)
+        return AA * (1 + PP * np.sqrt(UU))/(XX+UU) * UU**KK * np.exp(-UU)
+
+    def GammaeH0(self,temp):
+        """Collisional ionization rate for H0 in cm^3/s. Temp in K. Voronov 97, Table 1."""
+        return self._Voronov96Fit(temp, 13.6, 0, 0.291e-07, 0.232, 0.39)
+
+    def GammaeHe0(self,temp):
+        """Collisional ionization rate for He0 in cm^3/s. Temp in K. Voronov 97, Table 1."""
+        return self._Voronov96Fit(temp, 24.6, 0, 0.175e-07, 0.180, 0.35)
+
+    def GammaeHep(self,temp):
+        """Collisional ionization rate for HeI in cm^3/s. Temp in K. Voronov 97, Table 1."""
+        return self._Voronov96Fit(temp, 54.4, 1, 0.205e-08, 0.265, 0.25)
+
+def exact_alphaHp():
+    """For hydrogen recombination we have an exact answer from Ferland et al 1992 (http://adsabs.harvard.edu/abs/1992ApJ...387...95F).
+    This function returns as an array these rates, for testing purposes."""
+    #case B recombination rates for hydrogen from Ferland 92, final column of Table 1. For n >= 2.
+    f92g2 = np.array([5.758e-11, 2.909e-11, 1.440e-11, 6.971e-12,3.282e-12, 1.489e-12, 6.43e-13, 2.588e-13, 9.456e-14, 3.069e-14, 8.793e-15, 2.245e-15, 5.190e-16, 1.107e-16, 2.221e-17, 4.267e-18, 7.960e-19, 1.457e-19,2.636e-20, 4.737e-21])
+    #case B recombination rates for hydrogen from Ferland 92, second column of Table 1. For n == 1.
+    f92n1 = np.array([9.258e-12, 5.206e-12, 2.927e-12, 1.646e-12, 9.246e-13, 5.184e-13, 2.890e-13, 1.582e-13, 8.255e-14, 3.882e-14, 1.545e-14, 5.058e-15, 1.383e-15, 3.276e-16, 7.006e-17, 1.398e-17, 2.665e-18, 4.940e-19, 9.001e-20, 1.623e-20])
+    tt = 10**np.linspace(0.5, 10, 20)
+    return (tt, f92g2+f92n1)
+
 class PhotoRates(object):
     """The photoionization rates for a given species.
-    Eq. 29 of KWH 06. This is loaded from a TREECOOL table."""
+    Eq. 29 of KWH 96. This is loaded from a TREECOOL table."""
     def __init__(self, treecool_file="TREECOOL"):
         #Format of the treecool table:
         # log_10(1+z), Gamma_HI, Gamma_HeI, Gamma_HeII,  Qdot_HI, Qdot_HeI, Qdot_HeII,

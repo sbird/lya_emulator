@@ -123,14 +123,19 @@ def plot_test_interpolate(emulatordir,testdir):
     params_test = Params(testdir)
     params_test.load()
     myspec = flux_power.MySpectra()
-    for pp,dd in zip(params_test.get_parameters(),params_test.get_dirs()):
+    for pp,dd,nn in zip(params_test.get_parameters(),params_test.get_dirs(), params_test.sample_dirs):
         predicted,_ = gp.predict(pp)
         exact = myspec.get_flux_power(dd,data.get_kf())
         ratio = predicted.reshape(np.shape(exact))/exact
         for i,rr in enumerate(ratio):
             plt.loglog(data.get_kf(),rr,label=myspec.zout[i])
-    plt.xlabel(r"$k_F$ (s/km)")
-    plt.ylabel(r"Predicted/Exact")
-    plt.legend(loc=0)
-    plt.show()
+        plt.xlabel(r"$k_F$ (s/km)")
+        plt.ylabel(r"Predicted/Exact")
+        plt.title(nn)
+        plt.legend(loc=0)
+        plt.show()
+        plt.savefig(nn+".pdf")
+        print(nn+".pdf")
+        plt.clf()
+    return gp
 

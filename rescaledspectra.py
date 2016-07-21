@@ -42,7 +42,8 @@ class RescaledGasProperties(object):
         return rhocrit / self.units.protonmass
 
     def get_code_rhoH(self,bar):
-        """Convert density to physical atoms /cm^3: internal gadget density unit is h^2 (1e10 M_sun) / kpc^3"""
+        """Convert density to protons /cm^3: internal gadget density unit is h^2 (1e10 M_sun) / kpc^3.
+        Note this is gas density, NOT hydrogen density!"""
         nH = np.array(bar["Density"])
         conv = np.float32(self.units.UnitDensity_in_cgs*self.hubble**2/(self.units.protonmass)*(1+self.redshift)**3)
         #Convert to physical

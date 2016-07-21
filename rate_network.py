@@ -15,32 +15,48 @@ class RateNetwork(object):
         self.protonmass = 1.67262178e-24
         self.redshift = redshift
         self.converge = converge
+        self.selfshield = selfshield
         zz = [0, 1, 2, 3, 4, 5, 6, 7,8]
         #Tables for the self-shielding correction. Note these are not well-measured for z > 5!
         gray_opac = [2.59e-18,2.37e-18,2.27e-18, 2.15e-18, 2.02e-18, 1.94e-18, 1.82e-18, 1.71e-18, 1.60e-18]
         self.Gray_ss = interp.InterpolatedUnivariateSpline(zz, gray_opac)
 
-    def get_temp(self, nh, ienergy, helium=0.24):
-        """Get the equilibrium temperature at given internal energy."""
-        ne = self.get_equilib_ne(nh, ienergy, helium)
-        return self._get_temp(ienergy, ne, helium)
+    def get_temp(self, density, ienergy, helium=0.24):
+        """Get the equilibrium temperature at given internal energy.
+        density is gas density in protons/cm^3
+        Internal energy is in J/kg == 10^-10 ergs/g.
+        helium is a mass fraction"""
+        ne = self.get_equilib_ne(density, ienergy, helium)
+        nh = density * (1-helium)
+        return self._get_temp(ne/nh, ienergy, helium)
 
-    def get_equilib_ne(self, nh, ienergy,helium=0.24):
+    def get_equilib_ne(self, density, ienergy,helium=0.24):
         """Solve the system of equations for photo-ionisation equilibrium,
-        starting with ne = nH and continuing until convergence."""
+        starting with ne = nH and continuing until convergence.
+        density is gas density in protons/cm^3
+        Internal energy is in J/kg == 10^-10 ergs/g.
+        helium is a mass fraction.
+        """
+        #Get hydrogen number density
+        nh = density * (1-helium)
         ne = nh
-        temp = self._get_temp(ienergy, ne, helium)
+        temp = self._get_temp(ne/nh, ienergy, helium)
         nenew = self._ne(nh, temp, ne, helium=helium)
         while np.abs(nenew - ne)/np.max([ne,1e-30]) > self.converge:
             ne = nenew
-            temp = self.get_temp(ienergy, ne, helium)
+            temp = self._get_temp(ne/nh, ienergy, helium)
             nenew = self._ne(nh, temp, ne, helium=helium)
         return ne
 
-    def get_neutral_fraction(self, nh, ienergy, helium=0.24):
-        """Get the neutral hydrogen fraction at a given temperature and density."""
-        ne = self.get_equilib_ne(nh, ienergy, helium=helium)
-        temp = self._get_temp(ienergy, ne, helium)
+    def get_neutral_fraction(self, density, ienergy, helium=0.24):
+        """Get the neutral hydrogen fraction at a given temperature and density.
+        density is gas density in protons/cm^3
+        Internal energy is in J/kg == 10^-10 ergs/g.
+        helium is a mass fraction.
+        """
+        ne = self.get_equilib_ne(density, ienergy, helium=helium)
+        nh = density * (1-helium)
+        temp = self._get_temp(ne/nh, ienergy, helium)
         return self._nH0(nh, temp, ne) / nh
 
     def _nH0(self, nh, temp, ne):
@@ -102,10 +118,10 @@ class RateNetwork(object):
         G12 = self.photo.gH0(redshift)/1e-12
         return 6.73e-3 * (self.Gray_ss(redshift) / 2.49e-18)**(-2./3)*(T4)**0.17*(G12)**(2./3)*(self.f_bar/0.17)**(-1./3)
 
-    def _get_temp(self, ienergy, ne, helium=0.24):
+    def _get_temp(self, nebynh, ienergy, helium=0.24):
         """Compute temperature (in K) from internal energy and electron density.
            Uses: internal energy
-                 electron abundance
+                 electron abundance per H atom (ne/nH)
                  hydrogen mass fraction (0.76)
            Internal energy is in J/kg, internal gadget units, == 10^-10 ergs/g.
            Factor to convert U (J/kg) to T (K) : U = N k T / (γ - 1)
@@ -129,7 +145,7 @@ class RateNetwork(object):
         #μ is 1 / (mean no. molecules per unit atomic weight) calculated in loop.
         #Internal energy units are 10^-10 erg/g
         hy_mass = 1 - helium
-        muienergy = 4 / (hy_mass * (3 + 4*ne) + 1)*ienergy*1e10
+        muienergy = 4 / (hy_mass * (3 + 4*nebynh) + 1)*ienergy*1e10
         #Boltzmann constant (cgs)
         boltzmann=1.38066e-16
         gamma=5./3

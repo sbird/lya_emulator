@@ -259,16 +259,6 @@ class RecombRatesVerner96(object):
         """Collisional ionization rate for HeI in cm^3/s. Temp in K. Voronov 97, Table 1."""
         return self._Voronov96Fit(temp, 54.4, 1, 0.205e-08, 0.265, 0.25)
 
-def exact_alphaHp():
-    """For hydrogen recombination we have an exact answer from Ferland et al 1992 (http://adsabs.harvard.edu/abs/1992ApJ...387...95F).
-    This function returns as an array these rates, for testing purposes."""
-    #case B recombination rates for hydrogen from Ferland 92, final column of Table 1. For n >= 2.
-    f92g2 = np.array([5.758e-11, 2.909e-11, 1.440e-11, 6.971e-12,3.282e-12, 1.489e-12, 6.43e-13, 2.588e-13, 9.456e-14, 3.069e-14, 8.793e-15, 2.245e-15, 5.190e-16, 1.107e-16, 2.221e-17, 4.267e-18, 7.960e-19, 1.457e-19,2.636e-20, 4.737e-21])
-    #case B recombination rates for hydrogen from Ferland 92, second column of Table 1. For n == 1.
-    f92n1 = np.array([9.258e-12, 5.206e-12, 2.927e-12, 1.646e-12, 9.246e-13, 5.184e-13, 2.890e-13, 1.582e-13, 8.255e-14, 3.882e-14, 1.545e-14, 5.058e-15, 1.383e-15, 3.276e-16, 7.006e-17, 1.398e-17, 2.665e-18, 4.940e-19, 9.001e-20, 1.623e-20])
-    tt = 10**np.linspace(0.5, 10, 20)
-    return (tt, f92g2+f92n1)
-
 class PhotoRates(object):
     """The photoionization rates for a given species.
     Eq. 29 of KWH 96. This is loaded from a TREECOOL table."""

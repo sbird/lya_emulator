@@ -42,7 +42,7 @@ class RateNetwork(object):
         ne = nh
         temp = self._get_temp(ne/nh, ienergy, helium)
         nenew = self._ne(nh, temp, ne, helium=helium)
-        while np.abs(nenew - ne)/np.max([ne,1e-30]) > self.converge:
+        while np.any(np.abs(nenew - ne)/(ne+1e-30) > self.converge):
             ne = nenew
             temp = self._get_temp(ne/nh, ienergy, helium)
             nenew = self._ne(nh, temp, ne, helium=helium)
@@ -63,8 +63,8 @@ class RateNetwork(object):
         """The neutral hydrogen number density. Eq. 33 of KWH."""
         alphaHp = self.recomb.alphaHp(temp)
         GammaeH0 = self.recomb.GammaeH0(temp)
-        photofac = self.photo_factor*self._self_shield_corr(nh, temp)
-        return nh * alphaHp/ (alphaHp + GammaeH0 + self.photo.gH0(self.redshift)/ne)*photofac
+        photorate = self.photo.gH0(self.redshift)/ne*self.photo_factor*self._self_shield_corr(nh, temp)
+        return nh * alphaHp/ (alphaHp + GammaeH0 + photorate)
 
     def _nHp(self, nh, temp, ne):
         """The ionised hydrogen number density. Eq. 34 of KWH."""

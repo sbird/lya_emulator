@@ -104,6 +104,8 @@ class RateNetwork(object):
         Inputs: hydrogen density, temperature
             n_H
         The coefficients are their best-fit from appendix A."""
+        if not self.selfshield:
+            return np.ones_like(nh)
         nSSh = 1.003*self._self_shield_dens(self.redshift, temp)
         return 0.98*(1+(nh/nSSh)**1.64)**-2.28+0.02*(1+nh/nSSh)**-0.84
 

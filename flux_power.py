@@ -58,7 +58,7 @@ class MySpectra(object):
             #Now if the redshift is something we want, generate the flux power
             if np.size(flux_power_sim) > 2:
                 #Rebin flux power to have desired k bins
-                rebinned=scipy.interpolate.interpolate.interp1d(kf_sim[1:],flux_power_sim[1:])
+                rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)
                 fluxlist.append(rebinned(kf))
         #Make sure we have enough outputs
         assert len(fluxlist) == np.size(self.zout)

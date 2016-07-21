@@ -2,6 +2,7 @@
 Katz, Weinberg & Hernquist 1996, eq. 28-32."""
 import numpy as np
 import scipy.interpolate as interp
+import scipy.optimize
 
 class RateNetwork(object):
     """A rate network for neutral hydrogen following
@@ -39,13 +40,9 @@ class RateNetwork(object):
         """
         #Get hydrogen number density
         nh = density * (1-helium)
-        ne = nh
-        temp = self._get_temp(ne/nh, ienergy, helium)
-        nenew = self._ne(nh, temp, ne, helium=helium)
-        while np.any(np.abs(nenew - ne)/(ne+1e-30) > self.converge):
-            ne = nenew
-            temp = self._get_temp(ne/nh, ienergy, helium)
-            nenew = self._ne(nh, temp, ne, helium=helium)
+        rooted = lambda ne: self._ne(nh, self._get_temp(ne/nh, ienergy, helium=helium), ne, helium=helium)
+        ne = scipy.optimize.fixed_point(rooted, nh,xtol=self.converge)
+        assert np.all(np.abs(rooted(ne) - ne) < self.converge)
         return ne
 
     def get_neutral_fraction(self, density, ienergy, helium=0.24):

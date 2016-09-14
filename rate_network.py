@@ -319,21 +319,22 @@ class CoolingRatesKWH92(object):
         return 4.95e-22 * np.sqrt(temp)*np.exp(-631515.0/temp)/self._t5(temp)
 
     def RecombIonizHp(self, temp):
-        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHp"""
+        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHp."""
         return 8.70e-27*np.sqrt(temp)*(temp/1000)**(-0.2)/(1+(temp/1e6)**0.7)
 
     def RecombIonizHeP(self, temp):
-        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHep"""
+        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHep."""
         return 1.55e-26*(temp)**(0.3647)
 
     def RecombIonizHePP(self, temp):
-        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHepp"""
+        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHepp."""
         return 4*self.RecombIonizHp(temp)
+
+    def RecombDielect(self, temp):
+        """Dielectric recombination rate for He+ and e. Gadget calls this Alphad."""
+        return 1.24e-13*temp**(-1.5)*np.exp(-470000./temp)*(1+0.3*np.exp(94000.0/temp))
 
     def FreeFree(self, temp):
         """Free-free cooling rate for electrons scattering on ions without being captured.
         Factors here are n_e and total ionized species: (n_H+ + n_He+ + 4*n_He++)"""
         return 1.43e-27*np.sqrt(temp)*(1.1+0.34*np.exp(-(5.5 - np.log10(temp))**2/3.))
-
-class HeatingRatesKWH92(object):
-    """The heating rates from """

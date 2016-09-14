@@ -289,3 +289,51 @@ class PhotoRates(object):
         """Get photo rate for neutral Hydrogen"""
         log1z = np.log10(1+redshift)
         return self.Gamma_HI(log1z)
+
+class CoolingRatesKWH92(object):
+    """The cooling rates from KWH92, in erg s^-1 cm^-3 (cgs).
+    All rates are divided by the abundance of the ions involved in the interaction.
+    So we are computing the cooling rate divided by n_e n_X. Temperatures in K."""
+    def _t5(self, temp):
+        """Commonly used factor."""
+        return 1+(temp/1e5)**0.5
+
+    def CollisionalExcitH0(self, temp):
+        """Collisional excitation cooling rate for n_H0 and n_e. Gadget calls this BetaH0."""
+        return 7.5e-19 * np.exp(-118348.0/temp)/self._t5(temp)
+
+    def CollisionalExcitHeP(self, temp):
+        """Collisional excitation cooling rate for n_He+ and n_e. Gadget calls this BetaHep."""
+        return 5.54e-17 * temp**(-0.397)*np.exp(-473638./temp)/self._t5(temp)
+
+    def CollisionalIonizH0(self, temp):
+        """Collisional ionization cooling rate for n_H0 and n_e. Gadget calls this GammaeH0"""
+        return 1.27e-21 * np.sqrt(temp)*np.exp(-157809.1/temp)/self._t5(temp)
+
+    def CollisionalIonizHe0(self, temp):
+        """Collisional ionization cooling rate for n_He0 and n_e. Gadget calls this GammaeHe0"""
+        return 9.38e-22 * np.sqrt(temp)*np.exp(-285335.4/temp)/self._t5(temp)
+
+    def CollisionalIonizHeP(self, temp):
+        """Collisional ionization cooling rate for n_He+ and n_e. Gadget calls this GammaeH0"""
+        return 4.95e-22 * np.sqrt(temp)*np.exp(-631515.0/temp)/self._t5(temp)
+
+    def RecombIonizHp(self, temp):
+        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHp"""
+        return 8.70e-27*np.sqrt(temp)*(temp/1000)**(-0.2)/(1+(temp/1e6)**0.7)
+
+    def RecombIonizHeP(self, temp):
+        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHep"""
+        return 1.55e-26*(temp)**(0.3647)
+
+    def RecombIonizHePP(self, temp):
+        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHepp"""
+        return 4*self.RecombIonizHp(temp)
+
+    def FreeFree(self, temp):
+        """Free-free cooling rate for electrons scattering on ions without being captured.
+        Factors here are n_e and total ionized species: (n_H+ + n_He+ + 4*n_He++)"""
+        return 1.43e-27*np.sqrt(temp)*(1.1+0.34*np.exp(-(5.5 - np.log10(temp))**2/3.))
+
+class HeatingRatesKWH92(object):
+    """The heating rates from """

@@ -229,7 +229,7 @@ class RecombRatesVerner96(object):
         return (temp < lower)*lowTfit + (temp > upper)*highTfit + (upper > temp)*(temp > lower)*interpfit
 
     def alphad(self, temp):
-        """Recombination rate for dielectronic recombination, in cm^3/s. 
+        """Recombination rate for dielectronic recombination, in cm^3/s.
         This is the value from Aldrovandi & Pequignot 73, as used in Nyx, Sherwood and Cen 1992.
         Temp in K."""
         return 1.9e-3 / np.power(temp,1.5) * np.exp(-4.7e5/temp)*(1+0.3*np.exp(-9.4e4/temp))
@@ -293,58 +293,124 @@ class PhotoRates(object):
 class CoolingRatesKWH92(object):
     """The cooling rates from KWH92, in erg s^-1 cm^-3 (cgs).
     All rates are divided by the abundance of the ions involved in the interaction.
-    So we are computing the cooling rate divided by n_e n_X. Temperatures in K."""
+    So we are computing the cooling rate divided by n_e n_X. Temperatures in K.
+    None of these rates are original to KWH92, but are taken from Cen 1992,
+    and originally from older references. The hydrogen rates in particular are probably inaccurate.
+    Cen 1992 modified (arbitrarily) the excitation and ionisation rates for high temperatures.
+    References:
+        Black 1981, from Lotz 1967, Seaton 1959, Burgess & Seaton 1960.
+        Recombination rates are from Spitzer 1978.
+        Free-free: Spitzer 1978.
+    Collisional excitation and ionisation cooling rates are merged.
+    """
+    def __init__(self, tcmb=2.7255):
+        self.tcmb = tcmb
+
     def _t5(self, temp):
         """Commonly used Cen 1992 correction factor for large temperatures."""
         return 1+(temp/1e5)**0.5
 
-    def CollisionalExcitH0(self, temp):
-        """Collisional excitation cooling rate for n_H0 and n_e. Gadget calls this BetaH0."""
-        return 7.5e-19 * np.exp(-118348.0/temp)/self._t5(temp)
+    def CollisionalH0(self, temp):
+        """Collisional cooling rate for n_H0 and n_e. Gadget calls this BetaH0 + GammaeH0."""
+        cool = 7.5e-19 * np.exp(-118348.0/temp) /self._t5(temp)
+        cool += 1.27e-21 * np.sqrt(temp)*np.exp(-157809.1/temp)/self._t5(temp)
+        return cool
 
-    def CollisionalExcitHeP(self, temp):
-        """Collisional excitation cooling rate for n_He+ and n_e. Gadget calls this BetaHep."""
-        return 5.54e-17 * temp**(-0.397)*np.exp(-473638./temp)/self._t5(temp)
+    def CollisionalHeP(self, temp):
+        """Collisional cooling rate for n_He+ and n_e. Gadget calls this BetaHep + GammaeHep."""
+        cool = 5.54e-17 * temp**(-0.397)*np.exp(-473638./temp)/self._t5(temp)
+        cool += 4.95e-22 * np.sqrt(temp)*np.exp(-631515.0/temp)/self._t5(temp)
+        return cool
 
-    def CollisionalIonizH0(self, temp):
-        """Collisional ionization cooling rate for n_H0 and n_e. Gadget calls this GammaeH0"""
-        return 1.27e-21 * np.sqrt(temp)*np.exp(-157809.1/temp)/self._t5(temp)
-
-    def CollisionalIonizHe0(self, temp):
-        """Collisional ionization cooling rate for n_He0 and n_e. Gadget calls this GammaeHe0"""
+    def CollisionalHe0(self, temp):
+        """Collisional cooling rate for n_He0 and n_e. GammaeHe0 (there is no Beta)"""
         return 9.38e-22 * np.sqrt(temp)*np.exp(-285335.4/temp)/self._t5(temp)
 
-    def CollisionalIonizHeP(self, temp):
-        """Collisional ionization cooling rate for n_He+ and n_e. Gadget calls this GammaeH0"""
-        return 4.95e-22 * np.sqrt(temp)*np.exp(-631515.0/temp)/self._t5(temp)
-
-    def RecombIonizHp(self, temp):
+    def RecombHp(self, temp):
         """Recombination cooling rate for H+ and e. Gadget calls this AlphaHp."""
         return 8.70e-27*np.sqrt(temp)*(temp/1000)**(-0.2)/(1+(temp/1e6)**0.7)
 
-    def RecombIonizHeP(self, temp):
+    def RecombHeP(self, temp):
         """Recombination cooling rate for H+ and e. Gadget calls this AlphaHep."""
         return 1.55e-26*(temp)**(0.3647)
 
-    def RecombIonizHePP(self, temp):
+    def RecombHePP(self, temp):
         """Recombination cooling rate for H+ and e. Gadget calls this AlphaHepp."""
-        return 4*self.RecombIonizHp(temp)
+        return 4*self.RecombHp(temp)
 
     def RecombDielect(self, temp):
         """Dielectric recombination rate for He+ and e. Gadget calls this Alphad."""
         return 1.24e-13*temp**(-1.5)*np.exp(-470000./temp)*(1+0.3*np.exp(94000.0/temp))
 
-    def FreeFree(self, temp):
+    def FreeFree(self, temp, zz):
         """Free-free cooling rate for electrons scattering on ions without being captured.
-        Factors here are n_e and total ionized species: (n_H+ + n_He+ + 4*n_He++)"""
-        return 1.43e-27*np.sqrt(temp)*self.gff(temp)
-    
-    def gff(self, temp):
+        Factors here are n_e and total ionized species:
+            (FreeFree(zz=1)*(n_H+ + n_He+) + FreeFree(zz=2)*n_He++)"""
+        return 1.426e-27*np.sqrt(temp)*zz**2*self._gff(temp,zz)
+
+    def _gff(self, temp, zz):
         """Formula for the Gaunt factor. KWH takes this from Spitzer 1978."""
+        _ = zz
         return 1.1+0.34*np.exp(-(5.5 - np.log10(temp))**2/3.)
 
     def InverseCompton(self, temp, redshift):
         """Cooling rate for inverse Compton from the microwave background.
-        Multiply this only by n_e. Note the factor of redshift, 
-        which is adjusting for the CMB temperature, hardcoded in KWH97 to ~2.7."""
-        return 5.41e-36 * temp * (1+redshift)**4
+        Multiply this only by n_e. Note the CMB temperature is hardcoded in KWH92 to 2.7."""
+        tcmb_red = self.tcmb * (1+redshift)
+        #Thompson cross-section in cm^2
+        sigmat = 6.6524e-25
+        #Radiation density constant, 4 sigma_stefan-boltzmann / c in erg cm^-3 K^-4
+        rad_dens = 7.5657e-15
+        #Electron mass in g
+        me = 9.10938e-28
+        #Speed of light in cm/s
+        cc = 2.99792e10
+        #boltzmann constant in erg/K
+        kB = 1.38064852e-16
+        return 4 * sigmat * rad_dens / (me*cc) * tcmb_red**4 * kB * (temp - tcmb_red)
+
+class CoolingRatesNyx(CoolingRatesKWH92):
+    """The cooling rates used in the Nyx paper Lukic 2014, 1406.6361, in erg s^-1 cm^-3 (cgs).
+    All rates are divided by the abundance of the ions involved in the interaction.
+    So we are computing the cooling rate divided by n_e n_X. Temperatures in K.
+    Major differences from KWH are the use of the Scholz & Walter 1991
+    hydrogen collisional cooling rates, a less aggressive high temperature correction for helium, and
+    Shapiro & Kang 1987 for free free.
+    References:
+        Scholz & Walters 1991 (0.45% accuracy)
+        Black 1981 (recombination and helium)
+        Shapiro & Kang 1987
+    """
+    def _t5(self, temp):
+        """Lukic uses a less aggressive correction factor for large temperatures than Cen 1992.
+        """
+        return 1+(temp/5e7)**0.5
+
+    def CollisionalH0(self, temp):
+        """Collisional cooling rate for n_H0 and n_e. Gadget calls this BetaH0 + GammaeH0.
+        Formula from Eq. 4 of Scholz & Walters, claimed good to 0.45 %."""
+        #Technically only good for T > 2000.
+        if temp < 1e5:
+            coeffs = [213.7913, 113.9492, 25.06062, 2.762755, 0.1515352, 3.290382e-3]
+        else:
+            coeffs = [271.25446, 98.019455, 14.00728, 0.9780842, 3.356289, 4.553323]
+        y = np.log(temp)
+        tot = -1.18415e5/temp
+        for i in range(6):
+            tot += coeffs[i]*(-y)**i
+        return 1e-20 * np.exp(tot)
+
+    def RecombHp(self, temp):
+        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHp."""
+        return 2.851e-27 * np.sqrt(temp) * (5.914 - 0.5 * np.log(temp) + 0.01184 * temp**(1./3))
+
+    def RecombHePP(self, temp):
+        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHepp."""
+        return 1.140e-26 * np.sqrt(temp) * (6.607 - 0.5 * np.log(temp) + 7.459e-3 * temp**(1./3))
+
+    def _gff(self, temp, zz):
+        """Formula for the Gaunt factor from Shapiro & Kang 1987. ZZ is 1 for H+ and He+ and 2 for He++"""
+        if temp/zz**2 <= 3.2e5:
+            return 0.79464 + 0.1243 * np.log10(temp/zz**2)
+        else:
+            return 2.13164 - 0.1240 * np.log10(temp/zz**2)

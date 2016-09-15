@@ -229,8 +229,8 @@ class RecombRatesVerner96(object):
         return (temp < lower)*lowTfit + (temp > upper)*highTfit + (upper > temp)*(temp > lower)*interpfit
 
     def alphad(self, temp):
-        """Recombination rate for dielectronic recombination, in cm^3/s. This is the value from Cen 1992.
-        An updated value should probably be sought.
+        """Recombination rate for dielectronic recombination, in cm^3/s. 
+        This is the value from Aldrovandi & Pequignot 73, as used in Nyx, Sherwood and Cen 1992.
         Temp in K."""
         return 1.9e-3 / np.power(temp,1.5) * np.exp(-4.7e5/temp)*(1+0.3*np.exp(-9.4e4/temp))
 
@@ -295,7 +295,7 @@ class CoolingRatesKWH92(object):
     All rates are divided by the abundance of the ions involved in the interaction.
     So we are computing the cooling rate divided by n_e n_X. Temperatures in K."""
     def _t5(self, temp):
-        """Commonly used factor."""
+        """Commonly used Cen 1992 correction factor for large temperatures."""
         return 1+(temp/1e5)**0.5
 
     def CollisionalExcitH0(self, temp):
@@ -337,4 +337,14 @@ class CoolingRatesKWH92(object):
     def FreeFree(self, temp):
         """Free-free cooling rate for electrons scattering on ions without being captured.
         Factors here are n_e and total ionized species: (n_H+ + n_He+ + 4*n_He++)"""
-        return 1.43e-27*np.sqrt(temp)*(1.1+0.34*np.exp(-(5.5 - np.log10(temp))**2/3.))
+        return 1.43e-27*np.sqrt(temp)*self.gff(temp)
+    
+    def gff(self, temp):
+        """Formula for the Gaunt factor. KWH takes this from Spitzer 1978."""
+        return 1.1+0.34*np.exp(-(5.5 - np.log10(temp))**2/3.)
+
+    def InverseCompton(self, temp, redshift):
+        """Cooling rate for inverse Compton from the microwave background.
+        Multiply this only by n_e. Note the factor of redshift, 
+        which is adjusting for the CMB temperature, hardcoded in KWH97 to ~2.7."""
+        return 5.41e-36 * temp * (1+redshift)**4

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """A rate network for neutral hydrogen following
 Katz, Weinberg & Hernquist 1996, eq. 28-32."""
 import numpy as np
@@ -12,6 +13,7 @@ class RateNetwork(object):
         self.photo = PhotoRates()
         self.photo_factor = photo_factor
         self.f_bar = f_bar
+        self.cool = CoolingRatesNyx()
         #proton mass in g
         self.protonmass = 1.67262178e-24
         self.redshift = redshift
@@ -30,6 +32,27 @@ class RateNetwork(object):
         ne = self.get_equilib_ne(density, ienergy, helium)
         nh = density * (1-helium)
         return self._get_temp(ne/nh, ienergy, helium)
+
+    def get_cooling_rate(self, density, ienergy, helium=0.24):
+        """Get the total cooling rate for a temperature and density."""
+        ne = self.get_equilib_ne(density, ienergy, helium)
+        nh = density * (1-helium)
+        temp = self._get_temp(ne/nh, ienergy, helium)
+        nH0 = self._nH0(nh, temp, ne)
+        nHe0 = self._nHe0(nh, temp, ne)
+        nHep = self._nHep(nh, temp, ne)
+        nHp = self._nHp(nh, temp, ne)
+        nHep = self._nHep(nh, temp, ne)
+        nHepp = self._nHepp(nh, temp, ne)
+        LambdaCollis = ne * (self.cool.CollisionalH0(temp) * nH0 +
+                             self.cool.CollisionalHe0(temp) * nHe0 +
+                             self.cool.CollisionalHeP(temp) * nHep)
+        LambdaRecomb = ne * (self.cool.RecombHp(temp) * nHp +
+                             self.cool.RecombHeP(temp) * nHep +
+                             self.cool.RecombHePP(temp) * nHepp)
+        LambdaFF = ne * (self.cool.FreeFree(temp, 1)*(nHp + nHep) + self.cool.FreeFree(temp, 2)*nHepp)
+        LambdaCmptn = ne * self.cool.InverseCompton(temp, self.redshift)
+        return LambdaCollis + LambdaRecomb + LambdaFF + LambdaCmptn
 
     def get_equilib_ne(self, density, ienergy,helium=0.24):
         """Solve the system of equations for photo-ionisation equilibrium,
@@ -151,6 +174,7 @@ class RateNetwork(object):
         #So for T in K, boltzmann in erg/K, internal energy has units of erg/g
         temp = (gamma-1) * self.protonmass / boltzmann * muienergy
         return temp
+
 
 class RecombRatesCen92(object):
     """Recombination rates and collisional ionization rates, as a function of temperature.
@@ -331,14 +355,14 @@ class CoolingRatesKWH92(object):
         return 8.70e-27*np.sqrt(temp)*(temp/1000)**(-0.2)/(1+(temp/1e6)**0.7)
 
     def RecombHeP(self, temp):
-        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHep."""
-        return 1.55e-26*(temp)**(0.3647)
+        """Recombination cooling rate for He+ and e. Gadget calls this AlphaHep."""
+        return 1.55e-26*(temp)**(0.3647)+ self._RecombDielect(temp)
 
     def RecombHePP(self, temp):
-        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHepp."""
+        """Recombination cooling rate for He++ and e. Gadget calls this AlphaHepp."""
         return 4*self.RecombHp(temp)
 
-    def RecombDielect(self, temp):
+    def _RecombDielect(self, temp):
         """Dielectric recombination rate for He+ and e. Gadget calls this Alphad."""
         return 1.24e-13*temp**(-1.5)*np.exp(-470000./temp)*(1+0.3*np.exp(94000.0/temp))
 
@@ -388,29 +412,32 @@ class CoolingRatesNyx(CoolingRatesKWH92):
 
     def CollisionalH0(self, temp):
         """Collisional cooling rate for n_H0 and n_e. Gadget calls this BetaH0 + GammaeH0.
-        Formula from Eq. 4 of Scholz & Walters, claimed good to 0.45 %."""
+        Formula from Eq. 4 of Scholz & Walters, claimed good to 0.45 %.
+        Note though that they have two dataset which differ by a factor of two.
+        Differs from Cen 92 by a factor of two."""
         #Technically only good for T > 2000.
-        if temp < 1e5:
-            coeffs = [213.7913, 113.9492, 25.06062, 2.762755, 0.1515352, 3.290382e-3]
-        else:
-            coeffs = [271.25446, 98.019455, 14.00728, 0.9780842, 3.356289, 4.553323]
         y = np.log(temp)
         tot = -1.18415e5/temp
-        for i in range(6):
-            tot += coeffs[i]*(-y)**i
+        coeffslowT = [213.7913, 113.9492, 25.06062, 2.762755, 0.1515352, 3.290382e-3]
+        coeffshighT = [271.25446, 98.019455, 14.00728, 0.9780842, 3.356289e-2, 4.553323e-4]
+        for j in range(6):
+            tot += ((temp < 1e5)*coeffslowT[j]+(temp >=1e5)*coeffshighT[j])*(-y)**j
         return 1e-20 * np.exp(tot)
 
     def RecombHp(self, temp):
-        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHp."""
+        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHp.
+        Differs by O(10%) until 3x10^6"""
         return 2.851e-27 * np.sqrt(temp) * (5.914 - 0.5 * np.log(temp) + 0.01184 * temp**(1./3))
 
     def RecombHePP(self, temp):
-        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHepp."""
+        """Recombination cooling rate for H+ and e. Gadget calls this AlphaHepp.
+        Differs from Cen 92 by 10% until ~10^7"""
         return 1.140e-26 * np.sqrt(temp) * (6.607 - 0.5 * np.log(temp) + 7.459e-3 * temp**(1./3))
 
     def _gff(self, temp, zz):
-        """Formula for the Gaunt factor from Shapiro & Kang 1987. ZZ is 1 for H+ and He+ and 2 for He++"""
-        if temp/zz**2 <= 3.2e5:
-            return 0.79464 + 0.1243 * np.log10(temp/zz**2)
-        else:
-            return 2.13164 - 0.1240 * np.log10(temp/zz**2)
+        """Formula for the Gaunt factor from Shapiro & Kang 1987. ZZ is 1 for H+ and He+ and 2 for He++.
+        This is almost identical to the KWH rate but not continuous."""
+        #This is not continuous. Check the original reference.
+        little = (temp/zz**2 <= 3.2e5)
+        lt = np.log10(temp/zz**2)
+        return little * (0.79464 + 0.1243*lt) + np.logical_not(little) * ( 2.13164 - 0.1240 * lt)

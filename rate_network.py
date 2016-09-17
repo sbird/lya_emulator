@@ -8,12 +8,17 @@ import scipy.optimize
 class RateNetwork(object):
     """A rate network for neutral hydrogen following
     Katz, Weinberg & Hernquist 1996, astro-ph/9509107, eq. 28-32."""
-    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-5, selfshield=True):
+    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-5, selfshield=True, cool="KWH"):
         self.recomb = RecombRatesVerner96()
         self.photo = PhotoRates()
         self.photo_factor = photo_factor
         self.f_bar = f_bar
-        self.cool = CoolingRatesNyx()
+        if cool == "KWH":
+            self.cool = CoolingRatesKWH92()
+        elif cool == "Nyx":
+            self.cool = CoolingRatesNyx()
+        else:
+            self.cool = CoolingRatesNewGadget()
         #proton mass in g
         self.protonmass = 1.67262178e-24
         self.redshift = redshift
@@ -44,6 +49,7 @@ class RateNetwork(object):
         nHp = self._nHp(nh, temp, ne)
         nHep = self._nHep(nh, temp, ne)
         nHepp = self._nHepp(nh, temp, ne)
+        #This is the collisional excitation and ionisation rate.
         LambdaCollis = ne * (self.cool.CollisionalH0(temp) * nH0 +
                              self.cool.CollisionalHe0(temp) * nHe0 +
                              self.cool.CollisionalHeP(temp) * nHep)
@@ -321,50 +327,84 @@ class CoolingRatesKWH92(object):
     None of these rates are original to KWH92, but are taken from Cen 1992,
     and originally from older references. The hydrogen rates in particular are probably inaccurate.
     Cen 1992 modified (arbitrarily) the excitation and ionisation rates for high temperatures.
+    There is no collisional excitation rate for He0 - not sure why.
     References:
         Black 1981, from Lotz 1967, Seaton 1959, Burgess & Seaton 1960.
         Recombination rates are from Spitzer 1978.
         Free-free: Spitzer 1978.
     Collisional excitation and ionisation cooling rates are merged.
     """
-    def __init__(self, tcmb=2.7255):
+    def __init__(self, tcmb=2.7255, recomb=None):
         self.tcmb = tcmb
+        if recomb is None:
+            self.recomb = RecombRatesCen92()
+        else:
+            self.recomb = recomb
+        #1 eV in ergs
+        self.eVinergs = 1.60218e-12
+        #boltzmann constant in erg/K
+        self.kB = 1.38064852e-16
 
     def _t5(self, temp):
         """Commonly used Cen 1992 correction factor for large temperatures."""
         return 1+(temp/1e5)**0.5
 
-    def CollisionalH0(self, temp):
-        """Collisional cooling rate for n_H0 and n_e. Gadget calls this BetaH0 + GammaeH0."""
-        cool = 7.5e-19 * np.exp(-118348.0/temp) /self._t5(temp)
-        cool += 1.27e-21 * np.sqrt(temp)*np.exp(-157809.1/temp)/self._t5(temp)
-        return cool
+    def CollisionalExciteH0(self, temp):
+        """Collisional excitation cooling rate for n_H0 and n_e. Gadget calls this BetaH0."""
+        return 7.5e-19 * np.exp(-118348.0/temp) /self._t5(temp)
 
-    def CollisionalHeP(self, temp):
-        """Collisional cooling rate for n_He+ and n_e. Gadget calls this BetaHep + GammaeHep."""
-        cool = 5.54e-17 * temp**(-0.397)*np.exp(-473638./temp)/self._t5(temp)
-        cool += 4.95e-22 * np.sqrt(temp)*np.exp(-631515.0/temp)/self._t5(temp)
-        return cool
+    def CollisionalExciteHeP(self, temp):
+        """Collisional excitation cooling rate for n_He+ and n_e. Gadget calls this BetaHep."""
+        return 5.54e-17 * temp**(-0.397)*np.exp(-473638./temp)/self._t5(temp)
+
+    def CollisionalExciteHe0(self, temp):
+        """This is listed in Cen 92 but neglected in KWH 97, presumably because it is very small."""
+        #return 0
+        return 9.1e-27 * temp**(-0.1687) * np.exp(-473638/temp) / self._t5(temp)
+
+    def CollisionalIonizeH0(self, temp):
+        """Collisional ionisation cooling rate for n_H0 and n_e. Gadget calls this GammaeH0."""
+        #Ionisation potential of H0
+        return 13.5984 * self.eVinergs * self.recomb.GammaeH0(temp)
+
+    def CollisionalIonizeHe0(self, temp):
+        """Collisional ionisation cooling rate for n_H0 and n_e. Gadget calls this GammaeHe0."""
+        return 24.5874 * self.eVinergs * self.recomb.GammaeHe0(temp)
+
+    def CollisionalIonizeHeP(self, temp):
+        """Collisional ionisation cooling rate for n_H0 and n_e. Gadget calls this GammaeHep."""
+        return 54.417760 * self.eVinergs * self.recomb.GammaeHep(temp)
+
+    def CollisionalH0(self, temp):
+        """Total collisional cooling for H0"""
+        return self.CollisionalExciteH0(temp) + self.CollisionalIonizeH0(temp)
 
     def CollisionalHe0(self, temp):
-        """Collisional cooling rate for n_He0 and n_e. GammaeHe0 (there is no Beta)"""
-        return 9.38e-22 * np.sqrt(temp)*np.exp(-285335.4/temp)/self._t5(temp)
+        """Total collisional cooling for H0"""
+        return self.CollisionalExciteHe0(temp) + self.CollisionalIonizeHe0(temp)
+
+    def CollisionalHeP(self, temp):
+        """Total collisional cooling for H0"""
+        return self.CollisionalExciteHeP(temp) + self.CollisionalIonizeHeP(temp)
 
     def RecombHp(self, temp):
         """Recombination cooling rate for H+ and e. Gadget calls this AlphaHp."""
-        return 8.70e-27*np.sqrt(temp)*(temp/1000)**(-0.2)/(1+(temp/1e6)**0.7)
+        return 0.75 * self.kB * temp * self.recomb.alphaHp(temp)
 
     def RecombHeP(self, temp):
         """Recombination cooling rate for He+ and e. Gadget calls this AlphaHep."""
-        return 1.55e-26*(temp)**(0.3647)+ self._RecombDielect(temp)
+        #I'm not sure why they use 0.75 kT as the free energy of an electron.
+        #I would guess this is explained in Spitzer 1978.
+        return 0.75 * self.kB * temp * self.recomb.alphaHep(temp)+ self._RecombDielect(temp)
 
     def RecombHePP(self, temp):
         """Recombination cooling rate for He++ and e. Gadget calls this AlphaHepp."""
-        return 4*self.RecombHp(temp)
+        return 0.75 * self.kB * temp * self.recomb.alphaHepp(temp)
 
     def _RecombDielect(self, temp):
         """Dielectric recombination rate for He+ and e. Gadget calls this Alphad."""
-        return 1.24e-13*temp**(-1.5)*np.exp(-470000./temp)*(1+0.3*np.exp(94000.0/temp))
+        #What is this magic number?
+        return 6.526e-11*self.recomb.alphad(temp)
 
     def FreeFree(self, temp, zz):
         """Free-free cooling rate for electrons scattering on ions without being captured.
@@ -389,9 +429,7 @@ class CoolingRatesKWH92(object):
         me = 9.10938e-28
         #Speed of light in cm/s
         cc = 2.99792e10
-        #boltzmann constant in erg/K
-        kB = 1.38064852e-16
-        return 4 * sigmat * rad_dens / (me*cc) * tcmb_red**4 * kB * (temp - tcmb_red)
+        return 4 * sigmat * rad_dens / (me*cc) * tcmb_red**4 * self.kB * (temp - tcmb_red)
 
 class CoolingRatesNyx(CoolingRatesKWH92):
     """The cooling rates used in the Nyx paper Lukic 2014, 1406.6361, in erg s^-1 cm^-3 (cgs).
@@ -400,24 +438,34 @@ class CoolingRatesNyx(CoolingRatesKWH92):
     Major differences from KWH are the use of the Scholz & Walter 1991
     hydrogen collisional cooling rates, a less aggressive high temperature correction for helium, and
     Shapiro & Kang 1987 for free free.
+    Older Black 1981 recombination cooling rates are used, but I don't know why!
+    They use the recombination rates from Voronov 1997, but don't seem to realise that
+    this should also change the cooling rates.
+    Ditto the ionization rates from Verner & Ferland 96: they should also use these rates for collisional ionisation.
     References:
         Scholz & Walters 1991 (0.45% accuracy)
         Black 1981 (recombination and helium)
         Shapiro & Kang 1987
     """
     def _t5(self, temp):
-        """Lukic uses a less aggressive correction factor for large temperatures than Cen 1992.
+        """
+        Lukic uses a less aggressive correction factor for large temperatures than Cen 1992.
+        No explanation is given for this.
+        This factor increases the excitation cooling rate for helium by about a factor of ten and
+        thus changes the cooling curve substantially.
         """
         return 1+(temp/5e7)**0.5
 
     def CollisionalH0(self, temp):
         """Collisional cooling rate for n_H0 and n_e. Gadget calls this BetaH0 + GammaeH0.
-        Formula from Eq. 4 of Scholz & Walters, claimed good to 0.45 %.
-        Note though that they have two dataset which differ by a factor of two.
+        Formula from Eq. 23, Table 4 of Scholz & Walters, claimed good to 0.45 %.
+        Note though that they have two datasets which differ by a factor of two.
         Differs from Cen 92 by a factor of two."""
         #Technically only good for T > 2000.
         y = np.log(temp)
-        tot = -1.18415e5/temp
+        #Constant is 0.75/k_B in Rydberg
+        Ryd = 2.1798741e-11
+        tot = -0.75/self.kB*Ryd/temp
         coeffslowT = [213.7913, 113.9492, 25.06062, 2.762755, 0.1515352, 3.290382e-3]
         coeffshighT = [271.25446, 98.019455, 14.00728, 0.9780842, 3.356289e-2, 4.553323e-4]
         for j in range(6):
@@ -426,7 +474,7 @@ class CoolingRatesNyx(CoolingRatesKWH92):
 
     def RecombHp(self, temp):
         """Recombination cooling rate for H+ and e. Gadget calls this AlphaHp.
-        Differs by O(10%) until 3x10^6"""
+        Differs by O(10%) until 3x10^6."""
         return 2.851e-27 * np.sqrt(temp) * (5.914 - 0.5 * np.log(temp) + 0.01184 * temp**(1./3))
 
     def RecombHePP(self, temp):
@@ -441,3 +489,38 @@ class CoolingRatesNyx(CoolingRatesKWH92):
         little = (temp/zz**2 <= 3.2e5)
         lt = np.log10(temp/zz**2)
         return little * (0.79464 + 0.1243*lt) + np.logical_not(little) * ( 2.13164 - 0.1240 * lt)
+
+class CoolingRatesNewGadget(CoolingRatesKWH92):
+    """These are the cooling rates that I think at the moment should be used.
+    Collisional Ionization and recombination rates are from Voronov 97 and Verner & Ferland 96, respectively.
+    Helium excitation is from Cen 1992. Free-free is Spitzer 1978 (as Shapiro & Kang 1987 is discontinuous).
+    Hydrogen excitation cooling is Scholz & Walters 1991, which *only* includes the Gamma 1s-2s and
+    Gamma 1s-2p terms. However it is not dominant except at high densities where everything is neutral.
+    Notably this means that Cen's t5 correction factor only appears in the
+    He+ collisional excitation rate, where it should be safely
+    negligible (because at high temperatures ionisation dominates).
+    """
+    def __init__(self, tcmb=2.7255):
+        CoolingRatesKWH92.__init__(self, tcmb=tcmb, recomb=RecombRatesVerner96)
+
+    def CollisionalExciteH0(self, temp):
+        """Collisional excitation cooling rate for n_H0 and n_e. Gadget calls this BetaH0.
+        Formula from Eq. 16, 17, Table 3 of Scholz & Walters 1991.
+        This *only* includes the Gamma 1s-2s and Gamma 1s-2p terms. At worst this may underestimate cooling by 20%.
+        However it is not dominant except at high densities where everything is neutral, and we probably miss
+        molecular lines there anyway.
+        """
+        y = np.log(temp)
+        bblowT = [3.299613e1,1.858848e1, 6.052265, 8.603783e-1, 5.717760e-2, 1.451330e-3]
+        cclowT = [1.630155e2,8.795711e1, 2.057117e1, 2.359573, 1.339059e-1,3.021507e-3]
+        bbmedT = [2.869759e2, 1.077956e2, 1.524107e1, 1.080538, 3.836975e-2, 5.467273e-4]
+        ccmedT = [5.279996e2, 1.939399e2, 2.718982e1, 1.883399, 6.462462e-2, 8.811076e-4]
+        bbhighT = [2.7604708e3, 7.9339351e2, 9.1198462e1, 5.1993362, 1.4685343e-1, 1.6404093e-3]
+        cchighT = [2.8133632e3, 8.1509685e2, 9.4418414e1, 5.4280565, 1.5467120e-1, 1.7439112e-3]
+        gamma2s = 0.
+        gamma2p = 0.
+        for j in range(6):
+            gamma2s += (-1*(temp < 6e4)*bblowT[j]+(temp >=6e4)*(temp < 6e6)*bbmedT[j]-1*(temp > 6e6)*bbhighT[j])*(-y)**j
+            gamma2p += (-1*(temp < 6e4)*cclowT[j]+(temp >=6e4)*(temp < 6e6)*ccmedT[j]-1*(temp > 6e6)*cchighT[j])*(-y)**j
+        #10.2 eV in erg
+        return 10.2 * 1.60184e-12 * (np.exp(gamma2s) + np.exp(gamma2p)) * np.exp(-11606* 10.2/ temp)

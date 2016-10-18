@@ -113,7 +113,7 @@ class KnotParams(Params):
         for ev,edir in zip(self.sample_params, self.sample_dirs):
             outdir = os.path.join(self.basedir, edir)
             #Use Planck 2015 cosmology
-            ss = lyasimulation.LymanAlphaKnotICs(outdir, box,npart, knot_val=ev[0:4],rescale_gamma=False, hubble=ev[4], omegac=0.25681, omegab=0.0483)
+            ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_val=ev[0:4],hubble=ev[4], omegac=0.25681, omegab=0.0483)
             try:
                 ss.make_simulation()
             except RuntimeError as e:

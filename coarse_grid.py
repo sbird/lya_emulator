@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import gpemulator
 import latin_hypercube
 import flux_power
-from SimulationRunner import lyasimulation,clusters
+from SimulationRunner import lyasimulation
 
 class Params(object):
     """Small class to store parameter names and limits"""
@@ -65,7 +65,6 @@ class Params(object):
 
     def gen_simulations(self, nsamples, npart=256.,box=60,):
         """Initialise the emulator by generating simulations for various parameters."""
-        LymanAlphaSim = clusters.hypatia_mpi_decorate(lyasimulation.LymanAlphaSim)
         if len(self.sample_params) != nsamples:
             self.build_params(nsamples)
         self.dump()
@@ -78,7 +77,7 @@ class Params(object):
             assert self.param_names[3] == 'heat_amp'
             assert self.param_names[4] == 'hub'
             #Use Planck 2015 cosmology
-            ss = LymanAlphaSim(outdir, box,npart, ns=ev[0], scalar_amp=ev[1],rescale_gamma=True, rescale_slope=ev[2], rescale_amp=ev[3], hubble=ev[4], omegac=0.25681, omegab=0.0483)
+            ss = lyasimulation.LymanAlphaSim(outdir, box,npart, ns=ev[0], scalar_amp=ev[1],rescale_gamma=True, rescale_slope=ev[2], rescale_amp=ev[3], hubble=ev[4], omegac=0.25681, omegab=0.0483)
             try:
                 ss.make_simulation()
             except RuntimeError as e:
@@ -107,7 +106,6 @@ class KnotParams(Params):
 
     def gen_simulations(self, nsamples, npart=256.,box=60,):
         """Initialise the emulator by generating simulations for various parameters."""
-        LymanAlphaSim = clusters.hypatia_mpi_decorate(lyasimulation.LymanAlphaKnotICs)
         if len(self.sample_params) != nsamples:
             self.build_params(nsamples)
         self.dump()
@@ -115,7 +113,7 @@ class KnotParams(Params):
         for ev,edir in zip(self.sample_params, self.sample_dirs):
             outdir = os.path.join(self.basedir, edir)
             #Use Planck 2015 cosmology
-            ss = LymanAlphaSim(outdir, box,npart, knot_val=ev[0:4],rescale_gamma=False, hubble=ev[4], omegac=0.25681, omegab=0.0483)
+            ss = lyasimulation.LymanAlphaKnotICs(outdir, box,npart, knot_val=ev[0:4],rescale_gamma=False, hubble=ev[4], omegac=0.25681, omegab=0.0483)
             try:
                 ss.make_simulation()
             except RuntimeError as e:

@@ -94,6 +94,34 @@ class Params(object):
         gp = gpemulator.SkLearnGP(params=pvals, kf=kf, flux_vectors=flux_vectors)
         return gp
 
+class KnotParams(Params):
+    """Specialise parameter class for an emulator using knots.
+    Thermal parameters turned off."""
+    def __init__(self, basedir):
+        self.param_names = ['A_knot', 'B_knot', 'C_knot', 'D_knot', 'hub']
+        self.param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),4,axis=0),[[0.65,0.75]],axis=0)
+        self.sample_params = []
+        self.basedir = basedir
+        if not os.path.exists(basedir):
+            os.mkdir(basedir)
+
+    def gen_simulations(self, nsamples, npart=256.,box=60,):
+        """Initialise the emulator by generating simulations for various parameters."""
+        LymanAlphaSim = clusters.hypatia_mpi_decorate(lyasimulation.LymanAlphaKnotICs)
+        if len(self.sample_params) != nsamples:
+            self.build_params(nsamples)
+        self.dump()
+        #Generate ICs for each set of parameter inputs
+        for ev,edir in zip(self.sample_params, self.sample_dirs):
+            outdir = os.path.join(self.basedir, edir)
+            #Use Planck 2015 cosmology
+            ss = LymanAlphaSim(outdir, box,npart, knot_val=ev[0:4],rescale_gamma=False, hubble=ev[4], omegac=0.25681, omegab=0.0483)
+            try:
+                ss.make_simulation()
+            except RuntimeError as e:
+                print(str(e), " while building: ",outdir)
+        return
+
 def lnlike_linear(params, *, gp=None, data=None):
     """A simple emcee likelihood function for the Lyman-alpha forest using the
        simple linear model with only cosmological parameters.

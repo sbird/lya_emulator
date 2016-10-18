@@ -1,0 +1,120 @@
+\documentclass[10pt, aps, prd]{revtex4-1}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\newcommand{\mnras}{MNRAS}
+\newcommand{\apjs}{ApJS}
+\newcommand{\rmxaa}{RMXAA}
+% \usepackage{natbib}
+
+% \title{Notes on Cooling}
+% \author{Simeon Bird}
+
+\begin{document}
+
+\maketitle
+
+% \begin{abstract}
+% These notes describe ideas for the thermal modelling for our Lyman-$\alpha$ emulator.
+% The basic idea is to use priors from high resolution spectra to reduce freedom in the 
+% thermal modelling and reduce the dimensionality of the emulator.  
+% \end{abstract}
+%
+\section{IGM Thermal Model}
+
+The IGM thermal model has a few free parameters. These are: 1) The IGM mean flux and its evolution with redshift.
+2) The temperature of the mean-density gas 3) The temperature-density relation of the IGM.
+
+In principle 2) and 3) are not free parameters, but should be computable directly from the simulations.
+The only external input should be the external UVB. Note that because the gas is a hydrogen-helium mixture, 
+the important part of the UVB is not just the number of hydrogen ionizing photons, but the number of helium 
+ionizing photons as well. So the shape does matter.
+
+However, in practice we cannot really compute the temperature and temperature density relation 
+because we do not (yet) have a good model for helium reionisation. Indeed, there is some doubt as to whether 
+helium reionization happens at $z \sim 3$ or earlier, with hydrogen reionization, so it seems wise to leave some freedom anyway.
+We model helium reionisation by increasing the helium photoheating rate by hand by a factor of $\approx 1.5$. 
+This accounts for both non-equilibrium ionization heating and shielding due to HeI regions, but is totally ad-hoc.
+
+Previously we included this extra heating factor, as well as a density-dependent correction, as free parameters in 
+our emulator. However, this approach had some problems. First, it increased the dimensionality of the emulator. 
+Second, the dependence of the forest on these thermal parameters was non-linear and not localised to particular physical scales. 
+This made an accurate emulator hard. Third, it wasn't clear that the helium photoheating rate was really enough of a 
+free parameter at these accuracies. There were a limited number of redshift histories for the temperature-density relation
+we could achieve. If we understood helium reionization better we could say that these histories should be physical, but we 
+don't, so it is possible that this parameterisation could be introducing spurious correlations.
+
+Instead we pick a 'default' thermal model which gives reasonable results (initially 
+I have set it to that used in Sherwood \cite{Bolton:2016}). We then post-process 
+the simulation output to obtain different IGM temperatures and mean fluxes.
+Note that post-processing is done by reimplementing the ionization eqiulibrium rate network 
+and running that on the dense gas output by the simulations at $z=2$ to generate new HI fractions.
+We do not simply rescale the optical depth of every spectrum to match the desired mean flux. 
+In the presence of self-shielded gas this is highly inaccurate, because the new UVB does not reach self-shielded 
+regions.\footnote{Actually, rescaling to the mean flux is only accurate if we are highly dominated by photo-ionisation, 
+which collisional ionization makes not really true even if there isn't self-shielding.
+This is probably why the Nyx simulations show rescaling introduces an error of a few percent.}
+
+Because this rescaling neglects the dynamic heating effect of the UVB it is necessary to also marginalise
+over the IGM temperature. To do this I rescale the temperature of each simulation particle in the snapshot, 
+dependent on density. The procedure is:
+\begin{enumerate}
+\item Perform a least-squares fit of IGM particles to $T = T_0 (\rho/\rho_0)^\gamma$ and find ($T_0$, $\gamma$).
+\item Identify desired parameters: ($T_0'$, $\gamma'$).
+\item Multiply temperature of each particle in the IGM by $T_0'/T_0 \rho^{\gamma'-\gamma}$.
+\end{enumerate}
+This will produce a new gas structure for which a least-squares fit of the IGM will yield the desired ($T_0'$, $\gamma'$).
+Note however that this rescaling correctly does NOT enforce that all particles are on the effective equation of state; the 
+temperature scatter of the particles is preserved from the simulation. New optical depths and a new power spectrum can be generated using the rescaled particle temperatures. 
+
+To make sure these rescalings remain small, we impose a temperature prior from the curvature measurements 
+of \cite{Becker:2011}. We may also impose a temperature-density prior from b parameter measurements, but I will try to avoid 
+that if I can, as b parameters probe a different density from the forest.
+
+We now have two sets of parameters:
+\begin{enumerate}
+\item 'sparse' parameters (the cosmology) which are implemented with full hydro simulations and 
+followed by the hypercube emulator.  
+\item 'dense' parameters (the thermal model) which are implemented by post-processing an existing 
+simulation (note this is only fast in comparison to a hydro sim) and will probably be followed
+using a factorial grid.
+\end{enumerate}
+
+\section{Self-Shielding, dense gas and feedback.}
+
+We include self-shielding following \cite{Rahmati:2013}, to ensure there are at least some lyman limit systems. 
+We also treat the 'stars' as fully neutral at this point. Note that LLS can never be fully cleaned from SDSS 
+class data. DLAs can, but LLS cannot. \cite{McDonald:2005} showed that about 50\% of the HCD effect is from objects
+not considered a DLA\footnote{This makes it a little surprising that the last French forest analysis found no 
+significant HCD effect; they should not have been able to remove it all with a correct DLA catalogue. This implies
+that either they are widely over-cleaning dense regions or that their results are just crap generally (likely).}. 
+So we do need to have the LLS abundance reasonably right. For this we need a feedback model, which has not yet been done.
+
+Star formation remains the simple 'turn the dense gas into stars' routine. This should probably be retained 
+but augmented with thermal feedback which gets the Lyman-limit system covering fraction roughly correct. Thermal feedback should be very
+easy to implement because all the dense gas is already stars; the gas around the stars will have longish cooling times anyway.
+
+\section{Cooling Rates}
+
+Gadget by default uses the cooling module from \cite{Katz:1996}.\footnote{There is a compile flag 'NEW RATES'. I have been unable to determine what,
+exactly, these are. They use \cite{Scholz:1991} for hydrogen collisional excitation cooling, and \cite{Voronov:1997} rates for collisional 
+ionization cooling (but continue to use the old ionization rates when computing abundances!). The recombination cooling rates are changed too, but I
+haven't been able to work out why. No reference is given.} This uses cooling and recombination rates taken from \cite{Cen:1992}, which are in turn based
+on those in \cite{Black:1981}, which is a compendium of even older papers. In addition, \cite{Cen:1992} multiplies the collisional excitation rates by
+a factor of $(1+\sqrt{T/10^5})^{-1}$ to 'ensure correct asymptotic behaviour'. This is apparently arbitrary, and it does matter for the hottest gas!
+
+\cite{Lukic:2015} (the Nyx paper) changes these rates out for new rates, which they state (without explanation) are 'more accurate'. They have used the recombination rates from \cite{Verner:1996}, and the collisional ionization rates from \cite{Voronov:1997} when computing the abundances only. They do not appear to have realised that the collisional and recombination cooling rates are simple multiplicative factors of the number of collisional ionisations and recombinations per second. They have changed the H0 collisional cooling rate to that of \cite{Scholz:1991}. They have also changed Cen's asymptotic
+factor to $(1+\sqrt{T/5\times 10^7})^{-1}$. This last actually does make a difference, and needs to be better motivated.
+ 
+In addition, no-one includes photoionisation from excited states, which \cite{Ferland:2013} seems to think is important (although maybe at higher densities than the IGM).
+
+Given the above, the approach taken in \cite{Wiersma:2009} and the GRACKLE \href{https://grackle.readthedocs.io/} cooling library of just using a table interpolated from CLOUDY outputs seems very appealing. However, I would prefer not to if possible. Changing the UVB would require regenerating the whole table and the interaction with self-shielding becomes tricky. Therefore, with great trepidation I have resolved to understand and reimplement parts of CLOUDY. 
+
+CLOUDY uses for collisional ionisation the rates from \cite{Verner:1996}, scaled by a temperature independent factor to match the rates in \cite{Dere:2007}.
+For recombination and dielectronic recombination cooling it uses the rates from \cite{Badnell:2006}. The free-free cooling rates are from \cite{Hummer:1988}.
+Excitation cooling is implemented on a line by line basis for hydrogen, and for other elements I still need to figure it out. \cite{LaMothe:2001} is cited.
+Note there is a scaling factor of $T \to T n^2 /Z^2$ for hydrogen-like ions. The amplitude of the cooling rates goes like $1/Z^2$.
+
+\bibliography{surrogate_refs}
+\end{document}

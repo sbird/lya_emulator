@@ -30,7 +30,7 @@ class Params(object):
         assert len(params) == len(self.param_names)
         name = ""
         for nn,pp in zip(self.param_names, params):
-            name += nn+'%.1e' % pp
+            name += nn+'%.2g' % pp
         return name
 
     def dump(self, dumpfile="emulator_params.json"):

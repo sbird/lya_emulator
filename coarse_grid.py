@@ -97,7 +97,7 @@ class KnotParams(Params):
     """Specialise parameter class for an emulator using knots.
     Thermal parameters turned off."""
     def __init__(self, basedir):
-        self.param_names = ['A_knot', 'B_knot', 'C_knot', 'D_knot', 'hub']
+        self.param_names = ['AA', 'BB', 'CC', 'DD', 'hub']
         self.param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),4,axis=0),[[0.65,0.75]],axis=0)
         self.sample_params = []
         self.basedir = basedir

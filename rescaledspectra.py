@@ -16,7 +16,7 @@ class RescaledGasProperties(object):
             self.units = units
         else:
             self.units = unitsystem.UnitSystem()
-        self.rates = rate_network.RateNetwork(redshift=redshift, photo_factor = photo_factor,f_bar = f_bar)
+        self.rates = rate_network.RateNetwork(redshift=redshift, photo_factor = photo_factor,f_bar = f_bar, cool="KWH", recomb="Cen92")
         #Some constants and unit systems
         #self.hy_mass = 0.76 # Hydrogen massfrac
         self.gamma=5./3

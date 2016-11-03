@@ -8,8 +8,11 @@ import scipy.optimize
 class RateNetwork(object):
     """A rate network for neutral hydrogen following
     Katz, Weinberg & Hernquist 1996, astro-ph/9509107, eq. 28-32."""
-    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-5, selfshield=True, cool="KWH"):
-        self.recomb = RecombRatesVerner96()
+    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-7, selfshield=True, cool="KWH", recomb="V96"):
+        if recomb == "V96":
+            self.recomb = RecombRatesVerner96()
+        else:
+            self.recomb = RecombRatesCen92()
         self.photo = PhotoRates()
         self.photo_factor = photo_factor
         self.f_bar = f_bar
@@ -73,6 +76,10 @@ class RateNetwork(object):
         ne = scipy.optimize.fixed_point(rooted, nh,xtol=self.converge)
         assert np.all(np.abs(rooted(ne) - ne) < self.converge)
         return ne
+
+    def get_ne_by_nh(self, density, ienergy, helium=0.24):
+        """Same as above, but get electrons per proton."""
+        return self.get_equilib_ne(density, ienergy, helium)/(density*(1-helium))
 
     def get_neutral_fraction(self, density, ienergy, helium=0.24):
         """Get the neutral hydrogen fraction at a given temperature and density.
@@ -204,7 +211,7 @@ class RecombRatesCen92(object):
     def alphaHepp(self, temp):
         """Recombination rate for doubly ionized helium, in cm^3/s.
         Temp in K."""
-        return 3.36e-10 / np.sqrt(temp) / np.power(temp/1000, 0.2) / (1+ np.power(temp/1e6, 0.7))
+        return 4 * self.alphaHp(temp)
 
     def GammaeH0(self,temp):
         """Collisional ionization rate for H0 in cm^3/s. Temp in K"""

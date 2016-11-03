@@ -4,6 +4,7 @@ import os.path
 import numpy as np
 import scipy.interpolate
 import spectra
+import rescaledspectra
 
 class MySpectra(object):
     """This class stores the randomly positioned sightlines once,
@@ -19,7 +20,7 @@ class MySpectra(object):
         #Want output every 0.2 from z=4.2 to z=2.0
         self.zout = np.arange(4.2,1.9,-0.2)
 
-    def _get_spectra_snap(self, snap, base, box=60.):
+    def _get_spectra_snap(self, snap, base, box=60.,mean_flux_desired=None):
         """Get a snapshot with generated HI spectra"""
         #If savefile exists, reload. Otherwise do not.
         reload_file = False
@@ -36,13 +37,13 @@ class MySpectra(object):
         self.axis = ss.axis
         #Now if the redshift is something we want, generate the flux power
         if np.min(np.abs(ss.red - self.zout)) < 0.05:
-            kf, flux_power = ss.get_flux_power_1D("H",1,1215)
+            kf, flux_power = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mean_flux_desired)
             if reload_file:
                 ss.save_file()
             return kf,flux_power
         return np.array([]),np.array([])
 
-    def get_flux_power(self, base, kf):
+    def get_flux_power(self, base, kf, mean_flux_desired=None):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
         fluxlist = []
@@ -52,7 +53,7 @@ class MySpectra(object):
                 #We ran out of snapshots
                 break
             try:
-                kf_sim,flux_power_sim = self._get_spectra_snap(snap, base)
+                kf_sim,flux_power_sim = self._get_spectra_snap(snap, base,mean_flux_desired=mean_flux_desired)
             except IOError:
                 raise IOError("Could not load snapshot: "+snapdir)
             #Now if the redshift is something we want, generate the flux power

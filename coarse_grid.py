@@ -53,10 +53,13 @@ class Params(object):
 
     def load(self,dumpfile="emulator_params.json"):
         """Load parameters from a textfile."""
+        #No need to store the dense parameters
+        dpns = (self.dense_param_names, self.dense_param_limits, self.ndense)
         with open(os.path.join(self.basedir, dumpfile), 'r') as jsin:
             self.__dict__ = json.load(jsin)
         self.param_limits = np.array(self.param_limits)
         self.sample_params = np.array(self.sample_params)
+        (self.dense_param_names, self.dense_param_limits, self.ndense) = dpns
 
     def get_dirs(self):
         """Get the list of directories in this emulator."""
@@ -124,7 +127,7 @@ class KnotParams(Params):
     def __init__(self, basedir):
         param_names = ['AA', 'BB', 'CC', 'DD', 'hub']
         param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),4,axis=0),[[0.65,0.75]],axis=0)
-        Params.__init__(self, basedir, param_names = param_names, param_limits = param_limits)
+        super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits)
 
     def gen_simulations(self, nsamples, npart=256.,box=60,):
         """Initialise the emulator by generating simulations for various parameters."""

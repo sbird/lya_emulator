@@ -24,9 +24,10 @@ class Params(object):
             self.param_limits = np.array([[0.6, 1.5], [1.5e-9, 4.0e-9], [0., 0.5],[0.25,2],[0.65,0.75]])
         else:
             self.param_limits = param_limits
-        self.dense_param_name = ['tau0',]
+        self.dense_param_names = ['tau0',]
         #Limits on factors to multiply the thermal history by.
         self.dense_param_limits = np.array([[0.3,3],])
+        self.ndense = 15
         self.sample_params = []
         self.basedir = basedir
         if not os.path.exists(basedir):
@@ -91,12 +92,29 @@ class Params(object):
                 print(str(e), " while building: ",outdir)
         return
 
-    def get_emulator(self, kf):
-        """Build an emulator from the desired parameter values and simulations.
-        kf gives the desired k bins in s/km."""
+    def get_emulator(self, kf, mean_flux=False):
+        """ Build an emulator for the desired k_F and our simulations.
+            kf gives the desired k bins in s/km.
+            Mean flux rescaling is handled (if mean_flux=True) as follows:
+            1. A set of flux power spectra are generated for every one of a list of possible mean flux values.
+            2. Each flux power spectrum in the set is rescaled to the same mean flux.
+            3.
+        """
         myspec = flux_power.MySpectra()
-        flux_vectors = np.array([myspec.get_flux_power(pp,kf) for pp in self.get_dirs()])
         pvals = self.get_parameters()
+        if mean_flux:
+            #Each emulated power spectrum is enforced to have the same mean flux.
+            #First value of dense_param_vals should be the mean flux.
+            assert self.dense_param_names[0] == 'tau0'
+            #Build grid of mean fluxes
+            mean_flux_values = [np.linspace(dd[0], dd[1], self.ndense) for dd in self.dense_param_limits][0]
+            rptmf = np.repeat(mean_flux_values,len(pvals))
+            pvals = np.tile(pvals,self.ndense)
+            pvals = np.hstack(pvals, rptmf)
+        else:
+            #No rescaling is performed.
+            mean_flux_values = np.array([None,])
+        flux_vectors = np.array([[myspec.get_flux_power(pp,kf, mean_flux_desired = mf) for pp in self.get_dirs()] for mf in mean_flux_values])
         gp = gpemulator.SkLearnGP(params=pvals, kf=kf, flux_vectors=flux_vectors)
         return gp
 
@@ -125,12 +143,9 @@ class KnotParams(Params):
         return
 
 def lnlike_linear(params, *, gp=None, data=None):
-    """A simple emcee likelihood function for the Lyman-alpha forest using the
-       simple linear model with only cosmological parameters.
-       This neglects many important properties!"""
+    """A simple emcee likelihood function for the Lyman-alpha forest."""
     assert gp is not None
     assert data is not None
-    #TODO: Add logic to rescale derived power to the desired mean flux.
     predicted,cov = gp.predict(params)
     diff = predicted-data.pf
     return -np.dot(diff,np.dot(data.invcovar + np.identity(np.size(diff))/cov,diff))/2.0

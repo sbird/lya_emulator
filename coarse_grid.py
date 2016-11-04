@@ -106,7 +106,7 @@ class KnotParams(Params):
     def __init__(self, basedir):
         sparse_param_names = ['AA', 'BB', 'CC', 'DD', 'hub']
         sparse_param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),4,axis=0),[[0.65,0.75]],axis=0)
-        Params.__init__(self, basedir, sparse_param_names = sparse_param_names, sparce_param_limits = sparse_param_limits)
+        Params.__init__(self, basedir, sparse_param_names = sparse_param_names, sparse_param_limits = sparse_param_limits)
 
     def gen_simulations(self, nsamples, npart=256.,box=60,):
         """Initialise the emulator by generating simulations for various parameters."""

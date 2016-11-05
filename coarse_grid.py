@@ -112,8 +112,8 @@ class Params(object):
             #Build grid of mean fluxes
             mean_flux_values = [np.linspace(dd[0], dd[1], self.ndense) for dd in self.dense_param_limits][0]
             rptmf = np.repeat(mean_flux_values,len(pvals))
-            pvals = np.tile(pvals,self.ndense)
-            pvals = np.hstack(pvals, rptmf)
+            pvals = np.tile(pvals,(self.ndense,1))
+            pvals = np.vstack((pvals.T, rptmf.T)).T
         else:
             #No rescaling is performed.
             mean_flux_values = np.array([None,])

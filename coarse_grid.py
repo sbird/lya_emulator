@@ -27,7 +27,7 @@ class Params(object):
         self.dense_param_names = ['tau0',]
         #Limits on factors to multiply the thermal history by.
         self.dense_param_limits = np.array([[0.1,0.8],])
-        self.ndense = 5
+        self.dense_samples = 5
         self.sample_params = []
         self.basedir = basedir
         if not os.path.exists(basedir):
@@ -54,12 +54,12 @@ class Params(object):
     def load(self,dumpfile="emulator_params.json"):
         """Load parameters from a textfile."""
         #No need to store the dense parameters
-        dpns = (self.dense_param_names, self.dense_param_limits, self.ndense)
+        dpns = (self.dense_param_names, self.dense_param_limits, self.dense_samples)
         with open(os.path.join(self.basedir, dumpfile), 'r') as jsin:
             self.__dict__ = json.load(jsin)
         self.param_limits = np.array(self.param_limits)
         self.sample_params = np.array(self.sample_params)
-        (self.dense_param_names, self.dense_param_limits, self.ndense) = dpns
+        (self.dense_param_names, self.dense_param_limits, self.dense_samples) = dpns
 
     def get_dirs(self):
         """Get the list of directories in this emulator."""
@@ -95,6 +95,29 @@ class Params(object):
                 print(str(e), " while building: ",outdir)
         return
 
+    def _add_dense_params(self, pvals):
+        """From the matrix representing the 'sparse' (ie, corresponding to an N-body) simulation,
+        add extra parameters corresponding to each dense parameter, which corresponds to some modification of the spectrum."""
+        #Index of the first 'dense' parameter
+        #The interpolator class doesn't distinguish, but the flux power loader needs to.
+        dense = np.shape(pvals)[1]
+        #Number of dense parameters
+        ndense = len(self.dense_param_names)
+        #Each emulated power spectrum is enforced to have the same mean flux.
+        #First value of dense_param_vals should be the mean flux.
+        assert self.dense_param_names[0] == 'tau0'
+        #Build grid of mean fluxes
+        mean_flux_values = [np.linspace(dd[0], dd[1], self.dense_samples) for dd in self.dense_param_limits][0]
+        #This grid will hold the expanded grid of parameters: dense parameters are on the end.
+        #Initially make it NaN as a poisoning technique.
+        pvals = np.nan*np.zeros((np.shape(pvals)[0]*self.dense_samples, np.shape(pvals)[1]+ndense))
+        pvals[:,:dense] = np.tile(pvals,(self.dense_samples,1))
+        for dd in range(dense, dense+ndense):
+            #This is not right for ndense > 1.
+            pvals[:,dd] = np.repeat(mean_flux_values,np.size(pvals))
+        assert not np.any(np.isnan(pvals))
+        return pvals
+
     def get_emulator(self, kf, mean_flux=False):
         """ Build an emulator for the desired k_F and our simulations.
             kf gives the desired k bins in s/km.
@@ -105,21 +128,12 @@ class Params(object):
         """
         myspec = flux_power.MySpectra()
         pvals = self.get_parameters()
+        dense = len(self.param_names)
+        assert np.shape(pvals)[1] == dense
         if mean_flux:
-            #Each emulated power spectrum is enforced to have the same mean flux.
-            #First value of dense_param_vals should be the mean flux.
-            assert self.dense_param_names[0] == 'tau0'
-            #Build grid of mean fluxes
-            mean_flux_values = [np.linspace(dd[0], dd[1], self.ndense) for dd in self.dense_param_limits][0]
-            rptmf = np.repeat(mean_flux_values,len(pvals))
-            pvals = np.tile(pvals,(self.ndense,1))
-            pvals = np.vstack((pvals.T, rptmf.T)).T
-        else:
-            #No rescaling is performed.
-            mean_flux_values = np.array([None,])
-        flux_vectors = np.array([[myspec.get_flux_power(pp,kf, mean_flux_desired = mf) for pp in self.get_dirs()] for mf in mean_flux_values])
-        #Check we have the right shape for the flux vectors
-        assert np.shape(flux_vectors) == (np.size(self.get_dirs())*np.size(mean_flux_values), np.size(myspec.zout)*np.size(kf))
+            pvals = self._add_dense_params(pvals)
+        flux_vectors = np.array([myspec.get_flux_power(self.build_dirname(pp[:dense]),kf, mean_flux_desired = pp[dense], flat=True) for pp in pvals])
+        assert np.shape(flux_vectors) == (np.size(self.get_dirs())*np.size(self.dense_samples), np.size(myspec.zout)*np.size(kf))
         gp = gpemulator.SkLearnGP(params=pvals, kf=kf, flux_vectors=flux_vectors)
         return gp
 

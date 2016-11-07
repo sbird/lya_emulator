@@ -10,10 +10,11 @@ def test_emu_multiple():
     kf = np.array([ 0.00141,  0.00178,  0.00224,  0.00282])
     params = np.linspace(0.25,1.75,10).reshape(10,1)
     flux_vector = np.tile(kf*100.,(np.size(params),1))
-    flux_vectors = ((flux_vector * params).T).T
+    flux_vectors = flux_vector * params
     gp = gpemulator.SkLearnGP(params=params, kf=kf, flux_vectors=flux_vectors)
     predict,_ = gp.predict(np.array([0.5]).reshape(1,1))
-    assert np.sum(np.abs(predict - 0.5 * flux_vector)/flux_vector) < 0.01
+    print(predict-0.5*kf*100)
+    assert np.sum(np.abs(predict - 0.5 * kf*100)/predict) < 1e-4
     return flux_vectors
 
 def test_emu_single():
@@ -24,7 +25,7 @@ def test_emu_single():
     params = np.linspace(0.25,1.75,10).reshape(10,1)
     gp = gpemulator.SkLearnGP(params=params, kf=kf, flux_vectors=params)
     predict,_ = gp.predict(np.array([0.5]).reshape(1,1))
-    assert np.abs(predict - 0.5) < 0.01
+    assert np.abs(predict - 0.5) < 1e-4
 
 def test_emu_multi_param():
     """Simplest model possible with multiple parameters.
@@ -36,7 +37,6 @@ def test_emu_multi_param():
     p1 = np.repeat(p1,10)
     params = np.vstack([p1.T,p2.T]).T
     flux_vectors = np.array([kf*100*(pp[0] + pp[1]**2) for pp in params])
-    print(np.shape(flux_vectors))
     gp = gpemulator.SkLearnGP(params=params, kf=kf, flux_vectors=flux_vectors)
-    predict,_ = gp.predict(np.array([0.5,0.2]).reshape(1,-1))
-    assert np.sum(np.abs(predict - (0.5+0.2**2) * 100*kf)/predict) < 1e-4
+    predict,_ = gp.predict(np.array([0.5,0.288]).reshape(1,-1))
+    assert np.sum(np.abs(predict - (0.5+0.288**2) * 100*kf)/predict) < 1e-4

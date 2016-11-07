@@ -43,7 +43,7 @@ class MySpectra(object):
             return kf,flux_power
         return np.array([]),np.array([])
 
-    def get_flux_power(self, base, kf, mean_flux_desired=None):
+    def get_flux_power(self, base, kf, mean_flux_desired=None, flat=False):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
         fluxlist = []
@@ -64,5 +64,7 @@ class MySpectra(object):
         #Make sure we have enough outputs
         assert len(fluxlist) == np.size(self.zout)
         flux_power = np.array(fluxlist)
+        if flat:
+            flux_power = np.ravel(flux_power)
         return flux_power
 

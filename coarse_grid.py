@@ -26,8 +26,8 @@ class Params(object):
             self.param_limits = param_limits
         self.dense_param_names = ['tau0',]
         #Limits on factors to multiply the thermal history by.
-        self.dense_param_limits = np.array([[0.3,3],])
-        self.ndense = 15
+        self.dense_param_limits = np.array([[0.1,0.8],])
+        self.ndense = 5
         self.sample_params = []
         self.basedir = basedir
         if not os.path.exists(basedir):
@@ -167,13 +167,16 @@ def plot_test_interpolate(emulatordir,testdir):
     params = Params(emulatordir)
     params.load()
     data = gpemulator.SDSSData()
-    gp = params.get_emulator(data.get_kf())
+    gp = params.get_emulator(data.get_kf(), mean_flux=True)
     params_test = Params(testdir)
     params_test.load()
     myspec = flux_power.MySpectra()
+    #Constant mean flux.
+    mf = 0.3
     for pp,dd,nn in zip(params_test.get_parameters(),params_test.get_dirs(), params_test.sample_dirs):
+        pp = np.append(pp, mf)
         predicted,_ = gp.predict(pp)
-        exact = myspec.get_flux_power(dd,data.get_kf())
+        exact = myspec.get_flux_power(dd,data.get_kf(),mean_flux_desired=mf)
         ratio = predicted.reshape(np.shape(exact))/exact
         for i,rr in enumerate(ratio):
             plt.loglog(data.get_kf(),rr,label=myspec.zout[i])
@@ -182,7 +185,7 @@ def plot_test_interpolate(emulatordir,testdir):
         plt.title(nn)
         plt.legend(loc=0)
         plt.show()
-        plt.savefig(nn+".pdf")
+        plt.savefig(nn+"mf0.3.pdf")
         print(nn+".pdf")
         plt.clf()
     return gp

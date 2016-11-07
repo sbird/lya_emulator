@@ -7,7 +7,6 @@ class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
     def __init__(self, *, params, kf, flux_vectors):
         self._siIIIform = self._siIIIcorr(kf)
-        flux_vectors = flux_vectors.reshape(np.size(params[:,0]),-1)
         assert np.shape(flux_vectors)[1] % np.size(kf) == 0
         self.gp = gaussian_process.GaussianProcess()
         self.gp.fit(params, flux_vectors)

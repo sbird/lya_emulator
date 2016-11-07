@@ -118,6 +118,8 @@ class Params(object):
             #No rescaling is performed.
             mean_flux_values = np.array([None,])
         flux_vectors = np.array([[myspec.get_flux_power(pp,kf, mean_flux_desired = mf) for pp in self.get_dirs()] for mf in mean_flux_values])
+        #Check we have the right shape for the flux vectors
+        assert np.shape(flux_vectors) == (np.size(self.get_dirs())*np.size(mean_flux_values), np.size(myspec.zout)*np.size(kf))
         gp = gpemulator.SkLearnGP(params=pvals, kf=kf, flux_vectors=flux_vectors)
         return gp
 

@@ -38,4 +38,3 @@ def build_fake_fluxes(nsamples):
     random_test_flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2], kf=data.get_kf(),zz=data.get_redshifts()) for pp in random_samples])
     diff_sk = gp.get_predict_error(random_samples, random_test_flux_vectors)
     return gp, diff_sk
-

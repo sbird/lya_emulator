@@ -158,4 +158,3 @@ def weight_cube(sample, means, sigmas):
     """
     #This samples from the inverse CDF
     return norm(loc=means, scale=sigmas).ppf(sample)
-

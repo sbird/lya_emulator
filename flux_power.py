@@ -67,4 +67,3 @@ class MySpectra(object):
         if flat:
             flux_power = np.ravel(flux_power)
         return flux_power
-

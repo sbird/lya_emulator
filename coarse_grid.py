@@ -106,17 +106,18 @@ class Params(object):
         #Each emulated power spectrum is enforced to have the same mean flux.
         #First value of dense_param_vals should be the mean flux.
         assert self.dense_param_names[0] == 'tau0'
-        #Build grid of mean fluxes
-        mean_flux_values = [np.linspace(dd[0], dd[1], self.dense_samples) for dd in self.dense_param_limits][0]
         #This grid will hold the expanded grid of parameters: dense parameters are on the end.
         #Initially make it NaN as a poisoning technique.
-        pvals = np.nan*np.zeros((np.shape(pvals)[0]*self.dense_samples, np.shape(pvals)[1]+ndense))
-        pvals[:,:dense] = np.tile(pvals,(self.dense_samples,1))
+        pvals_new = np.nan*np.zeros((np.shape(pvals)[0]*self.dense_samples, np.shape(pvals)[1]+ndense))
+        pvals_new[:,:dense] = np.tile(pvals,(self.dense_samples,1))
         for dd in range(dense, dense+ndense):
+            #Build grid of mean fluxes
+            dlim = self.dense_param_limits[dd-dense]
             #This is not right for ndense > 1.
-            pvals[:,dd] = np.repeat(mean_flux_values,np.size(pvals))
-        assert not np.any(np.isnan(pvals))
-        return pvals
+            dense = np.repeat(np.linspace(dlim[0], dlim[1], self.dense_samples),np.shape(pvals)[0])
+            pvals_new[:,dd] = dense
+        assert not np.any(np.isnan(pvals_new))
+        return pvals_new
 
     def get_emulator(self, kf, mean_flux=False):
         """ Build an emulator for the desired k_F and our simulations.

@@ -192,10 +192,11 @@ def plot_test_interpolate(emulatordir,testdir):
     for pp,dd,nn in zip(params_test.get_parameters(),params_test.get_dirs(), params_test.sample_dirs):
         pp = np.append(pp, mf)
         predicted,_ = gp.predict(pp)
-        exact = myspec.get_flux_power(dd,data.get_kf(),mean_flux_desired=mf)
-        ratio = predicted.reshape(np.shape(exact))/exact
-        for i,rr in enumerate(ratio):
-            plt.loglog(data.get_kf(),rr,label=myspec.zout[i])
+        exact = myspec.get_flux_power(dd,data.get_kf(),mean_flux_desired=mf,flat=True)
+        ratio = predicted/exact
+        nred = len(myspec.zout)
+        for i in range(nred):
+            plt.loglog(data.get_kf(),ratio[i*nred:(i+1)*nred],label=myspec.zout[i])
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
         plt.title(nn)

@@ -63,7 +63,11 @@ class Params(object):
 
     def get_dirs(self):
         """Get the list of directories in this emulator."""
-        return [os.path.join(os.path.join(self.basedir, dd),"output") for dd in self.sample_dirs]
+        return [self._get_path(dd) for dd in self.sample_dirs]
+
+    def _get_path(self, dirname):
+        """Convert the directory name for a simulation into a disc path."""
+        return os.path.join(os.path.join(self.basedir, dirname),"output")
 
     def get_parameters(self):
         """Get the list of parameter vectors in this emulator."""
@@ -133,8 +137,8 @@ class Params(object):
         assert np.shape(pvals)[1] == dense
         if mean_flux:
             pvals = self._add_dense_params(pvals)
-        flux_vectors = np.array([myspec.get_flux_power(self.build_dirname(pp[:dense]),kf, mean_flux_desired = pp[dense], flat=True) for pp in pvals])
-        assert np.shape(flux_vectors) == (np.size(self.get_dirs())*np.size(self.dense_samples), np.size(myspec.zout)*np.size(kf))
+        flux_vectors = np.array([myspec.get_flux_power(self._get_path(self.build_dirname(pp[:dense])),kf, mean_flux_desired = pp[dense], flat=True) for pp in pvals])
+        assert np.shape(flux_vectors) == (np.size(self.get_dirs())*self.dense_samples, np.size(myspec.zout)*np.size(kf))
         gp = gpemulator.SkLearnGP(params=pvals, kf=kf, flux_vectors=flux_vectors)
         return gp
 
@@ -194,10 +198,12 @@ def plot_test_interpolate(emulatordir,testdir):
         pp = np.append(pp, mf)
         predicted,_ = gp.predict(pp)
         exact = myspec.get_flux_power(dd,data.get_kf(),mean_flux_desired=mf,flat=True)
-        ratio = predicted/exact
+        ratio = predicted[0]/exact
         nred = len(myspec.zout)
+        nk = len(data.get_kf())
+        assert np.shape(ratio) == (nred*nk,)
         for i in range(nred):
-            plt.loglog(data.get_kf(),ratio[i*nred:(i+1)*nred],label=myspec.zout[i])
+            plt.loglog(data.get_kf(),ratio[i*nk:(i+1)*nk],label=myspec.zout[i])
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
         plt.title(nn)

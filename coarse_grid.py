@@ -137,7 +137,7 @@ class Params(object):
         assert np.shape(pvals)[1] == dense
         if mean_flux:
             pvals = self._add_dense_params(pvals)
-        flux_vectors = np.array([myspec.get_flux_power(self._get_path(self.build_dirname(pp[:dense])),kf, mean_flux_desired = pp[dense], flat=True) for pp in pvals])
+        flux_vectors = np.array([myspec.get_flux_power(self._get_path(self.build_dirname(pp[:dense])),kf, dense_params = pp[dense:], flat=True) for pp in pvals])
         assert np.shape(flux_vectors) == (np.size(self.get_dirs())*self.dense_samples, np.size(myspec.zout)*np.size(kf))
         gp = gpemulator.SkLearnGP(params=pvals, kf=kf, flux_vectors=flux_vectors)
         return gp

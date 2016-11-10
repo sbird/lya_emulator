@@ -65,13 +65,9 @@ class Params(object):
             self.__dict__ = json.load(jsin)
         self._fromarray()
 
-    def get_dirs(self):
-        """Get the list of directories in this emulator."""
-        return [self._get_path(dd) for dd in self.sample_dirs]
-
-    def _get_path(self, dirname):
-        """Convert the directory name for a simulation into a disc path."""
-        return os.path.join(os.path.join(self.basedir, dirname),"output")
+    def get_outdir(self, pp):
+        """Get the simulation output directory path for a parameter set."""
+        return os.path.join(os.path.join(self.basedir, self.build_dirname(pp)),"output")
 
     def get_parameters(self):
         """Get the list of parameter vectors in this emulator."""
@@ -80,7 +76,6 @@ class Params(object):
     def build_params(self, nsamples):
         """Build a list of directories and parameters from a hyercube sample"""
         self.sample_params = latin_hypercube.get_hypercube_samples(self.param_limits, nsamples)
-        self.sample_dirs = [self.build_dirname(ev) for ev in self.sample_params]
 
     def gen_simulations(self, nsamples, npart=256.,box=60,):
         """Initialise the emulator by generating simulations for various parameters."""
@@ -89,10 +84,11 @@ class Params(object):
         self.dump()
         #Generate ICs for each set of parameter inputs
         pn = self.param_names
-        for ev,edir in zip(self.sample_params, self.sample_dirs):
-            outdir = os.path.join(self.basedir, edir)
+        for ev in self.sample_params:
+            outdir = os.path.join(self.basedir, self.build_dirname(ev))
             #Use Planck 2015 cosmology
-            ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ev[pn['ns']], scalar_amp=ev[pn['As']], code_args={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}, code_class=lyasimulation.LymanAlphaSim, hubble=ev[pn['hub']], omegac=0.25681, omegab=0.0483)
+            ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}
+            ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ev[pn['ns']], scalar_amp=ev[pn['As']], code_args = ca, code_class=lyasimulation.LymanAlphaSim, hubble=ev[pn['hub']], omegac=0.25681, omegab=0.0483)
             try:
                 ss.make_simulation()
             except RuntimeError as e:
@@ -122,7 +118,7 @@ class Params(object):
 
     def _get_fv(self, pp,dense,kf,myspec, mean_flux):
         """Helper function to get a single flux vector."""
-        di = self._get_path(self.build_dirname(pp[:dense]))
+        di = self.get_outdir(pp[:dense])
         mf = None
         if mean_flux:
             mf = pp[dense+self.dense_param_names['tau0']]
@@ -145,7 +141,7 @@ class Params(object):
             pvals = self._add_dense_params(pvals)
         flux_vectors = np.array([self._get_fv(pp,dense,kf,myspec, mean_flux=mean_flux) for pp in pvals])
         #Check shape is ok.
-        assert np.shape(flux_vectors) == (np.size(self.get_dirs())*np.max([1,mean_flux*self.dense_samples]), np.size(myspec.zout)*np.size(kf))
+        assert np.shape(flux_vectors) == (np.shape(pvals)[0]*np.max([1,mean_flux*self.dense_samples]), np.size(myspec.zout)*np.size(kf))
         gp = gpemulator.SkLearnGP(params=pvals, kf=kf, flux_vectors=flux_vectors)
         #Check we reproduce the input
         assert gp.predict(pvals[0,:].reshape(1,-1)) == flux_vectors[0,:]
@@ -174,8 +170,8 @@ class KnotParams(Params):
             self.build_params(nsamples)
         self.dump()
         #Generate ICs for each set of parameter inputs
-        for ev,edir in zip(self.sample_params, self.sample_dirs):
-            outdir = os.path.join(self.basedir, edir)
+        for ev in self.sample_params:
+            outdir = os.path.join(self.basedir, self.build_dirname(ev))
             #Use Planck 2015 cosmology
             ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=ev[self.param_names['hub']], omegac=0.25681, omegab=0.0483)
             try:
@@ -212,7 +208,8 @@ def plot_test_interpolate(emulatordir,testdir):
     myspec = flux_power.MySpectra()
     #Constant mean flux.
     mf = 0.3
-    for pp,dd,nn in zip(params_test.get_parameters(),params_test.get_dirs(), params_test.sample_dirs):
+    for pp in params_test.get_parameters():
+        dd = params_test.get_outdir(pp)
         pp = np.append(pp, mf)
         predicted,_ = gp.predict(pp)
         exact = myspec.get_flux_power(dd,data.get_kf(),mean_flux=mf,flat=True)
@@ -224,10 +221,11 @@ def plot_test_interpolate(emulatordir,testdir):
             plt.loglog(data.get_kf(),ratio[i*nk:(i+1)*nk],label=myspec.zout[i])
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
-        plt.title(nn)
+        name = params_test.build_dirname(pp)
+        plt.title(name)
         plt.legend(loc=0)
         plt.show()
-        plt.savefig(nn+"mf0.3.pdf")
-        print(nn+".pdf")
+        plt.savefig(name+"mf"+str(mf)+".pdf")
+        print(name+".pdf")
         plt.clf()
     return gp

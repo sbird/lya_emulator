@@ -156,7 +156,7 @@ class KnotParams(Params):
         for i in range(nknots):
             param_names[string.ascii_uppercase[i]*2] = i
         self.nknots = nknots
-        param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),4,axis=0),[[0.65,0.75]],axis=0)
+        param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),nknots,axis=0),[[0.65,0.75]],axis=0)
         super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits)
         #Linearly spaced knots in k space:
         #these do not quite hit the edges of the forest region, because we want some coverage over them.

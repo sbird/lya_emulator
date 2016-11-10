@@ -36,9 +36,12 @@ class Params(object):
 
     def build_dirname(self,params):
         """Make a directory name for a given set of parameter values"""
-        name = ""
+        parts = ['',]*len(self.param_names)
+        #Transform the dictionary into a list of string parts,
+        #sorted in the same way as the parameter array.
         for nn,val in self.param_names.items():
-            name += nn+'%.2g' % params[val]
+            parts[val] = nn+'%.2g' % params[val]
+        name = ''.join(str(elem) for elem in parts)
         return name
 
     def _fromarray(self):

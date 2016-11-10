@@ -142,8 +142,11 @@ class Params(object):
         if mean_flux:
             pvals = self._add_dense_params(pvals)
         flux_vectors = np.array([myspec.get_flux_power(self._get_path(self.build_dirname(pp[:dense])),kf, dense_params = pp[dense:], flat=True) for pp in pvals])
-        assert np.shape(flux_vectors) == (np.size(self.get_dirs())*self.dense_samples, np.size(myspec.zout)*np.size(kf))
+        #Check shape is ok.
+        assert np.shape(flux_vectors) == (np.size(self.get_dirs())*np.max([1,mean_flux*self.dense_samples]), np.size(myspec.zout)*np.size(kf))
         gp = gpemulator.SkLearnGP(params=pvals, kf=kf, flux_vectors=flux_vectors)
+        #Check we reproduce the input
+        assert gp.predict(pvals[0,:].reshape(1,-1)) == flux_vectors[0,:]
         return gp
 
 class KnotParams(Params):

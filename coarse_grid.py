@@ -41,25 +41,29 @@ class Params(object):
             name += nn+'%.2g' % pp
         return name
 
+    def _fromarray(self):
+        """Convert the data stored as lists back to arrays."""
+        for arr in self.really_arrays:
+            self.__dict__[arr] = np.array(self.__dict__[arr])
+        self.really_arrays = []
+
     def dump(self, dumpfile="emulator_params.json"):
         """Dump parameters to a textfile."""
         #Arrays can't be serialised so convert them back and forth to lists
-        self.param_limits = self.param_limits.tolist()
-        self.sample_params = self.sample_params.tolist()
+        self.really_arrays = []
+        for nn, val in self.__dict__.items():
+            if isinstance(val, np.ndarray):
+                self.__dict__[nn] = val.tolist()
+                self.really_arrays.append(nn)
         with open(os.path.join(self.basedir, dumpfile), 'w') as jsout:
             json.dump(self.__dict__, jsout)
-        self.param_limits = np.array(self.param_limits)
-        self.sample_params = np.array(self.sample_params)
+        self._fromarray()
 
     def load(self,dumpfile="emulator_params.json"):
         """Load parameters from a textfile."""
-        #No need to store the dense parameters
-        dpns = (self.dense_param_names, self.dense_param_limits, self.dense_samples)
         with open(os.path.join(self.basedir, dumpfile), 'r') as jsin:
             self.__dict__ = json.load(jsin)
-        self.param_limits = np.array(self.param_limits)
-        self.sample_params = np.array(self.sample_params)
-        (self.dense_param_names, self.dense_param_limits, self.dense_samples) = dpns
+        self._fromarray()
 
     def get_dirs(self):
         """Get the list of directories in this emulator."""

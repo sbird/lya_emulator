@@ -2,6 +2,7 @@
 from __future__ import print_function
 import os
 import os.path
+import string
 import json
 import numpy as np
 import matplotlib
@@ -153,24 +154,30 @@ class Params(object):
 class KnotParams(Params):
     """Specialise parameter class for an emulator using knots.
     Thermal parameters turned off."""
-    def __init__(self, basedir):
-        param_names = {'AA':0, 'BB':1, 'CC':2, 'DD':3, 'hub':4}
+    def __init__(self, basedir, nknots=4):
+        param_names = {'hub': nknots}
+        #Assign names like AA, BB, etc.
+        for i in range(nknots):
+            param_names[string.ascii_uppercase[i]*2] = i
+        self.nknots = nknots
         param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),4,axis=0),[[0.65,0.75]],axis=0)
         super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits)
-        self.knot_pos = [0.15,0.475,0.75,1.19]
+        #Linearly spaced knots in k space:
+        #these do not quite hit the edges of the forest region, because we want some coverage over them.
+        self.knot_pos = np.linspace(0.15, 1.5,nknots)
+        #Used for early iterations.
+        #self.knot_pos = [0.15,0.475,0.75,1.19]
 
     def gen_simulations(self, nsamples, npart=256.,box=60,):
         """Initialise the emulator by generating simulations for various parameters."""
         if len(self.sample_params) != nsamples:
             self.build_params(nsamples)
         self.dump()
-        #Indices of the knots
-        kni = range(4)
         #Generate ICs for each set of parameter inputs
         for ev,edir in zip(self.sample_params, self.sample_dirs):
             outdir = os.path.join(self.basedir, edir)
             #Use Planck 2015 cosmology
-            ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[kni],hubble=ev[self.param_names['hub']], omegac=0.25681, omegab=0.0483)
+            ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=ev[self.param_names['hub']], omegac=0.25681, omegab=0.0483)
             try:
                 ss.make_simulation()
             except RuntimeError as e:

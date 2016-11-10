@@ -147,7 +147,8 @@ class Params(object):
         assert np.shape(flux_vectors) == (np.shape(pvals)[0]*np.max([1,mean_flux*self.dense_samples]), np.size(myspec.zout)*np.size(kf))
         gp = gpemulator.SkLearnGP(params=pvals, kf=kf, flux_vectors=flux_vectors)
         #Check we reproduce the input
-        assert gp.predict(pvals[0,:].reshape(1,-1)) == flux_vectors[0,:]
+        test, _ = gp.predict(pvals[0,:].reshape(1,-1))
+        assert np.max(np.abs(test[0] / flux_vectors[0,:]-1)) < 1e-6
         return gp
 
 class KnotParams(Params):

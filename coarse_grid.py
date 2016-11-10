@@ -201,17 +201,20 @@ def init_lnlike(basedir, data=None):
     gp = params.get_emulator(data.get_kf())
     return gp, data
 
-def plot_test_interpolate(emulatordir,testdir):
+def plot_test_interpolate(emulatordir,testdir, mean_flux=True):
     """Make a plot showing the interpolation error."""
     params = Params(emulatordir)
     params.load()
     data = gpemulator.SDSSData()
-    gp = params.get_emulator(data.get_kf(), mean_flux=True)
+    gp = params.get_emulator(data.get_kf(), mean_flux=mean_flux)
     params_test = Params(testdir)
     params_test.load()
     myspec = flux_power.MySpectra()
     #Constant mean flux.
-    mf = 0.3
+    if mean_flux:
+        mf = 0.3
+    else:
+        mf = None
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
         pp = np.append(pp, mf)
@@ -229,7 +232,10 @@ def plot_test_interpolate(emulatordir,testdir):
         plt.title(name)
         plt.legend(loc=0)
         plt.show()
-        plt.savefig(name+"mf"+str(mf)+".pdf")
+        if mean_flux:
+            plt.savefig(name+"mf"+str(mf)+".pdf")
+        else:
+            plt.savefig(name+".pdf")
         print(name+".pdf")
         plt.clf()
     return gp

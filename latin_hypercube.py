@@ -127,10 +127,10 @@ def map_from_unit_cube(param_vec, param_limits):
     """
     assert (np.size(param_vec),2) == np.shape(param_limits)
     assert np.all((param_vec >= 0)*(param_vec <= 1))
-    assert np.all(param_limits[:,0] < param_limits[:,1])
+    assert np.all(param_limits[:,0] <= param_limits[:,1])
     new_params = param_limits[:,0] + param_vec*(param_limits[:,1] - param_limits[:,0])
-    assert np.all(new_params < param_limits[:,1])
-    assert np.all(new_params > param_limits[:,0])
+    assert np.all(new_params <= param_limits[:,1])
+    assert np.all(new_params >= param_limits[:,0])
     return new_params
 
 def map_to_unit_cube(param_vec, param_limits):
@@ -143,9 +143,9 @@ def map_to_unit_cube(param_vec, param_limits):
     vector of parameters, all in [0,1].
     """
     assert (np.size(param_vec),2) == np.shape(param_limits)
-    assert np.all(param_vec < param_limits[:,1])
-    assert np.all(param_vec > param_limits[:,0])
-    assert np.all(param_limits[:,0] < param_limits[:,1])
+    assert np.all(param_vec <= param_limits[:,1])
+    assert np.all(param_vec >= param_limits[:,0])
+    assert np.all(param_limits[:,0] <= param_limits[:,1])
     new_params = (param_vec-param_limits[:,0])/(param_limits[:,1] - param_limits[:,0])
     assert np.all((new_params >= 0)*(new_params <= 1))
     return new_params

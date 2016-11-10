@@ -9,7 +9,7 @@ import rescaledspectra
 class MySpectra(object):
     """This class stores the randomly positioned sightlines once,
        so that they are the same for each emulator point."""
-    def __init__(self, numlos = 32000):
+    def __init__(self, numlos = 32000, max_z= 4.2):
         self.NumLos = numlos
         #Use the right values for SDSS or BOSS.
         self.spec_res = 200.
@@ -17,8 +17,8 @@ class MySpectra(object):
         self.cofm = np.array([])
         #Re-seed for repeatability
         np.random.seed(23)
-        #Want output every 0.2 from z=4.2 to z=2.0
-        self.zout = np.arange(4.2,1.9,-0.2)
+        #Want output every 0.2 from z=max to z=2.0
+        self.zout = np.arange(max_z,1.9,-0.2)
 
     def _get_spectra_snap(self, snap, base, box=60.,mean_flux_desired=None):
         """Get a snapshot with generated HI spectra"""

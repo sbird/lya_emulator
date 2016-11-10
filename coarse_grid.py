@@ -125,7 +125,7 @@ class Params(object):
         fv = myspec.get_flux_power(di,kf, mean_flux = mf, flat=True)
         return fv
 
-    def get_emulator(self, kf, mean_flux=False):
+    def get_emulator(self, kf, mean_flux=False, max_z=4.2):
         """ Build an emulator for the desired k_F and our simulations.
             kf gives the desired k bins in s/km.
             Mean flux rescaling is handled (if mean_flux=True) as follows:
@@ -133,7 +133,7 @@ class Params(object):
             2. Each flux power spectrum in the set is rescaled to the same mean flux.
             3.
         """
-        myspec = flux_power.MySpectra()
+        myspec = flux_power.MySpectra(max_z=max_z)
         pvals = self.get_parameters()
         dense = len(self.param_names)
         assert np.shape(pvals)[1] == dense

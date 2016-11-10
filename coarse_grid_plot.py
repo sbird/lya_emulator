@@ -9,15 +9,15 @@ matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 
 
-def plot_test_interpolate(emulatordir,testdir, mean_flux=True):
+def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
     """Make a plot showing the interpolation error."""
     params = coarse_grid.Params(emulatordir)
     params.load()
     data = gpemulator.SDSSData()
-    gp = params.get_emulator(data.get_kf(), mean_flux=mean_flux)
+    gp = params.get_emulator(data.get_kf(), mean_flux=mean_flux, max_z=max_z)
     params_test = coarse_grid.Params(testdir)
     params_test.load()
-    myspec = flux_power.MySpectra()
+    myspec = flux_power.MySpectra(max_z=max_z)
     #Constant mean flux.
     if mean_flux:
         mf = 0.3

@@ -17,14 +17,14 @@ class Params(object):
     """Small class to store parameter names and limits"""
     def __init__(self, basedir, param_names=None, param_limits=None):
         if param_names is None:
-            self.param_names = ['ns', 'As', 'heat_slope', 'heat_amp', 'hub']
+            self.param_names = {'ns':0, 'As':1, 'heat_slope':2, 'heat_amp':3, 'hub':4}
         else:
             self.param_names = param_names
         if param_limits is None:
             self.param_limits = np.array([[0.6, 1.5], [1.5e-9, 4.0e-9], [0., 0.5],[0.25,2],[0.65,0.75]])
         else:
             self.param_limits = param_limits
-        self.dense_param_names = ['tau0',]
+        self.dense_param_names = { 'tau0':0}
         #Limits on factors to multiply the thermal history by.
         self.dense_param_limits = np.array([[0.1,0.8],])
         self.dense_samples = 5
@@ -35,10 +35,9 @@ class Params(object):
 
     def build_dirname(self,params):
         """Make a directory name for a given set of parameter values"""
-        assert len(params) == len(self.param_names)
         name = ""
-        for nn,pp in zip(self.param_names, params):
-            name += nn+'%.2g' % pp
+        for nn,val in self.param_names.items():
+            name += nn+'%.2g' % params[val]
         return name
 
     def _fromarray(self):
@@ -88,15 +87,11 @@ class Params(object):
             self.build_params(nsamples)
         self.dump()
         #Generate ICs for each set of parameter inputs
+        pn = self.param_names
         for ev,edir in zip(self.sample_params, self.sample_dirs):
             outdir = os.path.join(self.basedir, edir)
-            assert self.param_names[0] == 'ns'
-            assert self.param_names[1] == 'As'
-            assert self.param_names[2] == 'heat_slope'
-            assert self.param_names[3] == 'heat_amp'
-            assert self.param_names[4] == 'hub'
             #Use Planck 2015 cosmology
-            ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ev[0], scalar_amp=ev[1], code_args={'rescale_gamma': True, 'rescale_slope': ev[2], 'rescale_amp' :ev[3]}, code_class=lyasimulation.LymanAlphaSim, hubble=ev[4], omegac=0.25681, omegab=0.0483)
+            ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ev[pn['ns']], scalar_amp=ev[pn['As']], code_args={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}, code_class=lyasimulation.LymanAlphaSim, hubble=ev[pn['hub']], omegac=0.25681, omegab=0.0483)
             try:
                 ss.make_simulation()
             except RuntimeError as e:
@@ -111,9 +106,6 @@ class Params(object):
         dense = np.shape(pvals)[1]
         #Number of dense parameters
         ndense = len(self.dense_param_names)
-        #Each emulated power spectrum is enforced to have the same mean flux.
-        #First value of dense_param_vals should be the mean flux.
-        assert self.dense_param_names[0] == 'tau0'
         #This grid will hold the expanded grid of parameters: dense parameters are on the end.
         #Initially make it NaN as a poisoning technique.
         pvals_new = np.nan*np.zeros((np.shape(pvals)[0]*self.dense_samples, np.shape(pvals)[1]+ndense))
@@ -126,6 +118,15 @@ class Params(object):
             pvals_new[:,dd] = dense
         assert not np.any(np.isnan(pvals_new))
         return pvals_new
+
+    def _get_fv(self, pp,dense,kf,myspec, mean_flux):
+        """Helper function to get a single flux vector."""
+        di = self._get_path(self.build_dirname(pp[:dense]))
+        mf = None
+        if mean_flux:
+            mf = pp[dense+self.dense_param_names['tau0']]
+        fv = myspec.get_flux_power(di,kf, mean_flux = mf, flat=True)
+        return fv
 
     def get_emulator(self, kf, mean_flux=False):
         """ Build an emulator for the desired k_F and our simulations.
@@ -141,7 +142,7 @@ class Params(object):
         assert np.shape(pvals)[1] == dense
         if mean_flux:
             pvals = self._add_dense_params(pvals)
-        flux_vectors = np.array([myspec.get_flux_power(self._get_path(self.build_dirname(pp[:dense])),kf, dense_params = pp[dense:], flat=True) for pp in pvals])
+        flux_vectors = np.array([self._get_fv(pp,dense,kf,myspec, mean_flux=mean_flux) for pp in pvals])
         #Check shape is ok.
         assert np.shape(flux_vectors) == (np.size(self.get_dirs())*np.max([1,mean_flux*self.dense_samples]), np.size(myspec.zout)*np.size(kf))
         gp = gpemulator.SkLearnGP(params=pvals, kf=kf, flux_vectors=flux_vectors)
@@ -153,20 +154,23 @@ class KnotParams(Params):
     """Specialise parameter class for an emulator using knots.
     Thermal parameters turned off."""
     def __init__(self, basedir):
-        param_names = ['AA', 'BB', 'CC', 'DD', 'hub']
+        param_names = {'AA':0, 'BB':1, 'CC':2, 'DD':3, 'hub':4}
         param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),4,axis=0),[[0.65,0.75]],axis=0)
         super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits)
+        self.knot_pos = [0.15,0.475,0.75,1.19]
 
     def gen_simulations(self, nsamples, npart=256.,box=60,):
         """Initialise the emulator by generating simulations for various parameters."""
         if len(self.sample_params) != nsamples:
             self.build_params(nsamples)
         self.dump()
+        #Indices of the knots
+        kni = range(4)
         #Generate ICs for each set of parameter inputs
         for ev,edir in zip(self.sample_params, self.sample_dirs):
             outdir = os.path.join(self.basedir, edir)
             #Use Planck 2015 cosmology
-            ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_val=ev[0:4],hubble=ev[4], omegac=0.25681, omegab=0.0483)
+            ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[kni],hubble=ev[self.param_names['hub']], omegac=0.25681, omegab=0.0483)
             try:
                 ss.make_simulation()
             except RuntimeError as e:
@@ -204,7 +208,7 @@ def plot_test_interpolate(emulatordir,testdir):
     for pp,dd,nn in zip(params_test.get_parameters(),params_test.get_dirs(), params_test.sample_dirs):
         pp = np.append(pp, mf)
         predicted,_ = gp.predict(pp)
-        exact = myspec.get_flux_power(dd,data.get_kf(),mean_flux_desired=mf,flat=True)
+        exact = myspec.get_flux_power(dd,data.get_kf(),mean_flux=mf,flat=True)
         ratio = predicted[0]/exact
         nred = len(myspec.zout)
         nk = len(data.get_kf())

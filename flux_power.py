@@ -43,21 +43,17 @@ class MySpectra(object):
             return kf,flux_power
         return np.array([]),np.array([])
 
-    def get_flux_power(self, base, kf, dense_params=None, flat=False):
+    def get_flux_power(self, base, kf, mean_flux=None, flat=False):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
         fluxlist = []
-        if len(dense_params) > 0:
-            mean_flux_desired = dense_params[0]
-        else:
-            mean_flux_desired = None
         for snap in range(1000):
             snapdir = os.path.join(base,"snapdir_"+str(snap).rjust(3,'0'))
             if not os.path.exists(snapdir):
                 #We ran out of snapshots
                 break
             try:
-                kf_sim,flux_power_sim = self._get_spectra_snap(snap, base,mean_flux_desired=mean_flux_desired)
+                kf_sim,flux_power_sim = self._get_spectra_snap(snap, base,mean_flux_desired=mean_flux)
             except IOError:
                 raise IOError("Could not load snapshot: "+snapdir)
             #Now if the redshift is something we want, generate the flux power

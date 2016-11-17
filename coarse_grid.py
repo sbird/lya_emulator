@@ -3,17 +3,19 @@ from __future__ import print_function
 import os
 import os.path
 import string
+import math
 import json
 import numpy as np
 import gpemulator
 import latin_hypercube
 import flux_power
+import matter_power
 from SimulationRunner import simulationics
 from SimulationRunner import lyasimulation
 
 class Emulator(object):
     """Small wrapper class to store parameter names and limits, generate simulations and get an emulator."""
-    def __init__(self, basedir, param_names=None, param_limits=None):
+    def __init__(self, basedir, param_names=None, param_limits=None, kf=None):
         if param_names is None:
             self.param_names = {'ns':0, 'As':1, 'heat_slope':2, 'heat_amp':3, 'hub':4}
         else:
@@ -22,13 +24,16 @@ class Emulator(object):
             self.param_limits = np.array([[0.6, 1.5], [1.5e-9, 4.0e-9], [0., 0.5],[0.25,2],[0.65,0.75]])
         else:
             self.param_limits = param_limits
+        if kf is None:
+            self.kf = gpemulator.SDSSData().get_kf()
+        else:
+            self.kf = kf
         self.dense_param_names = { 'tau0':0}
         #Limits on factors to multiply the thermal history by.
         self.dense_param_limits = np.array([[0.1,0.8],])
         self.dense_samples = 5
         self.sample_params = []
         self.basedir = basedir
-        self.kf = gpemulator.SDSSData().get_kf()
         if not os.path.exists(basedir):
             os.mkdir(basedir)
 
@@ -181,6 +186,20 @@ class KnotEmulator(Emulator):
             except RuntimeError as e:
                 print(str(e), " while building: ",outdir)
         return
+
+class MatterPowerEmulator(Emulator):
+    """Build an emulator based on the matter power spectrum instead of the flux power spectrum, for testing."""
+    def load(self,dumpfile="emulator_params.json"):
+        """Load parameters from a textfile. Reset the k values to something sensible for matter power."""
+        super().load(dumpfile=dumpfile)
+        self.kf = np.logspace(np.log10(2*math.pi/60.),np.log10(2*math.pi/60.*256),20)
+
+    def _get_fv(self, pp,dense,myspec, mean_flux):
+        """Helper function to get a single matter power vector."""
+        di = self.get_outdir(pp[:dense])
+        (_,_,_) = dense, myspec, mean_flux
+        fv = matter_power.get_matter_power(di,kk=self.kf, redshift = 3.)
+        return fv
 
 def lnlike_linear(params, *, gp=None, data=None):
     """A simple emcee likelihood function for the Lyman-alpha forest."""

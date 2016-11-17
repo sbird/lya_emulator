@@ -11,8 +11,8 @@ import flux_power
 from SimulationRunner import simulationics
 from SimulationRunner import lyasimulation
 
-class Params(object):
-    """Small class to store parameter names and limits"""
+class Emulator(object):
+    """Small wrapper class to store parameter names and limits, generate simulations and get an emulator."""
     def __init__(self, basedir, param_names=None, param_limits=None):
         if param_names is None:
             self.param_names = {'ns':0, 'As':1, 'heat_slope':2, 'heat_amp':3, 'hub':4}
@@ -28,6 +28,7 @@ class Params(object):
         self.dense_samples = 5
         self.sample_params = []
         self.basedir = basedir
+        self.kf = gpemulator.SDSSData().get_kf()
         if not os.path.exists(basedir):
             os.mkdir(basedir)
 
@@ -116,16 +117,16 @@ class Params(object):
         assert not np.any(np.isnan(pvals_new))
         return pvals_new
 
-    def _get_fv(self, pp,dense,kf,myspec, mean_flux):
+    def _get_fv(self, pp,dense,myspec, mean_flux):
         """Helper function to get a single flux vector."""
         di = self.get_outdir(pp[:dense])
         mf = None
         if mean_flux:
             mf = pp[dense+self.dense_param_names['tau0']]
-        fv = myspec.get_flux_power(di,kf, mean_flux = mf, flat=True)
+        fv = myspec.get_flux_power(di,self.kf, mean_flux = mf, flat=True)
         return fv
 
-    def get_emulator(self, kf, mean_flux=False, max_z=4.2):
+    def get_emulator(self, mean_flux=False, max_z=4.2):
         """ Build an emulator for the desired k_F and our simulations.
             kf gives the desired k bins in s/km.
             Mean flux rescaling is handled (if mean_flux=True) as follows:
@@ -139,16 +140,16 @@ class Params(object):
         assert np.shape(pvals)[1] == dense
         if mean_flux:
             pvals = self._add_dense_params(pvals)
-        flux_vectors = np.array([self._get_fv(pp,dense,kf,myspec, mean_flux=mean_flux) for pp in pvals])
+        flux_vectors = np.array([self._get_fv(pp,dense,myspec, mean_flux=mean_flux) for pp in pvals])
         #Check shape is ok.
-        assert np.shape(flux_vectors) == (np.shape(pvals)[0]*np.max([1,mean_flux*self.dense_samples]), np.size(myspec.zout)*np.size(kf))
-        gp = gpemulator.SkLearnGP(params=pvals, kf=kf, flux_vectors=flux_vectors)
+        assert np.shape(flux_vectors) == (np.shape(self.get_parameters())[0]*np.max([1,mean_flux*self.dense_samples]), np.size(myspec.zout)*np.size(self.kf))
+        gp = gpemulator.SkLearnGP(params=pvals, kf=self.kf, flux_vectors=flux_vectors)
         #Check we reproduce the input
         test, _ = gp.predict(pvals[0,:].reshape(1,-1))
         assert np.max(np.abs(test[0] / flux_vectors[0,:]-1)) < 1e-6
         return gp
 
-class KnotParams(Params):
+class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.
     Thermal parameters turned off."""
     def __init__(self, basedir, nknots=4):
@@ -189,11 +190,10 @@ def lnlike_linear(params, *, gp=None, data=None):
     diff = predicted-data.pf
     return -np.dot(diff,np.dot(data.invcovar + np.identity(np.size(diff))/cov,diff))/2.0
 
-def init_lnlike(basedir, data=None):
+def init_lnlike(basedir, data=None,max_z=4.2):
     """Initialise the emulator by loading the flux power spectra from the simulations."""
     #Parameter names
-    params = Params(basedir)
+    params = Emulator(basedir)
     params.load()
-    data = gpemulator.SDSSData()
-    gp = params.get_emulator(data.get_kf())
+    gp = params.get_emulator(max_z=max_z)
     return gp, data

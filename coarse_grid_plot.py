@@ -61,7 +61,7 @@ def plot_test_matter_interpolate(emulatordir,testdir, redshift=3.):
         exact = matter_power.get_matter_power(dd,params.kf, redshift=redshift)
         ratio = predicted[0]/exact
         name = params_test.build_dirname(pp)
-        plt.loglog(params.kf,ratio,label=name)
+        plt.semilogx(params.kf,ratio,label=name)
     plt.xlabel(r"$k$ (h/kpc)")
     plt.ylabel(r"Predicted/Exact")
     plt.title("Matter power")

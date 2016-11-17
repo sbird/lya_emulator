@@ -7,15 +7,19 @@ import scipy.interpolate
 def get_matter_power(base, kk, redshift = 3.):
     """Gets the matter power spectrum at a single redshift, rebinned onto the given k."""
     for snap in range(1000):
-        snapdir = os.path.join(base,"powerspec_"+str(snap).rjust(3,'0'))
+        snapdir = os.path.join(base,"powerspec_"+str(snap).rjust(3,'0')+".txt")
         if not os.path.exists(snapdir):
             #We ran out of snapshots
+            print(snapdir)
             break
         (time, kk_sim, pk_sim) = get_folded_power(snapdir)
+        assert len(kk_sim) > len(kk)
         if np.abs(1/time - 1 - redshift) < 0.01:
             #Rebin flux power to have desired k bins
             rebinned=scipy.interpolate.interpolate.interp1d(kk_sim,pk_sim)
-            return rebinned(kk)
+            pk = rebinned(kk)
+            return pk
+    raise IOError("No power spectra found")
 
 def get_folded_power(fname1):
     """Get the matter power spectrum from the internal Gadget estimator"""

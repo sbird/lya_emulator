@@ -28,7 +28,7 @@ class Emulator(object):
             self.kf = gpemulator.SDSSData().get_kf()
         else:
             self.kf = kf
-        self.dense_param_names = { 'tau0':0}
+        self.dense_param_names = { 'tau0': 0 }
         #Limits on factors to multiply the thermal history by.
         self.dense_param_limits = np.array([[0.1,0.8],])
         self.dense_samples = 5
@@ -192,7 +192,7 @@ class MatterPowerEmulator(Emulator):
     def load(self,dumpfile="emulator_params.json"):
         """Load parameters from a textfile. Reset the k values to something sensible for matter power."""
         super().load(dumpfile=dumpfile)
-        self.kf = np.logspace(np.log10(2*math.pi/60.),np.log10(2*math.pi/60.*256),20)
+        self.kf = np.logspace(np.log10(3*math.pi/60.),np.log10(2*math.pi/60.*256),20)
 
     def _get_fv(self, pp,dense,myspec, mean_flux):
         """Helper function to get a single matter power vector."""

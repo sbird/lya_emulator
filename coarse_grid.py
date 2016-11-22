@@ -183,8 +183,13 @@ class KnotEmulator(Emulator):
         #Generate ICs for each set of parameter inputs
         for ev in self.sample_params:
             outdir = os.path.join(self.basedir, self.build_dirname(ev))
+            try:
+                hub = ev[self.param_names['hub']]
+            except KeyError:
+                #If not in emulator.
+                hub = 0.69
             #Use Planck 2015 cosmology
-            ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=ev[self.param_names['hub']], code_class=lyasimulation.LymanAlphaMPSim, omegac=0.25681, omegab=0.0483)
+            ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, code_class=lyasimulation.LymanAlphaMPSim, omegac=0.25681, omegab=0.0483)
             try:
                 ss.make_simulation()
             except RuntimeError as e:

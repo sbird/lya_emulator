@@ -35,13 +35,14 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
         nk = len(data.get_kf())
         assert np.shape(ratio) == (nred*nk,)
         for i in range(nred):
-            plt.loglog(data.get_kf(),ratio[i*nk:(i+1)*nk],label=myspec.zout[i])
+            plt.semilogx(data.get_kf(),ratio[i*nk:(i+1)*nk],label=myspec.zout[i])
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
         name = params_test.build_dirname(pp)
         plt.title(name)
         plt.legend(loc=0)
         plt.show()
+        plt.ylim(0.5, 1.5)
         if mean_flux:
             fname = name+"mf"+str(mf)+".pdf"
         else:

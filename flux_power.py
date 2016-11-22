@@ -99,6 +99,7 @@ class MySpectra(object):
 
 def _get_header_attr_from_snap(attr, num, base):
     """Get a header attribute from a snapshot, if it exists."""
-    with absn.AbstractSnapshotFactory(num, base) as f:
-        value = f.get_header_attr(attr)
-        return value
+    f = absn.AbstractSnapshotFactory(num, base)
+    value = f.get_header_attr(attr)
+    del f
+    return value

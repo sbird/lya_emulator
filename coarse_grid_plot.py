@@ -42,7 +42,7 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
         plt.title(name)
         plt.legend(loc=0)
         plt.show()
-        plt.ylim(0.5, 1.5)
+        plt.ylim(0.9, 1.1)
         if mean_flux:
             fname = name+"mf"+str(mf)+".pdf"
         else:

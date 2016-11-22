@@ -25,7 +25,8 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
         mf = None
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
-        pp = np.append(pp, mf)
+        if mean_flux:
+            pp = np.append(pp, mf)
         predicted,_ = gp.predict(pp)
         exact = myspec.get_flux_power(dd,data.get_kf(),mean_flux=mf,flat=True)
         ratio = predicted[0]/exact

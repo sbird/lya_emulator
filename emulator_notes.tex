@@ -80,18 +80,18 @@ a single dimension, they evenly sample the unit interval.
 While the natural choice is to place each sample at the centre of the chosen bin, should the underlying model have a component 
 which is periodic with a $1/k$ interval, this component will not be modelled by the surrogate. For this reason, the position 
 of the sample within the bin is sometimes randomised, allowing periodic components to be picked up at the cost of slightly 
-uneven sampling. We do not expect periodic behaviour in our likelihood function, \spb{but we may randomise the position of the 
-samples within the bin anyway, to minimise discontinuities related to a shift in the bin centres once the design is filled in. (not sure about this.)}
+uneven sampling. We do not expect periodic behaviour in our likelihood function, so we do not randomise the locations of 
+the samples within the bin.
 
-There are usually a large number of possible Latin hypercubes, some more space-filling than others \cite{someone}. For example, 
-samples placed along a diagonal are a Latin hypercube, but fill only a one-dimensional subspace of the unit cube. There are a 
+There are usually a large number of possible Latin hypercubes, some more space-filling than others. %\cite{someone}. 
+For example, samples placed along a diagonal are a Latin hypercube, but fill only a one-dimensional subspace of the unit cube. There are a 
 variety of ways to avoid this problem. \cite{Heitmann:2009} use \textit{orthogonal latin hypercubes}. This extends the 
 one dimensional uniform sampling property of the Latin hypercube to higher dimensions. An orthogonal latin hypercube of rank $r$
 has even sampling of each $r$-dimensional subsample. The problem with these designs is that they are inflexible; it becomes difficult
 to find solutions satisfying the constraints, especially when using infill based on the likelihood samples, as we will.
 
 Therefore we shall ensure the hypercube is space-filling in a different way; by Monte Carlo sampling Latin hypercubes and 
-picking the one with the best space-filling properties. We will maximise the minimum distance between different samples \cite{someone} 
+picking the one with the best space-filling properties. We will maximise the minimum distance between different samples
 under the Euclidean norm. Other choices of metric are also possible. It is not necessary to choose the exactly optimally space-filling 
 design, merely one which has reasonable good properties. This choice will allow us to extend the number of samples 
 and still requiring that the combination form a Latin hypercube.
@@ -122,13 +122,13 @@ estimating the likelihood function. So we can just place new points at the estim
 \subsection{Correcting Resolution}
 
 To cover a wider range of scales, it is advantageous to correct between 
-and multiply by a correction function based on a small number of high resolution simulations. \cite{McDonald:2004} calls this splicing. 
+and multiply by a correction function based on a small number of high resolution simulations. \cite{McDonald:2005pk} calls this splicing. 
 We approximate a simulation with a box size of $L_B$ and a particle number $N_B$ with three smaller simulations. Simulation A has 
 box $L_B$ and $N_B/2$ particles. Simulation B has $L_B/2$ and $N_B/4$ particles, and thus the same resolution as simulation A, but a smaller box. 
 Any differences between simulations A and B will be due to the smaller box size in simulation B. Finally, simulation C has $L_B/2$ and $N_B$ particles. 
 It thus has the same box size as simulation B, but a higher resolution. Any differences between simulation B and simulation C are due to inadequate 
 resolution. The result of a $L_B$, $2 N_B$ simulation is approximated by $P_A / P_B * P_C$, where $P_A$ denotes the flux power spectrum of simulation A.
-This is also known as Richardson extrapolation \cite{Lukic:2013}.
+This is also known as Richardson extrapolation \cite{Lukic:2015}.
 
 The difficulty with this method is that for non-linear evolution, modes are correlated in Fourier space. So the growth of the large box modes only modelled 
 in simulation A affects growth of small scale modes only modelled in simulation C. Instead there is a technique called co-kriging, where a small number 
@@ -136,10 +136,12 @@ of higher resolution simulations are run with the same parameters as a subset of
 another gaussian process, allowing an estimation of the results that would occur if we had run the whole emulator at higher resolution.
 
 It is not yet clear to me what the balance between high and low resolution simulations should be.
+The ideal option is to just use converged simulations, of course, and it may be that this is possible for the 1D power spectrum.
 
 \subsection{Parameters}
 Cosmological parameters: $n_s$ and $A_s$. If using knots, this is instead the number of knots.
-Thermal parameters: $\gamma$ and $T_0$. We actually implement these by a density-dependent rescaling of the heating rate \verb|rescale_gamma|.
+Thermal parameters: helium photo-heating rate. Increasing this  increases the temperature of the gas. 
+Alternatively, we can choose $\gamma$ and $T_0$ directly by implementing a density-dependent rescaling of the heating rate \verb|rescale_gamma|.
 We also need $\tau_0$, the mean flux, which we implement in post-processing.
 Expansion history: We are simulating only up to $z=2$, which is still fairly deep in the matter era. The expansion rate is
 \begin{equation}
@@ -150,15 +152,21 @@ Fractional uncertainty in the expansion rate due to uncertainty in $\Omega_\Lamb
  \delta H / H = \frac{\partial H}{\partial \Omega_\Lambda} \frac{\delta \Omega_\Lambda}{H} = \frac{\delta \Omega_\Lambda /2}{\Omega_m/\Omega_\Lambda (1+z)^3 + 1}
 \end{equation}
 Planck says $\Omega_m = 0.315 \pm 0.013$. So at $z=2$ we have: $\delta H /H \approx 0.037 \delta \Omega_\Lambda \approx 2\times 10^{-4}$. 
-This is small, so we parametrise all uncertainty in the expansion history using $H_0$.
+This is small, so we parametrise all uncertainty in the expansion history using $H_0$. Andreu argues that $H_0$ we can parametrise so that
+$H_0$ has no effect on the likelihood. In this case, we can still allow for residual uncertainty by varying $\Omega_m$ slightly. This
+would be advantageous, because changing $H_0$ too much strictly means one should change the box size as well, which is difficult for 
+the emulator.
 
-This gives us five simulation parameters initially: $n_s$, $A_s$, $H_0$, $\gamma$ and $T_0$. We may ultimately need to expand the thermal model.
+This gives us four simulation parameters initially: $n_s$, $A_s$, $\gamma$ and $T_0$. 
+
+We could alternatively use knots. For the knot parameters we use four knots, as last time, and space them evenly in log space. 
+The power spectrum is multiplied by a piecewise linear polynomial through the specified knots. The boundary conditions are: 
+unity on large scales, equal to the smallest-scale knot on small scales. This gives us $6$ parameters.
 
 \subsection{Open difficulties}
 
 We need some estimate of the dataset around which to build our interpolator. It doesn't have to be very good, but some would be nice. This could
 be an issue in building something for DESI unless we can use the BOSS 3D power.
-
 
 \bibliography{surrogate_refs}
 \end{document}

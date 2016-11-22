@@ -96,7 +96,7 @@ class Emulator(object):
             outdir = os.path.join(self.basedir, self.build_dirname(ev))
             #Use Planck 2015 cosmology
             ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}
-            ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ev[pn['ns']], scalar_amp=ev[pn['As']], code_args = ca, code_class=lyasimulation.LymanAlphaSim, hubble=ev[pn['hub']], omegac=0.25681, omegab=0.0483)
+            ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ev[pn['ns']], scalar_amp=ev[pn['As']], code_args = ca, code_class=lyasimulation.LymanAlphaMPSim, hubble=ev[pn['hub']], omegac=0.25681, omegab=0.0483)
             try:
                 ss.make_simulation()
             except RuntimeError as e:
@@ -182,7 +182,7 @@ class KnotEmulator(Emulator):
         for ev in self.sample_params:
             outdir = os.path.join(self.basedir, self.build_dirname(ev))
             #Use Planck 2015 cosmology
-            ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=ev[self.param_names['hub']], omegac=0.25681, omegab=0.0483)
+            ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=ev[self.param_names['hub']], code_class=lyasimulation.LymanAlphaMPSim, omegac=0.25681, omegab=0.0483)
             try:
                 ss.make_simulation()
             except RuntimeError as e:

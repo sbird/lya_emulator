@@ -1,5 +1,6 @@
 """Generate a test plot for an emulator"""
 from __future__ import print_function
+import os.path
 import numpy as np
 import matplotlib
 import gpemulator
@@ -42,9 +43,10 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
         plt.legend(loc=0)
         plt.show()
         if mean_flux:
-            plt.savefig(name+"mf"+str(mf)+".pdf")
+            fname = name+"mf"+str(mf)+".pdf"
         else:
-            plt.savefig(name+".pdf")
+            fname = name+".pdf"
+        plt.savefig(os.path.join(testdir, fname))
         print(name+".pdf")
         plt.clf()
     return gp

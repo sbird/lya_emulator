@@ -67,9 +67,11 @@ class Emulator(object):
 
     def load(self,dumpfile="emulator_params.json"):
         """Load parameters from a textfile."""
+        kf = self.kf
         with open(os.path.join(self.basedir, dumpfile), 'r') as jsin:
             self.__dict__ = json.load(jsin)
         self._fromarray()
+        self.kf = kf
 
     def get_outdir(self, pp):
         """Get the simulation output directory path for a parameter set."""

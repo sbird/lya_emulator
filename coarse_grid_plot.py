@@ -20,14 +20,13 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
     params_test.load()
     myspec = flux_power.MySpectra(max_z=max_z)
     #Constant mean flux.
-    if mean_flux:
-        mf = coarse_grid.obs_mean_tau(2.)
-    else:
-        mf = None
+    mf = None
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
         if mean_flux:
-            pp = np.append(pp, mf)
+            tau0 = coarse_grid.obs_mean_tau(2.)
+            pp = np.append(pp, tau0)
+            mf = np.exp(-tau0)
         predicted,_ = gp.predict(pp)
         exact = myspec.get_flux_power(dd,data.get_kf(),mean_flux=mf,flat=True)
         ratio = predicted[0]/exact

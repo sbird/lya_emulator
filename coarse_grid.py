@@ -138,7 +138,7 @@ class Emulator(object):
         di = self.get_outdir(pp[:dense])
         mf = None
         if mean_flux:
-            mf = pp[dense+self.dense_param_names['tau0']]
+            mf = np.exp(-pp[dense+self.dense_param_names['tau0']])
         fv = myspec.get_flux_power(di,self.kf, mean_flux = mf, flat=True)
         return fv
 

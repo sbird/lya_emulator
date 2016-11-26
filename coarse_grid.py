@@ -13,6 +13,11 @@ import matter_power
 from SimulationRunner import simulationics
 from SimulationRunner import lyasimulation
 
+def obs_mean_tau(redshift):
+    """The mean flux from 0711.1862: is (0.0023±0.0007) (1+z)^(3.65±0.21)
+    Todo: check for updated values."""
+    return 0.0023*(1.0+redshift)**3.65
+
 class Emulator(object):
     """Small wrapper class to store parameter names and limits, generate simulations and get an emulator."""
     def __init__(self, basedir, param_names=None, param_limits=None, kf=None):

@@ -21,7 +21,7 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
     myspec = flux_power.MySpectra(max_z=max_z)
     #Constant mean flux.
     if mean_flux:
-        mf = 0.3
+        mf = coarse_grid.obs_mean_tau(2.)
     else:
         mf = None
     for pp in params_test.get_parameters():
@@ -42,11 +42,11 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
         plt.title(name)
         plt.legend(loc=0)
         plt.show()
-        plt.ylim(0.9, 1.1)
         if mean_flux:
             fname = name+"mf"+str(mf)+".pdf"
         else:
             fname = name+".pdf"
+            plt.ylim(0.9, 1.1)
         plt.savefig(os.path.join(testdir, fname))
         print(name+".pdf")
         plt.clf()

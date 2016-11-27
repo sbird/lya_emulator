@@ -13,11 +13,6 @@ import matter_power
 from SimulationRunner import simulationics
 from SimulationRunner import lyasimulation
 
-def obs_mean_tau(redshift):
-    """The mean flux from 0711.1862: is (0.0023±0.0007) (1+z)^(3.65±0.21)
-    Todo: check for updated values."""
-    return 0.0023*(1.0+redshift)**3.65
-
 class Emulator(object):
     """Small wrapper class to store parameter names and limits, generate simulations and get an emulator."""
     def __init__(self, basedir, param_names=None, param_limits=None, kf=None):
@@ -35,7 +30,7 @@ class Emulator(object):
             self.kf = kf
         self.dense_param_names = { 'tau0': 0 }
         #Limits on factors to multiply the thermal history by.
-        self.dense_param_limits = obs_mean_tau(2.)*np.array([[0.333,3.],])
+        self.dense_param_limits = np.array([[0.333,3.],])
         self.dense_samples = 10
         self.sample_params = []
         self.basedir = basedir
@@ -136,10 +131,10 @@ class Emulator(object):
     def _get_fv(self, pp,dense,myspec, mean_flux):
         """Helper function to get a single flux vector."""
         di = self.get_outdir(pp[:dense])
-        mf = None
+        t0 = None
         if mean_flux:
-            mf = np.exp(-pp[dense+self.dense_param_names['tau0']])
-        fv = myspec.get_flux_power(di,self.kf, mean_flux = mf, flat=True)
+            t0 = pp[dense+self.dense_param_names['tau0']]
+        fv = myspec.get_flux_power(di,self.kf, tau0_factor = t0, flat=True)
         return fv
 
     def get_emulator(self, mean_flux=False, max_z=4.2):

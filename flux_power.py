@@ -7,6 +7,11 @@ import spectra
 import abstractsnapshot as absn
 import rescaledspectra
 
+def obs_mean_tau(redshift):
+    """The mean flux from 0711.1862: is (0.0023±0.0007) (1+z)^(3.65±0.21)
+    Todo: check for updated values."""
+    return 0.0023*(1.0+redshift)**3.65
+
 class MySpectra(object):
     """This class stores the randomly positioned sightlines once,
        so that they are the same for each emulator point."""
@@ -39,7 +44,7 @@ class MySpectra(object):
         if np.min(np.abs(red - self.zout)) > 0.01:
             raise ValueError("Unwanted redshift")
 
-    def _get_spectra_snap(self, snap, base,mean_flux_desired=None):
+    def _get_spectra_snap(self, snap, base,tau0_factor=None):
         """Get a snapshot with generated HI spectra"""
         #If savefile exists, reload. Otherwise do not.
         def mkspec(snap, base, cofm, axis, rf):
@@ -66,10 +71,13 @@ class MySpectra(object):
             #If this is the first load, we just want to use the snapshot values.
             (self.cofm, self.axis) = (ss.cofm, ss.axis)
         #Now generate the flux power
-        kf, flux_power = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mean_flux_desired)
+        mf = None
+        if tau0_factor is not None:
+            mf = np.exp(-obs_mean_tau(ss.red)*tau0_factor)
+        kf, flux_power = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
         return kf,flux_power
 
-    def get_flux_power(self, base, kf, mean_flux=None, flat=False):
+    def get_flux_power(self, base, kf, tau0_factor=None, flat=False):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
         fluxlist = []
@@ -82,7 +90,7 @@ class MySpectra(object):
             if len(fluxlist) == np.size(self.zout):
                 break
             try:
-                kf_sim,flux_power_sim = self._get_spectra_snap(snap, base,mean_flux_desired=mean_flux)
+                kf_sim,flux_power_sim = self._get_spectra_snap(snap, base,tau0_factor=tau0_factor)
                 #Rebin flux power to have desired k bins
                 rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)
                 fluxlist.append(rebinned(kf))

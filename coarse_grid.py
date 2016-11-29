@@ -30,7 +30,8 @@ class Emulator(object):
             self.kf = kf
         self.dense_param_names = { 'tau0': 0 }
         #Limits on factors to multiply the thermal history by.
-        self.dense_param_limits = np.array([[0.333,3.],])
+        #Mean flux is known to about 10% from SDSS, so we don't need a big range.
+        self.dense_param_limits = np.array([[0.8,1.2],])
         self.dense_samples = 10
         self.sample_params = []
         self.basedir = basedir

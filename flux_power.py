@@ -12,6 +12,12 @@ def obs_mean_tau(redshift):
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
 
+def sim_mean_tau(redshift):
+    """For the simulations, we use a different mean flux. Because they are highly under-resolved,
+    they do not reproduce the mean flux from observations (by a factor of four or so). So we use
+    a different value for now to avoid rescaling by a huge factor."""
+    return 0.01 * (1.0 + redshift)**3.65
+
 class MySpectra(object):
     """This class stores the randomly positioned sightlines once,
        so that they are the same for each emulator point."""
@@ -73,7 +79,7 @@ class MySpectra(object):
         #Now generate the flux power
         mf = None
         if tau0_factor is not None:
-            mf = np.exp(-obs_mean_tau(ss.red)*tau0_factor)
+            mf = np.exp(-sim_mean_tau(ss.red)*tau0_factor)
         kf, flux_power = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
         return kf,flux_power
 

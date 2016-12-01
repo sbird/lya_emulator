@@ -1,4 +1,5 @@
 """Module for computing the likelihood function for the forest emulator."""
+import os.path
 import numpy as np
 import emcee
 import coarse_grid
@@ -34,3 +35,7 @@ def init_emcee(basedir, datadir, mean_flux=False):
     p0 = [pr*np.random.rand(ndim)+pl for i in range(nwalkers)]
     sampler = emcee.EnsembleSampler(nwalkers, ndim, lnlike_linear, args=[gp,data])
     sampler.run_mcmc(p0, 1000)
+    return sampler
+
+if __name__ == "__main__":
+    sampler = init_emcee("~/data/Lya_Boss/cosmo-only-emulator", os.path.expanduser("~/data/Lya_Boss/cosmo-only-test/AA0.94BB1.2CC0.71DD1.2hub0.71"),mean_flux=True)

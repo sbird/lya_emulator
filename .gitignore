@@ -3,6 +3,10 @@
 *.blg
 *.bbl
 *.log
+*.tex~
+*.toc
+*.fls
+*.fdb_latexmk
 *.out
 emulator_notes.pdf
 emulatore_notesNotes.bib

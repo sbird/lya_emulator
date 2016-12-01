@@ -34,7 +34,7 @@ class Emulator(object):
         self.dense_param_limits = np.array([[0.8,1.2],])
         self.dense_samples = 20
         self.sample_params = []
-        self.basedir = basedir
+        self.basedir = os.path.expanduser(basedir)
         if not os.path.exists(basedir):
             os.mkdir(basedir)
 
@@ -129,6 +129,14 @@ class Emulator(object):
         assert not np.any(np.isnan(pvals_new))
         return pvals_new
 
+    def get_param_limits(self, include_dense=True):
+        """Get the reprocessed limits on the parameters for emcee."""
+        if not include_dense:
+            return self.param_limits
+        comb = np.vstack(self.param_limits, self.dense_param_limits)
+        assert np.shape(comb)[1] == 2
+        return comb
+
     def _get_fv(self, pp,dense,myspec, mean_flux):
         """Helper function to get a single flux vector."""
         di = self.get_outdir(pp[:dense])
@@ -214,19 +222,3 @@ class MatterPowerEmulator(Emulator):
         (_,_,_) = dense, myspec, mean_flux
         fv = matter_power.get_matter_power(di,kk=self.kf, redshift = 3.)
         return fv
-
-def lnlike_linear(params, *, gp=None, data=None):
-    """A simple emcee likelihood function for the Lyman-alpha forest."""
-    assert gp is not None
-    assert data is not None
-    predicted,cov = gp.predict(params)
-    diff = predicted-data.pf
-    return -np.dot(diff,np.dot(data.invcovar + np.identity(np.size(diff))/cov,diff))/2.0
-
-def init_lnlike(basedir, data=None,max_z=4.2):
-    """Initialise the emulator by loading the flux power spectra from the simulations."""
-    #Parameter names
-    params = Emulator(basedir)
-    params.load()
-    gp = params.get_emulator(max_z=max_z)
-    return gp, data

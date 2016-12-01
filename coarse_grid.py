@@ -32,7 +32,7 @@ class Emulator(object):
         #Limits on factors to multiply the thermal history by.
         #Mean flux is known to about 10% from SDSS, so we don't need a big range.
         self.dense_param_limits = np.array([[0.8,1.2],])
-        self.dense_samples = 10
+        self.dense_samples = 20
         self.sample_params = []
         self.basedir = basedir
         if not os.path.exists(basedir):
@@ -158,7 +158,7 @@ class Emulator(object):
         gp = gpemulator.SkLearnGP(params=pvals, kf=self.kf, flux_vectors=flux_vectors)
         #Check we reproduce the input
         test, _ = gp.predict(pvals[0,:].reshape(1,-1))
-        assert np.max(np.abs(test[0] / flux_vectors[0,:]-1)) < 1e-5
+        assert np.max(np.abs(test[0] / flux_vectors[0,:]-1)) < 2e-5
         return gp
 
 class KnotEmulator(Emulator):

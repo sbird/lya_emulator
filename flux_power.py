@@ -15,7 +15,7 @@ def sim_mean_tau(redshift):
     """For the simulations, we use a different mean flux. Because they are highly under-resolved,
     they do not reproduce the mean flux from observations (by a factor of four or so). So we use
     a different value for now to avoid rescaling by a huge factor."""
-    return 0.01 * (1.0 + redshift)**3.65
+    return 0.01 * (1.0 + redshift)**3.3
 
 class MySpectra(object):
     """This class stores the randomly positioned sightlines once,

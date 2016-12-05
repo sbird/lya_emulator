@@ -32,7 +32,7 @@ class Emulator(object):
         #Limits on factors to multiply the thermal history by.
         #Mean flux is known to about 10% from SDSS, so we don't need a big range.
         self.dense_param_limits = np.array([[0.8,1.2],])
-        self.dense_samples = 20
+        self.dense_samples = 10
         self.sample_params = []
         self.basedir = os.path.expanduser(basedir)
         if not os.path.exists(basedir):
@@ -137,14 +137,23 @@ class Emulator(object):
         assert np.shape(comb)[1] == 2
         return comb
 
-    def _get_fv(self, pp,dense,myspec, mean_flux):
+    def _get_fv(self, pp,myspec, mean_flux):
         """Helper function to get a single flux vector."""
-        di = self.get_outdir(pp[:dense])
-        t0 = None
+        di = self.get_outdir(pp)
+        print(di)
+        tau0_factors = None
         if mean_flux:
-            t0 = pp[dense+self.dense_param_names['tau0']]
-        fv = myspec.get_flux_power(di,self.kf, tau0_factor = t0, flat=True)
-        return fv
+            ti = self.dense_param_names['tau0']
+            tlim = self.dense_param_limits[ti]
+            tau0_factors = np.linspace(tlim[0], tlim[1], self.dense_samples)
+            pvals_new = np.zeros((self.dense_samples, len(pp)+1))
+            pvals_new[:,:len(pp)] = np.tile(pp, (self.dense_samples,1))
+            pvals_new[:,-1] = tau0_factors
+        else:
+            pvals_new = pp.reshape((1,len(pp)))
+        fv = myspec.get_flux_power(di,self.kf, tau0_factors = tau0_factors)
+        assert np.shape(fv)[0] == np.shape(pvals_new)[0]
+        return pvals_new, fv
 
     def get_emulator(self, mean_flux=False, max_z=4.2):
         """ Build an emulator for the desired k_F and our simulations.
@@ -156,17 +165,16 @@ class Emulator(object):
         """
         myspec = flux_power.MySpectra(max_z=max_z)
         pvals = self.get_parameters()
-        dense = len(self.param_names)
-        assert np.shape(pvals)[1] == dense
-        if mean_flux:
-            pvals = self._add_dense_params(pvals)
-        flux_vectors = np.array([self._get_fv(pp,dense,myspec, mean_flux=mean_flux) for pp in pvals])
+        assert np.shape(pvals)[1] == len(self.param_names)
+        pnew, fluxes = zip(*[self._get_fv(pp, myspec, mean_flux=mean_flux) for pp in pvals])
+        pvals = np.array(pnew).reshape(-1,np.shape(pnew[0])[1])
+        flux_vectors = np.array(fluxes).reshape(-1,np.shape(fluxes[0])[1])
         #Check shape is ok.
         assert np.shape(flux_vectors) == (np.shape(self.get_parameters())[0]*np.max([1,mean_flux*self.dense_samples]), np.size(myspec.zout)*np.size(self.kf))
         gp = gpemulator.SkLearnGP(params=pvals, kf=self.kf, flux_vectors=flux_vectors)
         #Check we reproduce the input
         test, _ = gp.predict(pvals[0,:].reshape(1,-1))
-        assert np.max(np.abs(test[0] / flux_vectors[0,:]-1)) < 2e-5
+        assert np.max(np.abs(test[0] / flux_vectors[0,:]-1)) < 1e-6
         return gp
 
 class KnotEmulator(Emulator):
@@ -216,9 +224,9 @@ class MatterPowerEmulator(Emulator):
         super().load(dumpfile=dumpfile)
         self.kf = np.logspace(np.log10(3*math.pi/60.),np.log10(2*math.pi/60.*256),20)
 
-    def _get_fv(self, pp,dense,myspec, mean_flux):
+    def _get_fv(self, pp,myspec, mean_flux):
         """Helper function to get a single matter power vector."""
-        di = self.get_outdir(pp[:dense])
-        (_,_,_) = dense, myspec, mean_flux
+        di = self.get_outdir(pp)
+        (_,_) = myspec, mean_flux
         fv = matter_power.get_matter_power(di,kk=self.kf, redshift = 3.)
         return fv

@@ -29,8 +29,8 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
         if mean_flux:
             pp = np.append(pp, 1.)
         predicted,_ = gp.predict(pp)
-        exact = myspec.get_flux_power(dd,data.get_kf(),tau0_factor=t0,flat=True)
-        ratio = predicted[0]/exact
+        exact = myspec.get_flux_power(dd,data.get_kf(),tau0_factors=[t0,])
+        ratio = predicted[0]/exact[0]
         nred = len(myspec.zout)
         nk = len(data.get_kf())
         assert np.shape(ratio) == (nred*nk,)

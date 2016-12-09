@@ -48,10 +48,14 @@ class LikelihoodClass(object):
         emcee_sampler.run_mcmc(None, nsamples)
         return emcee_sampler
 
-    def new_parameter_limits(self, sigma=3):
-        """Find a square region centered on the maximum
-        likelihood value of the parameters and covering all regions
-        with a likelihood value larger """
+    def new_parameter_limits(self, all_samples, coverage=0.99):
+        """Find a square region which includes coverage=0.99 of the total likelihood, for refinement."""
+        #Find total amount of likelihood.
+        total_likelihood = np.sum(all_samples)
+        #Rank order the samples
+        #Go down the list of samples until we have > coverage fraction of the total.
+        #Find square region which includes all these samples.
+
 
 if __name__ == "__main__":
     like = LikelihoodClass(os.path.expanduser("~/data/Lya_Boss/cosmo-only-emulator"), os.path.expanduser("~/data/Lya_Boss/cosmo-only-test/AA0.94BB1.2CC0.71DD1.2hub0.71/output/"),mean_flux=True)

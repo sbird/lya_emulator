@@ -60,6 +60,8 @@ class MySpectra(object):
         #First try to get data from the savefile, and if we can't, try the snapshot.
         try:
             ss = mkspec(snap, base, None, None, rf=False)
+            if not self._check_redshift(ss.red):
+                return None
         except OSError:
             #Check the redshift is ok
             red = _get_header_attr_from_snap("Redshift", snap, base)
@@ -93,7 +95,7 @@ class MySpectra(object):
                 break
             try:
                 ss = self._get_spectra_snap(snap, base)
-                if self._check_redshift(ss.red):
+                if ss is not None:
                     fluxlists = self._gen_flux_pow_from_snap(kf, ss, fluxlists, tau0_factors)
             except IOError:
                 #Happens when we haven't transferred the starting snapshots

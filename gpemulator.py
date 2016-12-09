@@ -74,3 +74,7 @@ class SDSSData(object):
     def get_redshifts(self):
         """Get the (unique) redshift bins, sorted in decreasing redshift"""
         return np.sort(np.array(list(set(self.redshifts))))[::-1]
+
+    def get_icovar(self):
+        """Get the inverse covariance matrix"""
+        return self.invcovar

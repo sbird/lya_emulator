@@ -84,7 +84,10 @@ class MySpectra(object):
     def get_flux_power(self, base, kf, tau0_factors=None):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
-        fluxlists = [list([]) for _ in tau0_factors]
+        if tau0_factors is None:
+            fluxlists = [[],]
+        else:
+            fluxlists = [list([]) for _ in tau0_factors]
         for snap in range(1000):
             snapdir = os.path.join(base,"snapdir_"+str(snap).rjust(3,'0'))
             #We ran out of snapshots

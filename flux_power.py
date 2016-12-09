@@ -19,8 +19,8 @@ class MySpectra(object):
         #Use the right values for SDSS or BOSS.
         self.spec_res = 200.
         self.NumLos = numlos
-        #Want output every 0.2 from z=max to z=2.0
-        self.zout = np.arange(max_z,1.9,-0.2)
+        #Want output every 0.2 from z=max to z=2.2, matching SDSS.
+        self.zout = np.arange(max_z,2.1,-0.2)
         self.savefile = "lya_forest_spectra.hdf5"
 
     def _get_cofm(self, num, base):

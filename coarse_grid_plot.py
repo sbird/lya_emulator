@@ -28,7 +28,7 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
         dd = params_test.get_outdir(pp)
         if mean_flux:
             pp = np.append(pp, 1.)
-        predicted,_ = gp.predict(pp)
+        predicted,_ = gp.predict(pp.reshape(1,-1))
         exact = myspec.get_flux_power(dd,data.get_kf(),tau0_factors=t0)
         ratio = predicted[0]/exact[0]
         nred = len(myspec.zout)
@@ -44,7 +44,7 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
         plt.show()
         if mean_flux:
             fname = name+"mf"+str(t0[0])+".pdf"
-            plt.ylim(0.8, 1.2)
+            plt.ylim(0.95, 1.05)
         else:
             fname = name+".pdf"
             plt.ylim(0.9, 1.1)

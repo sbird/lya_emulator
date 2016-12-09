@@ -9,7 +9,7 @@ class SkLearnGP(object):
         self._siIIIform = self._siIIIcorr(kf)
         assert np.shape(flux_vectors)[1] % np.size(kf) == 0
         self.gp = gaussian_process.GaussianProcess()
-        self.gp.fit(params, flux_vectors)
+        self.gp.fit(params, np.log(flux_vectors))
         self.params = params
         self.flux_vectors = flux_vectors
 
@@ -17,7 +17,7 @@ class SkLearnGP(object):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         flux_predict , cov = self.gp.predict(params,eval_MSE=True)
 #         flux_predict *= self.SiIIIcorr(fSiIII,tau_means)
-        return flux_predict, cov
+        return np.exp(flux_predict), cov
 
     def get_predict_error(self, test_params, test_exact):
         """Get the difference between the predicted GP interpolation and some exactly computed test parameters."""

@@ -20,7 +20,11 @@ def init_lnlike(basedir, datadir, mean_flux=False, max_z=4.2):
     params.load()
     gp = params.get_emulator(max_z=max_z, mean_flux=mean_flux)
     myspec = flux_power.MySpectra(max_z=max_z)
-    data = myspec.get_flux_power(datadir,params.kf,tau0_factor=1.,flat=True)
+    data = {}
+    data['pf'] = myspec.get_flux_power(datadir,params.kf,tau0_factors=[1.,])
+    #Use the SDSS covariance matrix
+    sdss = gpemulator.SDSSData()
+    data['invcovar'] = sdss.get_icovar()
     return gp, data, params.get_param_limits(include_dense=mean_flux)
 
 def init_emcee(basedir, datadir, mean_flux=False):
@@ -38,4 +42,4 @@ def init_emcee(basedir, datadir, mean_flux=False):
     return sampler
 
 if __name__ == "__main__":
-    sampler = init_emcee("~/data/Lya_Boss/cosmo-only-emulator", os.path.expanduser("~/data/Lya_Boss/cosmo-only-test/AA0.94BB1.2CC0.71DD1.2hub0.71"),mean_flux=True)
+    chains = init_emcee(os.path.expanduser("~/data/Lya_Boss/cosmo-only-emulator"), os.path.expanduser("~/data/Lya_Boss/cosmo-only-test/AA0.94BB1.2CC0.71DD1.2hub0.71"),mean_flux=True)

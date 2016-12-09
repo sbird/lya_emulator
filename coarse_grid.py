@@ -133,7 +133,7 @@ class Emulator(object):
         """Get the reprocessed limits on the parameters for emcee."""
         if not include_dense:
             return self.param_limits
-        comb = np.vstack(self.param_limits, self.dense_param_limits)
+        comb = np.vstack([self.param_limits, self.dense_param_limits])
         assert np.shape(comb)[1] == 2
         return comb
 

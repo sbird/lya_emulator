@@ -86,27 +86,39 @@ class Emulator(object):
         """Get the list of parameter vectors in this emulator."""
         return self.sample_params
 
-    def build_params(self, nsamples):
+    def build_params(self, nsamples,limits = None, use_existing=False):
         """Build a list of directories and parameters from a hyercube sample"""
-        self.sample_params = latin_hypercube.get_hypercube_samples(self.param_limits, nsamples)
+        if limits is None:
+            limits = self.param_limits
+        #Consider only prior points inside the limits
+        prior_points = None
+        if use_existing:
+            ii = np.where(np.all(self.sample_params > limits[:,0],axis=1)*np.all(self.sample_params < limits[:,1],axis=1))
+            prior_points = self.sample_params[ii]
+        return latin_hypercube.get_hypercube_samples(limits, nsamples,prior_points=prior_points)
 
-    def gen_simulations(self, nsamples, npart=256.,box=60,):
+    def gen_simulations(self, nsamples, npart=256.,box=60,samples=None):
         """Initialise the emulator by generating simulations for various parameters."""
-        if len(self.sample_params) != nsamples:
-            self.build_params(nsamples)
+        if samples is not None:
+            self.sample_params.append(samples)
+        if len(self.sample_params) == 0:
+            self.sample_params = self.build_params(nsamples)
         self.dump()
         #Generate ICs for each set of parameter inputs
-        pn = self.param_names
-        for ev in self.sample_params:
-            outdir = os.path.join(self.basedir, self.build_dirname(ev))
-            #Use Planck 2015 cosmology
-            ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}
-            ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ev[pn['ns']], scalar_amp=ev[pn['As']], code_args = ca, code_class=lyasimulation.LymanAlphaMPSim, hubble=ev[pn['hub']], omegac=0.25681, omegab=0.0483)
-            try:
-                ss.make_simulation()
-            except RuntimeError as e:
-                print(str(e), " while building: ",outdir)
+        [self._do_ic_generation(ev, npart, box) for ev in self.sample_params]
         return
+
+    def _do_ic_generation(self,ev,npart,box):
+        """Do the actual IC generation."""
+        outdir = os.path.join(self.basedir, self.build_dirname(ev))
+        pn = self.param_names
+        #Use Planck 2015 cosmology
+        ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}
+        ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ev[pn['ns']], scalar_amp=ev[pn['As']], code_args = ca, code_class=lyasimulation.LymanAlphaMPSim, hubble=ev[pn['hub']], omegac=0.25681, omegab=0.0483)
+        try:
+            ss.make_simulation()
+        except RuntimeError as e:
+            print(str(e), " while building: ",outdir)
 
     def _add_dense_params(self, pvals):
         """From the matrix representing the 'sparse' (ie, corresponding to an N-body) simulation,
@@ -196,26 +208,20 @@ class KnotEmulator(Emulator):
         #Used for early iterations.
         #self.knot_pos = [0.15,0.475,0.75,1.19]
 
-    def gen_simulations(self, nsamples, npart=256.,box=60,):
-        """Initialise the emulator by generating simulations for various parameters."""
-        if len(self.sample_params) != nsamples:
-            self.build_params(nsamples)
-        self.dump()
-        #Generate ICs for each set of parameter inputs
-        for ev in self.sample_params:
-            outdir = os.path.join(self.basedir, self.build_dirname(ev))
-            try:
-                hub = ev[self.param_names['hub']]
-            except KeyError:
-                #If not in emulator.
-                hub = 0.69
-            #Use Planck 2015 cosmology
-            ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, code_class=lyasimulation.LymanAlphaMPSim, omegac=0.25681, omegab=0.0483)
-            try:
-                ss.make_simulation()
-            except RuntimeError as e:
-                print(str(e), " while building: ",outdir)
-        return
+    def _do_ic_generation(self,ev,npart,box):
+        """Do the actual IC generation."""
+        outdir = os.path.join(self.basedir, self.build_dirname(ev))
+        try:
+            hub = ev[self.param_names['hub']]
+        except KeyError:
+            #If not in emulator.
+            hub = 0.69
+        #Use Planck 2015 cosmology
+        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, code_class=lyasimulation.LymanAlphaMPSim, omegac=0.25681, omegab=0.0483)
+        try:
+            ss.make_simulation()
+        except RuntimeError as e:
+            print(str(e), " while building: ",outdir)
 
 class MatterPowerEmulator(Emulator):
     """Build an emulator based on the matter power spectrum instead of the flux power spectrum, for testing."""

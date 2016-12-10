@@ -16,10 +16,10 @@ class LikelihoodClass(object):
         self.data_fluxpower = myspec.get_flux_power(datadir,sdss.get_kf(),tau0_factors=[1.,])[0]
         #Use the SDSS covariance matrix
         self.data_icovar = sdss.get_icovar()
-        params = coarse_grid.Emulator(basedir)
-        params.load()
-        self.gpemu = params.get_emulator(max_z=4.2, mean_flux=mean_flux)
-        self.param_limits = params.get_param_limits(include_dense=mean_flux)
+        self.emulator = coarse_grid.Emulator(basedir)
+        self.emulator.load()
+        self.gpemu = self.emulator.get_emulator(max_z=4.2, mean_flux=mean_flux)
+        self.param_limits = self.emulator.get_param_limits(include_dense=mean_flux)
         #Initialise sampler and make a few samples.
         self.sampler = self.init_emcee()
 
@@ -48,14 +48,22 @@ class LikelihoodClass(object):
         emcee_sampler.run_mcmc(pos, nsamples)
         return emcee_sampler
 
-    def new_parameter_limits(self, all_samples, coverage=0.99):
-        """Find a square region which includes coverage=0.99 of the total likelihood, for refinement."""
-        #Find total amount of likelihood.
-        total_likelihood = np.sum(all_samples)
-        #Rank order the samples
-        #Go down the list of samples until we have > coverage fraction of the total.
-        #Find square region which includes all these samples.
+    def new_parameter_limits(self, all_samples, coverage=99):
+        """Find a square region which includes coverage of the parameters in each direction, for refinement."""
+        assert coverage < 100
+        #Use the marginalised distributions to find the square region.
+        #If there are strong degeneracies this will be very inefficient.
+        #We could rotate the parameters here,
+        #but ideally we would do that before running the coarse grid anyway.
+        new_par = np.percentile(all_samples,[100-coverage,coverage],axis=0)
+        nsparse = np.shape(self.emulator.get_param_limits(include_dense=False))[0]
+        return new_par.T[:nsparse,:]
 
+    def refinement(self,nsamples,coverage=99):
+        """Do the refinement step."""
+        new_limits = self.new_parameter_limits(self.sampler.flatchain,coverage=coverage)
+        new_samples = self.emulator.build_params(nsamples=nsamples,limits=new_limits, use_existing=True)
+        self.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
 
 if __name__ == "__main__":
     like = LikelihoodClass(os.path.expanduser("~/data/Lya_Boss/cosmo-only-emulator"), os.path.expanduser("~/data/Lya_Boss/cosmo-only-test/AA0.94BB1.2CC0.71DD1.2hub0.71/output/"),mean_flux=True)

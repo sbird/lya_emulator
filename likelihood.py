@@ -43,9 +43,9 @@ class LikelihoodClass(object):
         pl = self.param_limits[:,0]
         p0 = [pr*np.random.rand(ndim)+pl for i in range(nwalkers)]
         emcee_sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lnlike_linear)
-        emcee_sampler.run_mcmc(p0, burnin)
+        pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
         emcee_sampler.reset()
-        emcee_sampler.run_mcmc(None, nsamples)
+        emcee_sampler.run_mcmc(pos, nsamples)
         return emcee_sampler
 
     def new_parameter_limits(self, all_samples, coverage=0.99):

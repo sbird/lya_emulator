@@ -151,12 +151,3 @@ def map_to_unit_cube(param_vec, param_limits):
     new_params = (param_vec-param_limits[:,0])/(param_limits[:,1] - param_limits[:,0])
     assert np.all((new_params >= 0)*(new_params <= 1))
     return new_params
-
-def weight_cube(sample, means, sigmas):
-    """
-    Here we want to weight each dimension in the cube by its cumulative distribution function. So for parameter p in [p1, p2] we sample from p ~ CDF^-1(p1, p2)
-    TODO: How to do this when we only approximately know the likelihood?
-
-    """
-    #This samples from the inverse CDF
-    return norm(loc=means, scale=sigmas).ppf(sample)

@@ -100,7 +100,7 @@ class Emulator(object):
     def gen_simulations(self, nsamples, npart=256.,box=60,samples=None):
         """Initialise the emulator by generating simulations for various parameters."""
         if samples is not None:
-            self.sample_params.append(samples)
+            self.sample_params = np.vstack([self.sample_params, samples])
         if len(self.sample_params) == 0:
             self.sample_params = self.build_params(nsamples)
         self.dump()

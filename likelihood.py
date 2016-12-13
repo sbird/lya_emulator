@@ -50,7 +50,7 @@ class LikelihoodClass(object):
 
     def new_parameter_limits(self, all_samples, coverage=99):
         """Find a square region which includes coverage of the parameters in each direction, for refinement."""
-        assert coverage < 100
+        assert 50 < coverage < 100
         #Use the marginalised distributions to find the square region.
         #If there are strong degeneracies this will be very inefficient.
         #We could rotate the parameters here,

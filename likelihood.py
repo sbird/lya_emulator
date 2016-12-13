@@ -16,7 +16,7 @@ class LikelihoodClass(object):
         self.data_fluxpower = myspec.get_flux_power(datadir,sdss.get_kf(),tau0_factors=[1.,])[0]
         #Use the SDSS covariance matrix
         self.data_icovar = sdss.get_icovar()
-        self.emulator = coarse_grid.Emulator(basedir)
+        self.emulator = coarse_grid.KnotEmulator(basedir)
         self.emulator.load()
         self.gpemu = self.emulator.get_emulator(max_z=4.2, mean_flux=mean_flux)
         self.param_limits = self.emulator.get_param_limits(include_dense=mean_flux)

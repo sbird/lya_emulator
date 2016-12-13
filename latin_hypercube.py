@@ -6,7 +6,6 @@ Several schemes for this are possible.
 We use rejection-sampled latin hypercubes.
 """
 
-from scipy.stats.distributions import norm
 import numpy as np
 
 def get_hypercube_samples(param_limits, nsamples, prior_points = None):

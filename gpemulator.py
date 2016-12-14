@@ -1,17 +1,22 @@
 """Building a surrogate using a Gaussian Process."""
 import math
+import os.path
+import json
 import numpy as np
 from sklearn import gaussian_process
 
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
-    def __init__(self, *, params, kf, flux_vectors):
+    def __init__(self, *, params, kf, flux_vectors, savedir):
+        if params is None:
+            (params, flux_vectors) = self.load(savedir)
         self._siIIIform = self._siIIIcorr(kf)
         assert np.shape(flux_vectors)[1] % np.size(kf) == 0
         self.gp = gaussian_process.GaussianProcessRegressor()
         self.gp.fit(params, np.log(flux_vectors))
         self.params = params
         self.flux_vectors = flux_vectors
+        self.dump(savedir)
 
     def predict(self, params,fSiIII=0.):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
@@ -20,7 +25,8 @@ class SkLearnGP(object):
         return np.exp(flux_predict)
 
     def get_predict_error(self, test_params, test_exact):
-        """Get the difference between the predicted GP interpolation and some exactly computed test parameters."""
+        """Get the difference between the predicted GP
+        interpolation and some exactly computed test parameters."""
         test_exact = test_exact.reshape(np.shape(test_params)[0],-1)
         return self.gp.score(test_params, test_exact)
 
@@ -43,6 +49,20 @@ class SkLearnGP(object):
         assert tau_eff > 0
         aa = fSiIII/(1-np.exp(-tau_eff))
         return 1 + aa**2 + 2 * aa * self._siIIIform
+
+    def dump(self, savedir, dumpfile="gp_training.json"):
+        """Dump training data to a textfile."""
+        #Arrays can't be serialised so convert them back and forth to lists
+        ppl = self.params.tolist()
+        fvl = self.flux_vectors.tolist()
+        with open(os.path.join(savedir, dumpfile), 'w') as jsout:
+            json.dump([ppl, fvl], jsout)
+
+    def load(self,savedir, dumpfile="gp_training.json"):
+        """Load parameters from a textfile."""
+        with open(os.path.join(savedir, dumpfile), 'r') as jsin:
+            [ppl, fvl] = json.load(jsin)
+        return (np.array(ppl), np.array(fvl))
 
 class SDSSData(object):
     """A class to store the flux power and corresponding covariance matrix from SDSS. A little tricky because of the redshift binning."""

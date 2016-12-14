@@ -12,10 +12,13 @@ import matplotlib.pyplot as plt
 
 def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
     """Make a plot showing the interpolation error."""
-    params = coarse_grid.Emulator(emulatordir)
-    params.load()
     data = gpemulator.SDSSData()
-    gp = params.get_emulator(mean_flux=mean_flux, max_z=max_z)
+    try:
+        gp = gpemulator.SkLearnGP(params=None, flux_vectors=None, kf = data.get_kf(), savedir=emulatordir)
+    except IOError:
+        params = coarse_grid.Emulator(emulatordir)
+        params.load()
+        gp = params.get_emulator(mean_flux=mean_flux, max_z=max_z)
     params_test = coarse_grid.Emulator(testdir)
     params_test.load()
     myspec = flux_power.MySpectra(max_z=max_z)

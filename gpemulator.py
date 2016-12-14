@@ -8,14 +8,14 @@ class SkLearnGP(object):
     def __init__(self, *, params, kf, flux_vectors):
         self._siIIIform = self._siIIIcorr(kf)
         assert np.shape(flux_vectors)[1] % np.size(kf) == 0
-        self.gp = gaussian_process.GaussianProcess()
+        self.gp = gaussian_process.GaussianProcessRegressor()
         self.gp.fit(params, np.log(flux_vectors))
         self.params = params
         self.flux_vectors = flux_vectors
 
     def predict(self, params,fSiIII=0.):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
-        flux_predict , _ = self.gp.predict(params,eval_MSE=True)
+        flux_predict = self.gp.predict(params)
 #         flux_predict *= self.SiIIIcorr(fSiIII,tau_means)
         return np.exp(flux_predict)
 

@@ -12,7 +12,7 @@ class SkLearnGP(object):
             (params, flux_vectors) = self.load(savedir)
         self._siIIIform = self._siIIIcorr(kf)
         assert np.shape(flux_vectors)[1] % np.size(kf) == 0
-        self.gp = gaussian_process.GaussianProcessRegressor()
+        self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=True)
         self.gp.fit(params, np.log(flux_vectors))
         self.params = params
         self.flux_vectors = flux_vectors

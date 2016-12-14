@@ -7,7 +7,7 @@ from sklearn import gaussian_process
 
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
-    def __init__(self, *, params, kf, flux_vectors, savedir):
+    def __init__(self, *, params, kf, flux_vectors, savedir=None):
         if params is None:
             (params, flux_vectors) = self.load(savedir)
         self._siIIIform = self._siIIIcorr(kf)
@@ -16,7 +16,8 @@ class SkLearnGP(object):
         self.gp.fit(params, np.log(flux_vectors))
         self.params = params
         self.flux_vectors = flux_vectors
-        self.dump(savedir)
+        if savedir is not None:
+            self.dump(savedir)
 
     def predict(self, params,fSiIII=0.):
         """Get the predicted flux at a parameter value (or list of parameter values)."""

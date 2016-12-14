@@ -28,7 +28,7 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
         dd = params_test.get_outdir(pp)
         if mean_flux:
             pp = np.append(pp, 1.)
-        predicted,_ = gp.predict(pp.reshape(1,-1))
+        predicted = gp.predict(pp.reshape(1,-1))
         exact = myspec.get_flux_power(dd,data.get_kf(),tau0_factors=t0)
         ratio = predicted[0]/exact[0]
         nred = len(myspec.zout)
@@ -62,7 +62,7 @@ def plot_test_matter_interpolate(emulatordir,testdir, redshift=3.):
     params_test.load()
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
-        predicted,_ = gp.predict(pp)
+        predicted = gp.predict(pp)
         exact = matter_power.get_matter_power(dd,params.kf, redshift=redshift)
         ratio = predicted[0]/exact
         name = params_test.build_dirname(pp)

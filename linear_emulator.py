@@ -12,7 +12,7 @@ def lnlike_linear(params, *, gp=None, data=None):
        This neglects many important properties!"""
     assert gp is not None
     assert data is not None
-    predicted,cov = gp.predict(params)
+    predicted = gp.predict(params)
     diff = predicted-data.pf
     return -np.dot(diff,np.dot(data.invcovar + np.identity(np.size(diff))/cov,diff))/2.0
 

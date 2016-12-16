@@ -160,7 +160,9 @@ class Emulator(object):
             tau0_factors = np.linspace(tlim[0], tlim[1], self.dense_samples)
             pvals_new = np.zeros((self.dense_samples, len(pp)+1))
             pvals_new[:,:len(pp)] = np.tile(pp, (self.dense_samples,1))
-            pvals_new[:,-1] = tau0_factors
+            #Use the mean flux at z=3 as the index parameter;
+            #best accuracy should be achieved if the derived parameter is linear in the input.
+            pvals_new[:,-1] = np.exp(-tau0_factors*flux_power.obs_mean_tau(3.))
         else:
             pvals_new = pp.reshape((1,len(pp)))
         fv = myspec.get_flux_power(di,self.kf, tau0_factors = tau0_factors)

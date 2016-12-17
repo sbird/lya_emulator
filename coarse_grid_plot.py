@@ -41,7 +41,7 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
         assert np.shape(ratio) == (nred*nk,)
         for i in range(nred):
             plt.semilogx(data.get_kf(),ratio[i*nk:(i+1)*nk],label=myspec.zout[i])
-            plt.fill_between(data.get_kf(),lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk])
+            plt.fill_between(data.get_kf(),lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk],alpha=0.3, color="grey")
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
         name = params_test.build_dirname(pp)

@@ -31,14 +31,17 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
         dd = params_test.get_outdir(pp)
         if mean_flux:
             pp = np.append(pp, np.exp(-1.*flux_power.obs_mean_tau(3.)))
-        predicted = gp.predict(pp.reshape(1,-1))
+        predicted,std = gp.predict(pp.reshape(1,-1))
         exact = myspec.get_flux_power(dd,data.get_kf(),tau0_factors=t0)
         ratio = predicted[0]/exact[0]
+        upper = (predicted[0] + std[0])/exact[0]
+        lower = (predicted[0] - std[0])/exact[0]
         nred = len(myspec.zout)
         nk = len(data.get_kf())
         assert np.shape(ratio) == (nred*nk,)
         for i in range(nred):
             plt.semilogx(data.get_kf(),ratio[i*nk:(i+1)*nk],label=myspec.zout[i])
+            plt.fill_between(data.get_kf(),lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk])
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
         name = params_test.build_dirname(pp)

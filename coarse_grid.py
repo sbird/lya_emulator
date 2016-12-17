@@ -187,7 +187,7 @@ class Emulator(object):
         assert np.shape(flux_vectors) == (np.shape(self.get_parameters())[0]*np.max([1,mean_flux*self.dense_samples]), np.size(myspec.zout)*np.size(self.kf))
         gp = gpemulator.SkLearnGP(params=pvals, kf=self.kf, flux_vectors=flux_vectors, savedir=self.basedir)
         #Check we reproduce the input
-        test = gp.predict(pvals[0,:].reshape(1,-1))
+        test,_ = gp.predict(pvals[0,:].reshape(1,-1))
         assert np.max(np.abs(test[0] / flux_vectors[0,:]-1)) < 1e-6
         return gp
 

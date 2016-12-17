@@ -21,9 +21,9 @@ class SkLearnGP(object):
 
     def predict(self, params,fSiIII=0.):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
-        flux_predict = self.gp.predict(params)
+        flux_predict, std = self.gp.predict(params, return_std=True)
 #         flux_predict *= self.SiIIIcorr(fSiIII,tau_means)
-        return flux_predict
+        return flux_predict, std
 
     def get_predict_error(self, test_params, test_exact):
         """Get the difference between the predicted GP

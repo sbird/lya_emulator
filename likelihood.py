@@ -28,11 +28,9 @@ class LikelihoodClass(object):
         #Set parameter limits as the hull of the original emulator.
         if np.any(params < self.param_limits[:,0]) or np.any(params > self.param_limits[:,1]):
             return -np.inf
-        predicted = self.gpemu.predict(params.reshape(1,-1))
+        predicted, std = self.gpemu.predict(params.reshape(1,-1))
         diff = predicted[0]-self.data_fluxpower
-        #TODO: emuerr should contain an estimate of the 'theory error' on the power spectrum.
-        emuerr = 1e99
-        return -np.dot(diff,np.dot(self.data_icovar+np.identity(np.size(diff))/emuerr,diff))/2.0
+        return -np.dot(diff,np.dot(self.data_icovar+np.identity(np.size(diff))/std**2,diff))/2.0
 
     def init_emcee(self,nwalkers=100, burnin=1000, nsamples = 10000):
         """Initialise and run emcee."""

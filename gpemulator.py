@@ -4,6 +4,7 @@ import os.path
 import json
 import numpy as np
 from sklearn import gaussian_process
+from sklearn.gaussian_process import kernels
 
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
@@ -12,7 +13,8 @@ class SkLearnGP(object):
             (params, flux_vectors) = self.load(savedir)
         self._siIIIform = self._siIIIcorr(kf)
         assert np.shape(flux_vectors)[1] % np.size(kf) == 0
-        self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=True)
+        kernel = 1.0*kernels.RBF(1.)
+        self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=True, n_restarts_optimizer = 2,kernel=kernel)
         self.gp.fit(params, flux_vectors)
         self.params = params
         self.flux_vectors = flux_vectors

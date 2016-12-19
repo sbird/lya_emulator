@@ -13,9 +13,17 @@ class SkLearnGP(object):
             (params, flux_vectors) = self.load(savedir)
         self._siIIIform = self._siIIIcorr(kf)
         assert np.shape(flux_vectors)[1] % np.size(kf) == 0
-        kernel = 1.0*kernels.RBF(1.)
-        self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=True, n_restarts_optimizer = 2,kernel=kernel)
-        self.gp.fit(params, flux_vectors)
+        #Standard squared-exponential kernel with a different length scale for each parameter, as
+        #they may have very different physical properties.
+        kernel = 1.0*kernels.RBF(length_scale=np.ones_like(params[0,:]), length_scale_bounds=(1e-2, 20))
+        #White noise kernel to account for residual noise in the FFT, etc.
+        kernel+= kernels.WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-7, 1e-2))
+        self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=False, n_restarts_optimizer = 2,kernel=kernel)
+        #Normalise the flux vectors by the median power spectrum.
+        #This ensures that the GP prior (a zero-mean input) is close to true.
+        medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
+        self.scalefactors = flux_vectors[medind,:]
+        self.gp.fit(params, flux_vectors/self.scalefactors-1.)
         self.params = params
         self.flux_vectors = flux_vectors
         if savedir is not None:
@@ -25,7 +33,11 @@ class SkLearnGP(object):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         flux_predict, std = self.gp.predict(params, return_std=True)
 #         flux_predict *= self.SiIIIcorr(fSiIII,tau_means)
-        return flux_predict, std
+        #x = x/q - 1
+        #E(y) = E(x) /q - 1
+        #Var(y) = Var(x)/q^2
+        mean = (flux_predict+1)*self.scalefactors
+        return mean, self.scalefactors*std
 
     def get_predict_error(self, test_params, test_exact):
         """Get the difference between the predicted GP

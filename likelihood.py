@@ -1,4 +1,5 @@
 """Module for computing the likelihood function for the forest emulator."""
+import os
 import os.path
 import numpy as np
 import emcee
@@ -40,7 +41,7 @@ class LikelihoodClass(object):
         pr = (self.param_limits[:,1]-self.param_limits[:,0])
         pl = self.param_limits[:,0]
         p0 = [pr*np.random.rand(ndim)+pl for i in range(nwalkers)]
-        emcee_sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lnlike_linear)
+        emcee_sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lnlike_linear,threads=os.cpu_count())
         pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
         emcee_sampler.reset()
         emcee_sampler.run_mcmc(pos, nsamples)

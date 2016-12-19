@@ -31,16 +31,21 @@ class LikelihoodClass(object):
             return -np.inf
         predicted, std = self.gpemu.predict(params.reshape(1,-1))
         diff = predicted[0]-self.data_fluxpower
-        return -np.dot(diff,np.dot(self.data_icovar+np.identity(np.size(diff))/std**2,diff))/2.0
+        gperr = np.identity(np.size(diff))/std**2
+        return -np.dot(diff,np.dot(self.data_icovar+gperr,diff))/2.0
 
-    def init_emcee(self,nwalkers=100, burnin=1000, nsamples = 10000):
+    def init_emcee(self,nwalkers=100, burnin=1000, nsamples = 40000):
         """Initialise and run emcee."""
         #Number of knots plus one cosmology plus one for mean flux.
         ndim = np.shape(self.param_limits)[0]
         #Limits: we need to hard-prior to the volume of our emulator.
         pr = (self.param_limits[:,1]-self.param_limits[:,0])
         pl = self.param_limits[:,0]
-        p0 = [pr*np.random.rand(ndim)+pl for i in range(nwalkers)]
+        #Priors are assumed to be in the middle.
+        summ = (self.param_limits[:,1]+self.param_limits[:,0])
+        cent = summ/2.
+        ball = summ/16.
+        p0 = [cent+2*ball*np.random.rand(ndim)-ball for _ in range(nwalkers)]
         emcee_sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lnlike_linear,threads=os.cpu_count())
         pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
         emcee_sampler.reset()

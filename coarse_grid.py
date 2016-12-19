@@ -177,14 +177,22 @@ class Emulator(object):
             2. Each flux power spectrum in the set is rescaled to the same mean flux.
             3.
         """
-        myspec = flux_power.MySpectra(max_z=max_z)
         pvals = self.get_parameters()
+        nparams = np.shape(pvals)[1]
         assert np.shape(pvals)[1] == len(self.param_names)
+        #Try to load the emulator from the savefile if we can.
+        try:
+            gp = gpemulator.SkLearnGP(params=nparams+mean_flux, flux_vectors=None, kf = self.kf, savedir=self.basedir)
+            return gp
+        except IOError:
+            pass
+        myspec = flux_power.MySpectra(max_z=max_z)
         pnew, fluxes = zip(*[self._get_fv(pp, myspec, mean_flux=mean_flux) for pp in pvals])
         pvals = np.array(pnew).reshape(-1,np.shape(pnew[0])[1])
         flux_vectors = np.array(fluxes).reshape(-1,np.shape(fluxes[0])[1])
         #Check shape is ok.
-        assert np.shape(flux_vectors) == (np.shape(self.get_parameters())[0]*np.max([1,mean_flux*self.dense_samples]), np.size(myspec.zout)*np.size(self.kf))
+        nsamples = np.shape(self.get_parameters())[0]*np.max([1,mean_flux*self.dense_samples])
+        assert np.shape(flux_vectors) == (nsamples, np.size(myspec.zout)*np.size(self.kf))
         gp = gpemulator.SkLearnGP(params=pvals, kf=self.kf, flux_vectors=flux_vectors, savedir=self.basedir)
         #Check we reproduce the input
         test,_ = gp.predict(pvals[0,:].reshape(1,-1))

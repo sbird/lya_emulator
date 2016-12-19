@@ -9,8 +9,11 @@ from sklearn.gaussian_process import kernels
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
     def __init__(self, *, params, kf, flux_vectors, savedir=None):
-        if params is None:
+        if isinstance(params, int):
+            nparams = params
             (params, flux_vectors) = self.load(savedir)
+            if np.shape(params)[1] != nparams:
+                raise IOError("Parameters in savefile not as expected")
         self._siIIIform = self._siIIIcorr(kf)
         assert np.shape(flux_vectors)[1] % np.size(kf) == 0
         #Standard squared-exponential kernel with a different length scale for each parameter, as

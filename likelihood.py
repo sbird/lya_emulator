@@ -18,11 +18,8 @@ class LikelihoodClass(object):
         self.data_icovar = sdss.get_icovar()
         self.emulator = coarse_grid.KnotEmulator(basedir)
         self.emulator.load()
-        try:
-            self.gpemu = gpemulator.SkLearnGP(params=None, flux_vectors=None, kf = sdss.get_kf(), savedir=self.emulator.basedir)
-        except IOError:
-            self.gpemu = self.emulator.get_emulator(max_z=4.2, mean_flux=mean_flux)
         self.param_limits = self.emulator.get_param_limits(include_dense=mean_flux)
+        self.gpemu = self.emulator.get_emulator(max_z=4.2, mean_flux=mean_flux)
         #Initialise sampler and make a few samples.
         self.sampler = self.init_emcee()
 

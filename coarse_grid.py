@@ -146,6 +146,7 @@ class Emulator(object):
         if not include_dense:
             return self.param_limits
         comb = np.vstack([self.param_limits, self.dense_param_limits])
+        comb[-1,:] = np.exp(-comb[-1,::-1]*flux_power.obs_mean_tau(3.))
         assert np.shape(comb)[1] == 2
         return comb
 

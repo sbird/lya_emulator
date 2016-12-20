@@ -40,14 +40,14 @@ class LikelihoodClass(object):
         ndim = np.shape(self.param_limits)[0]
         #Limits: we need to hard-prior to the volume of our emulator.
         pr = (self.param_limits[:,1]-self.param_limits[:,0])
-        pl = self.param_limits[:,0]
         #Priors are assumed to be in the middle.
-        summ = (self.param_limits[:,1]+self.param_limits[:,0])
-        cent = summ/2.
-        ball = summ/16.
-        p0 = [cent+2*ball*np.random.rand(ndim)-ball for _ in range(nwalkers)]
+        cent = (self.param_limits[:,1]+self.param_limits[:,0])/2.
+        p0 = [cent+2*pr/16.*np.random.rand(ndim)-pr/16. for _ in range(nwalkers)]
+        #assert np.all([np.isfinite(self.lnlike_linear(pp)) for pp in p0])
         emcee_sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lnlike_linear,threads=os.cpu_count())
         pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
+        #Check things are reasonable
+        assert np.all(emcee_sampler.acceptance_fraction > 0.05)
         emcee_sampler.reset()
         emcee_sampler.run_mcmc(pos, nsamples)
         return emcee_sampler

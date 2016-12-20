@@ -39,6 +39,8 @@ class SkLearnGP(object):
         #x = x/q - 1
         #E(y) = E(x) /q - 1
         #Var(y) = Var(x)/q^2
+        #Make sure std is reasonable
+        std = np.min([np.max([std,1e7]),1e-8])
         mean = (flux_predict+1)*self.scalefactors
         return mean, self.scalefactors*std
 

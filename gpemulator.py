@@ -104,8 +104,7 @@ class SDSSData(object):
         self.pf = data[:,1]
         #The covariance matrix, correlating each k and z bin with every other.
         #kbins vary first, so that we have 11 bins with z=2.2, then 11 with z=2.4,etc.
-        covar = np.loadtxt(covarfile)
-        self.invcovar = np.linalg.inv(covar)
+        self.covar = np.loadtxt(covarfile)
 
     def get_kf(self):
         """Get the (unique) flux k values"""
@@ -117,4 +116,8 @@ class SDSSData(object):
 
     def get_icovar(self):
         """Get the inverse covariance matrix"""
-        return self.invcovar
+        return np.linalg.inv(self.covar)
+
+    def get_covar(self):
+        """Get the inverse covariance matrix"""
+        return self.covar

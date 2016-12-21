@@ -16,7 +16,7 @@ class LikelihoodClass(object):
         myspec = flux_power.MySpectra(max_z=4.2)
         self.data_fluxpower = myspec.get_flux_power(datadir,sdss.get_kf(),tau0_factors=[1.,])[0]
         #Use the SDSS covariance matrix
-        self.data_icovar = sdss.get_icovar()
+        self.data_covar = sdss.get_covar()
         self.emulator = coarse_grid.KnotEmulator(basedir)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits(include_dense=mean_flux)
@@ -32,7 +32,9 @@ class LikelihoodClass(object):
         predicted, std = self.gpemu.predict(params.reshape(1,-1))
         diff = predicted[0]-self.data_fluxpower
         gperr = np.identity(np.size(diff))/std**2
-        return -np.dot(diff,np.dot(self.data_icovar+gperr,diff))/2.0
+        #Ideally I would find a way to avoid this inversion
+        icov = np.linalg.inv(self.data_covar + gperr)
+        return -np.dot(diff,np.dot(icov,diff))/2.0
 
     def init_emcee(self,nwalkers=100, burnin=1000, nsamples = 40000):
         """Initialise and run emcee."""

@@ -15,8 +15,11 @@ class LikelihoodClass(object):
         sdss = gpemulator.SDSSData()
         myspec = flux_power.MySpectra(max_z=4.2)
         self.data_fluxpower = myspec.get_flux_power(datadir,sdss.get_kf(),tau0_factors=[1.,])[0]
-        #Use the SDSS covariance matrix
+        #Use the SDSS covariance matrix decomposed to evals and evecs
         self.data_covar = sdss.get_covar()
+        self.data_eval,self.data_evec = np.linalg.eig(sdss.get_covar())
+        self.data_ievec = np.linalg.inv(self.data_evec)
+        #Get emulator
         self.emulator = coarse_grid.KnotEmulator(basedir)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits(include_dense=mean_flux)
@@ -31,12 +34,21 @@ class LikelihoodClass(object):
             return -np.inf
         predicted, std = self.gpemu.predict(params.reshape(1,-1))
         diff = predicted[0]-self.data_fluxpower
-        gperr = np.identity(np.size(diff))/std**2
-        #Ideally I would find a way to avoid this inversion
-        icov = np.linalg.inv(self.data_covar + gperr)
+        #We need (A+sI)^(-1) = (A+sV^{-1}IV)^{-1}
+        #(matrix inversion lemma) = A^{-1} - A^{-1} V (s^{-1} + V^{-1} A^{-1} V)^{-1} V^{-1} A^{-1}
+        #(choose V s.t. A^{-1} = V D^{-1} V^{-1} with D diagonal)
+        # = A^{-1} - A^{-1} V (s^{-1} I + D^{-1})^{-1} V^{-1} A^{-1}
+        # = A^{-1} - V D^{-1} (s^{-1} I + D^{-1})^{-1} D^{-1} V^{-1}
+        # = V ( D^{-1} - D^{-1} (s^{-1} I + D^{-1})^{-1} D^{-1} ) V^{-1}
+        # = V ( D^{-1} - D^{-1} (s^{-1} D + I})^{-1} ) V^{-1}
+        reduced = np.diag(1./self.data_eval*(1-1./(1+self.data_eval/std**2)))
+        icov = np.matmul(np.matmul(self.data_evec, reduced), self.data_ievec)
+        #CHECKED has correct limits
+        #Check inverse worked
+        #assert np.max(np.matmul(self.data_covar + np.identity(np.size(diff))*std**2,icov) - np.identity(np.size(diff))) < 1e-6
         return -np.dot(diff,np.dot(icov,diff))/2.0
 
-    def init_emcee(self,nwalkers=100, burnin=1000, nsamples = 40000, threads=True):
+    def init_emcee(self,nwalkers=100, burnin=1000, nsamples = 5000, threads=True):
         """Initialise and run emcee."""
         if threads:
             threads = os.cpu_count()
@@ -76,4 +88,4 @@ class LikelihoodClass(object):
         self.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
 
 if __name__ == "__main__":
-    like = LikelihoodClass(os.path.expanduser("~/data/Lya_Boss/cosmo-only-emulator"), os.path.expanduser("~/data/Lya_Boss/cosmo-only-test/AA0.94BB1.2CC0.71DD1.2hub0.71/output/"),mean_flux=True)
+    like = LikelihoodClass(os.path.expanduser("~/data/Lya_Boss/cosmo-only-emulator"), os.path.expanduser("~/data/Lya_Boss/cosmo-only-test/AA0.94BB1.2CC0.71DD1.2hub0.71/output/"),mean_flux=True, threads=False)

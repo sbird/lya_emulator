@@ -31,9 +31,8 @@ class LikelihoodClass(object):
             return -np.inf
         predicted, std = self.gpemu.predict(params.reshape(1,-1))
         diff = predicted[0]-self.data_fluxpower
-        gperr = np.identity(np.size(diff))/std**2
         #Ideally I would find a way to avoid this inversion
-        icov = np.linalg.inv(self.data_covar + gperr)
+        icov = np.linalg.inv(self.data_covar + np.diag(std**2))
         return -np.dot(diff,np.dot(icov,diff))/2.0
 
     def init_emcee(self,nwalkers=100, burnin=500, nsamples = 5000):

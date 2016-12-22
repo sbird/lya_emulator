@@ -28,6 +28,10 @@ class Emulator(object):
             self.kf = gpemulator.SDSSData().get_kf()
         else:
             self.kf = kf
+        #We fix omega_m h^2 = 0.129458 (Planck best-fit) and vary omega_m and h^2 to match it.
+        #h^2 itself has no effect on the forest.
+        self.omegamh2 = 0.129458
+        #Corresponds to omega_m = (0.23, 0.31) which should be enough.
         self.dense_param_names = { 'tau0': 0 }
         #Limits on factors to multiply the thermal history by.
         #Mean flux is known to about 10% from SDSS, so we don't need a big range.
@@ -114,7 +118,8 @@ class Emulator(object):
         pn = self.param_names
         #Use Planck 2015 cosmology
         ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}
-        ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ev[pn['ns']], scalar_amp=ev[pn['As']], code_args = ca, code_class=lyasimulation.LymanAlphaMPSim, hubble=ev[pn['hub']], omegac=0.25681, omegab=0.0483)
+        hub = ev[pn['hub']]
+        ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ev[pn['ns']], scalar_amp=ev[pn['As']], code_args = ca, code_class=lyasimulation.LymanAlphaMPSim, hubble=hub, omegac=self.omegamh2/hub**2, omegab=0.0483)
         try:
             ss.make_simulation()
         except RuntimeError as e:
@@ -222,13 +227,9 @@ class KnotEmulator(Emulator):
     def _do_ic_generation(self,ev,npart,box):
         """Do the actual IC generation."""
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
-        try:
-            hub = ev[self.param_names['hub']]
-        except KeyError:
-            #If not in emulator.
-            hub = 0.69
+        hub = ev[self.param_names['hub']]
         #Use Planck 2015 cosmology
-        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, code_class=lyasimulation.LymanAlphaMPSim, omegac=0.25681, omegab=0.0483)
+        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, code_class=lyasimulation.LymanAlphaMPSim, omegac=self.omegamh2/hub**2, omegab=0.0483)
         try:
             ss.make_simulation()
         except RuntimeError as e:

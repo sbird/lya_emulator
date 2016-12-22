@@ -14,7 +14,7 @@ class LikelihoodClass(object):
         #Parameter names
         sdss = gpemulator.SDSSData()
         myspec = flux_power.MySpectra(max_z=4.2)
-        self.data_fluxpower = myspec.get_flux_power(datadir,sdss.get_kf(),tau0_factors=[1.,])[0]
+        self.data_fluxpower = myspec.get_flux_power(datadir,sdss.get_kf(),tau0_factors=[0.8,])[0]
         #Use the SDSS covariance matrix
         self.data_covar = sdss.get_covar()
         self.emulator = coarse_grid.KnotEmulator(basedir)
@@ -48,7 +48,7 @@ class LikelihoodClass(object):
         emcee_sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lnlike_linear)
         pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
         #Check things are reasonable
-        assert np.all(emcee_sampler.acceptance_fraction > 0.05)
+        assert np.all(emcee_sampler.acceptance_fraction > 0.01)
         emcee_sampler.reset()
         emcee_sampler.run_mcmc(pos, nsamples)
         return emcee_sampler

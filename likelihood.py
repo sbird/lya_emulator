@@ -9,7 +9,7 @@ import gpemulator
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, datadir, mean_flux=True, threads=True):
+    def __init__(self, basedir, datadir, mean_flux=True):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Parameter names
         sdss = gpemulator.SDSSData()
@@ -22,7 +22,7 @@ class LikelihoodClass(object):
         self.param_limits = self.emulator.get_param_limits(include_dense=mean_flux)
         self.gpemu = self.emulator.get_emulator(max_z=4.2, mean_flux=mean_flux)
         #Initialise sampler and make a few samples.
-        self.sampler = self.init_emcee(threads=threads)
+        self.sampler = self.init_emcee()
 
     def lnlike_linear(self, params):
         """A simple emcee likelihood function for the Lyman-alpha forest."""
@@ -36,12 +36,8 @@ class LikelihoodClass(object):
         icov = np.linalg.inv(self.data_covar + gperr)
         return -np.dot(diff,np.dot(icov,diff))/2.0
 
-    def init_emcee(self,nwalkers=100, burnin=500, nsamples = 5000, threads=True):
+    def init_emcee(self,nwalkers=100, burnin=500, nsamples = 5000):
         """Initialise and run emcee."""
-        if threads:
-            threads = os.cpu_count()
-        else:
-            threads = 1
         #Number of knots plus one cosmology plus one for mean flux.
         ndim = np.shape(self.param_limits)[0]
         #Limits: we need to hard-prior to the volume of our emulator.
@@ -50,7 +46,7 @@ class LikelihoodClass(object):
         cent = (self.param_limits[:,1]+self.param_limits[:,0])/2.
         p0 = [cent+2*pr/16.*np.random.rand(ndim)-pr/16. for _ in range(nwalkers)]
         #assert np.all([np.isfinite(self.lnlike_linear(pp)) for pp in p0])
-        emcee_sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lnlike_linear,threads=threads)
+        emcee_sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lnlike_linear)
         pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
         #Check things are reasonable
         assert np.all(emcee_sampler.acceptance_fraction > 0.05)

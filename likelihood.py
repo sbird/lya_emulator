@@ -36,7 +36,7 @@ class LikelihoodClass(object):
         icov = np.linalg.inv(self.data_covar + gperr)
         return -np.dot(diff,np.dot(icov,diff))/2.0
 
-    def init_emcee(self,nwalkers=100, burnin=1000, nsamples = 40000, threads=True):
+    def init_emcee(self,nwalkers=100, burnin=500, nsamples = 5000, threads=True):
         """Initialise and run emcee."""
         if threads:
             threads = os.cpu_count()

@@ -9,7 +9,7 @@ import gpemulator
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, datadir, mean_flux=True):
+    def __init__(self, basedir, datadir, mean_flux=True, nsamples=5000):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Parameter names
         sdss = gpemulator.SDSSData()
@@ -22,7 +22,7 @@ class LikelihoodClass(object):
         self.param_limits = self.emulator.get_param_limits(include_dense=mean_flux)
         self.gpemu = self.emulator.get_emulator(max_z=4.2, mean_flux=mean_flux)
         #Initialise sampler and make a few samples.
-        self.sampler = self.init_emcee()
+        self.sampler = self.init_emcee(nsamples=nsamples)
 
     def lnlike_linear(self, params):
         """A simple emcee likelihood function for the Lyman-alpha forest."""

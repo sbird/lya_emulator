@@ -208,10 +208,9 @@ class Emulator(object):
 class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.
     Thermal parameters turned off."""
-    def __init__(self, basedir, nknots=4, use_h0=True):
+    def __init__(self, basedir, nknots=4):
         param_names = {}
-        if use_h0:
-            param_names['hub'] = nknots
+        param_names['hub'] = nknots
         #Assign names like AA, BB, etc.
         for i in range(nknots):
             param_names[string.ascii_uppercase[i]*2] = i

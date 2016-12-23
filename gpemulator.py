@@ -20,7 +20,7 @@ class SkLearnGP(object):
         #they may have very different physical properties.
         kernel = 1.0*kernels.RBF(length_scale=np.ones_like(params[0,:]), length_scale_bounds=(1e-2, 20))
         #White noise kernel to account for residual noise in the FFT, etc.
-        kernel+= kernels.WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-7, 1e-2))
+        kernel+= kernels.WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-7, 1e-4))
         self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=False, n_restarts_optimizer = 2,kernel=kernel)
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.

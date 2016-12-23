@@ -28,9 +28,9 @@ class Emulator(object):
             self.kf = gpemulator.SDSSData().get_kf()
         else:
             self.kf = kf
-        #We fix omega_m h^2 = 0.129458 (Planck best-fit) and vary omega_m and h^2 to match it.
+        #We fix omega_m h^2 = 0.1199 (Planck best-fit) and vary omega_m and h^2 to match it.
         #h^2 itself has no effect on the forest.
-        self.omegamh2 = 0.129458
+        self.omegamh2 = 0.1199
         #Corresponds to omega_m = (0.23, 0.31) which should be enough.
         self.dense_param_names = { 'tau0': 0 }
         #Limits on factors to multiply the thermal history by.

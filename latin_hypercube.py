@@ -13,10 +13,11 @@ def get_hypercube_samples(param_limits, nsamples, prior_points = None):
     parameters (and optionally some prior points), it will generate a hypercube design."""
     ndim,nlims = np.shape(param_limits)
     assert nlims == 2
-    if len(prior_points) == 0:
-        prior_points = None
     if prior_points is not None:
-        prior_points = [map_to_unit_cube(pp, param_limits) for pp in prior_points]
+        if len(prior_points) == 0:
+            prior_points = None
+        else:
+            prior_points = [map_to_unit_cube(pp, param_limits) for pp in prior_points]
     (sample_points, _) = maximinlhs(ndim, nsamples, prior_points=prior_points)
     remapped = np.array([map_from_unit_cube(pp, param_limits) for pp in sample_points])
     assert np.shape(remapped) == (nsamples, ndim)

@@ -21,7 +21,7 @@ class Emulator(object):
         else:
             self.param_names = param_names
         if param_limits is None:
-            self.param_limits = np.array([[0.6, 1.5], [1.5e-9, 4.0e-9], [0., 0.5],[0.25,2],[0.65,0.75]])
+            self.param_limits = np.array([[0.6, 1.5], [1.2e-9, 3.0e-9], [-0.3, 0.3],[0.25,2],[0.65,0.75]])
         else:
             self.param_limits = param_limits
         if kf is None:
@@ -119,7 +119,11 @@ class Emulator(object):
         #Use Planck 2015 cosmology
         ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}
         hub = ev[pn['hub']]
-        ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ev[pn['ns']], scalar_amp=ev[pn['As']], code_args = ca, code_class=lyasimulation.LymanAlphaMPSim, hubble=hub, omegac=self.omegamh2/hub**2, omegab=0.0483)
+        #Convert pivot of the scalar amplitude from amplitude
+        #at 8 Mpc (k = 0.78) to camb pivot scale
+        ns = ev[pn['ns']]
+        wmap = (2e-3/(2*math.pi/8.))**(ns-1.) * ev[pn['As']]
+        ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, code_args = ca, code_class=lyasimulation.LymanAlphaMPSim, hubble=hub, omegac=self.omegamh2/hub**2, omegab=0.0483)
         try:
             ss.make_simulation()
         except RuntimeError as e:

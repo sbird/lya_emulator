@@ -7,80 +7,16 @@ Fits the change in the flux power spectrum with a quadratic function.
 """
 
 import math
-import os.path
-import glob
-import re
 import numpy as np
 from smooth import rebin
+from coarse_grid import Emulator
 
 def Hubble(zz, om, H0):
     """ Hubble parameter. Hubble(Redshift) """
     #Conversion factor between s/km and h/Mpc is (1+z)/H(z)
     return 100*H0*math.sqrt(om*(1+zz)**3+(1-om))
 
-class FluxPowSimulation(object):
-    """Class for loading and storing a flux power spectrum. This should handle all file loading, etc, but not rebinning"""
-    def __init__(self, simdir, snap, params, zz, om, H0=0.7, box=60.):
-        self.H0 = H0
-        self.box=box
-        self.filename = os.path.join(simdir,"flux-power/snapshot_"+str(snap).rjust(3,'0')+"_flux_power.txt")
-        self.params = params
-        (self.k, self.PF) = self._loadpk(zz, H0, om)
-
-    def _loadpk(self, zz, H0, om):
-        """Load a flux power spectrum in s/km units, from a text file."""
-        #Get table from file in Fourier units
-        flux_power=np.loadtxt(self.filename)
-        #Convert to Mpc/h units
-        scale=H0/self.box
-        #k is now in h/Mpc
-        k=(flux_power[1:,0]-0.5)*scale*2.0*math.pi
-        #PF is now in Mpc/h (comoving)
-        PF=flux_power[1:,1]/scale
-        #Convert to s/km: H is in km/s/Mpc, so this gets us km/s
-        scale2 = Hubble(zz,H0, om)/(1.0+zz)/H0
-        PF*=scale2
-        k/=scale2
-        return (k, PF)
-
-    def get_quantity(self):
-        """Return a flux power spectrum, in km/s units"""
-        return self.PF
-
-    def get_bins(self):
-        """Get the binned kvalues in s/km"""
-        return self.k
-
-    def get_param(self,paramname):
-        """Get the parameter values for this simulation snapshot, over which we will do the interpolation"""
-        return self.params[paramname]
-
-    def get_paramnames(self):
-        """Get possible parameter names"""
-        return self.params.keys()
-
-
-class Knot(object):
-    """A basic structure class to store a number of simulation runs, with parameter values."""
-    def __init__(self, name, base, snapnum, zz, bestfit, bf_params, om=0.2669, box=60., H0=0.71):
-        self.name = name
-        #Find all directories with this name
-        dirs = glob.glob( base+"/"+name+"*/" )
-        dirs = [d for d in dirs if re.search(name+r"[0-9\.]*/", d)]
-        #Find the parameter value by globbing the directory
-        matches = [ re.search(name+r"([0-9\.]*)", dd) for dd in dirs ]
-        params = [ float(mm.groups()[0]) for mm in matches ]
-        #Build a list of simulations, loading the flux power spectrum each time
-        self.sims = []
-        for (dd, pp) in zip(dirs, params):
-            pdict = dict(bf_params)
-            pdict[name] = pp
-            self.sims.append(FluxPowSimulation(dd, snapnum, pdict, zz=zz, om=om, box=box, H0=H0) )
-        bfbase = os.path.join(base, bestfit)
-        self.sims.append(FluxPowSimulation(bfbase, snapnum, bf_params, zz=zz, om=om, box=box, H0=H0))
-        self.bfnum=-1
-
-class QuadraticEmulator(object):
+class OldQuadraticEmulator(object):
     """
     Given a set of simulations with different parameters, produce the expected quantity interpolated to a new set of parameters.
     Takes as arguments:
@@ -161,15 +97,28 @@ class QuadraticEmulator(object):
         assert np.shape(results) == (np.size(self.sdsskbins), 2)
         return results
 
-def get_err(simdir, simparams, emulator, om, box, H0):
-    """Get the difference between an interpolated flux power spectrum and the real flux power spectrum for a simulation with the same parameter"""
-    err = {}
-    zzz = { n : 4.2-0.2*n for n in range(12) }
-    for snap in zzz.keys():
-        tester = FluxPowSimulation(simdir, snap, simparams, zz=zzz[snap], om=om, box=box, H0=H0)
-        emulated = emulator[snap].get_interpolated(simparams)
-        lowest = np.where(emulator[snap].sdsskbins > tester.get_bins()[0])[0][0]
-        realpf = np.array(emulated)
-        realpf[lowest:] = rebin(tester.get_quantity(), tester.get_bins(), emulator[snap].sdsskbins[lowest:])
-        err[snap] = (realpf - emulated)/emulated
-    return err
+class QuadraticEmulator(Emulator):
+    """Do emulation with a simple quadratic interpolation."""
+
+    def build_params(self, nsamples,limits = None, use_existing=False):
+        """Build a list of directories and parameters from a hypercube sample"""
+        if use_existing:
+            raise ValueError("Refinement not supported")
+        #Find centroid.
+        if limits is None:
+            limits = self.param_limits
+        centroid = (limits[:,0]+limits[:,1])/2.
+        nparams = len(limits[:,0])
+        #Change one parameter at a time.
+        n1par = (nsamples-1)//nparams
+        sims = [centroid,]
+        for pp in range(nparams):
+            dp = (limits[pp,1] - limits[pp, 0])/n1par
+            pthis = np.zeros_like(centroid)
+            pthis[pp] = 1
+            for nn in range(n1par//2):
+                up = centroid+dp*nn*pthis
+                sims.append(up)
+                down = centroid-dp*nn*pthis
+                sims.append(down)
+        return np.array(sims)

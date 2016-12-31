@@ -91,7 +91,7 @@ class Emulator(object):
         return self.sample_params
 
     def build_params(self, nsamples,limits = None, use_existing=False):
-        """Build a list of directories and parameters from a hyercube sample"""
+        """Build a list of directories and parameters from a hypercube sample"""
         if limits is None:
             limits = self.param_limits
         #Consider only prior points inside the limits

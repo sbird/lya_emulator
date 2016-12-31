@@ -116,7 +116,7 @@ class QuadraticEmulator(Emulator):
             dp = (limits[pp,1] - limits[pp, 0])/n1par
             pthis = np.zeros_like(centroid)
             pthis[pp] = 1
-            for nn in range(n1par//2):
+            for nn in range(1,n1par//2):
                 up = centroid+dp*nn*pthis
                 sims.append(up)
                 down = centroid-dp*nn*pthis

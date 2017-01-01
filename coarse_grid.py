@@ -187,12 +187,17 @@ class Emulator(object):
             2. Each flux power spectrum in the set is rescaled to the same mean flux.
             3.
         """
+        gp = self._get_custom_emulator(emuobj=gpemulator.SkLearnGP, mean_flux=mean_flux, max_z=max_z)
+        return gp
+
+    def _get_custom_emulator(self, *, emuobj, mean_flux=False, max_z=4.2, intol=1e-5):
+        """Helper to allow supporting different emulators."""
         pvals = self.get_parameters()
         nparams = np.shape(pvals)[1]
         assert np.shape(pvals)[1] == len(self.param_names)
         #Try to load the emulator from the savefile if we can.
         try:
-            gp = gpemulator.SkLearnGP(params=nparams+mean_flux, flux_vectors=None, kf = self.kf, savedir=self.basedir)
+            gp = emuobj(params=nparams+mean_flux, flux_vectors=None, kf = self.kf, savedir=self.basedir)
             return gp
         except IOError:
             pass
@@ -203,10 +208,10 @@ class Emulator(object):
         #Check shape is ok.
         nsamples = np.shape(self.get_parameters())[0]*np.max([1,mean_flux*self.dense_samples])
         assert np.shape(flux_vectors) == (nsamples, np.size(myspec.zout)*np.size(self.kf))
-        gp = gpemulator.SkLearnGP(params=pvals, kf=self.kf, flux_vectors=flux_vectors, savedir=self.basedir)
+        gp = emuobj(params=pvals, kf=self.kf, flux_vectors=flux_vectors, savedir=self.basedir)
         #Check we reproduce the input
         test,_ = gp.predict(pvals[0,:].reshape(1,-1))
-        assert np.max(np.abs(test[0] / flux_vectors[0,:]-1)) < 1e-5
+        assert np.max(np.abs(test[0] / flux_vectors[0,:]-1)) < intol
         return gp
 
 class KnotEmulator(Emulator):

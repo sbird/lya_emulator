@@ -16,6 +16,14 @@ class SkLearnGP(object):
                 raise IOError("Parameters in savefile not as expected")
         self._siIIIform = self._siIIIcorr(kf)
         assert np.shape(flux_vectors)[1] % np.size(kf) == 0
+        self._get_interp(params, flux_vectors)
+        self.params = params
+        self.flux_vectors = flux_vectors
+        if savedir is not None:
+            self.dump(savedir)
+
+    def _get_interp(self, params, flux_vectors):
+        """Build the actual interpolator."""
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
         kernel = 1.0*kernels.RBF(length_scale=np.ones_like(params[0,:]), length_scale_bounds=(1e-2, 20))
@@ -27,10 +35,6 @@ class SkLearnGP(object):
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
         self.scalefactors = flux_vectors[medind,:]
         self.gp.fit(params, flux_vectors/self.scalefactors-1.)
-        self.params = params
-        self.flux_vectors = flux_vectors
-        if savedir is not None:
-            self.dump(savedir)
 
     def predict(self, params,fSiIII=0.):
         """Get the predicted flux at a parameter value (or list of parameter values)."""

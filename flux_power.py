@@ -58,7 +58,7 @@ class MySpectra(object):
                 return None
         except OSError:
             #Check the redshift is ok
-            red = _get_header_attr_from_snap("Redshift", snap, base)
+            red = 1./_get_header_attr_from_snap("Time", snap, base)-1.
             if not self._check_redshift(red):
                 return None
             #Make sure we have sightlines
@@ -75,7 +75,7 @@ class MySpectra(object):
             (self.cofm, self.axis) = (ss.cofm, ss.axis)
         return ss
 
-    def get_flux_power(self, base, kf, tau0_factors=None):
+    def get_flux_power(self, base, kf, tau0_factors=None, snappref="PART_"):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
         if tau0_factors is None:
@@ -83,7 +83,7 @@ class MySpectra(object):
         else:
             fluxlists = [list([]) for _ in tau0_factors]
         for snap in range(1000):
-            snapdir = os.path.join(base,"snapdir_"+str(snap).rjust(3,'0'))
+            snapdir = os.path.join(base,snappref+str(snap).rjust(3,'0'))
             #We ran out of snapshots
             if not os.path.exists(snapdir):
                 break

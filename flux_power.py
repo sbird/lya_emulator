@@ -78,6 +78,7 @@ class MySpectra(object):
     def get_flux_power(self, base, kf, tau0_factors=None, snappref="PART_"):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
+        snaplist = []
         if tau0_factors is None:
             fluxlists = [[],]
         else:
@@ -94,6 +95,7 @@ class MySpectra(object):
                 ss = self._get_spectra_snap(snap, base)
                 if ss is not None:
                     fluxlists = self._gen_flux_pow_from_snap(kf, ss, fluxlists, tau0_factors)
+                    snaplist.append(snap)
             except IOError:
                 #Happens when we haven't transferred the starting snapshots
                 if len(fluxlists[0]) == 0:
@@ -101,7 +103,8 @@ class MySpectra(object):
                 raise IOError("Could not load snapshot: "+snapdir)
         #Make sure we have enough outputs
         for ff in fluxlists:
-            assert len(ff) == np.size(self.zout)
+            if len(ff) != np.size(self.zout):
+                raise ValueError("Found only",len(ff),"of",np.size(self.zout),"from snaps:",snaplist)
         flux_arr = np.array([np.ravel(np.array(ff)) for ff in fluxlists])
         return flux_arr
 

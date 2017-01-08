@@ -51,7 +51,7 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
         else:
             fname = name+".pdf"
             plt.ylim(0.9, 1.1)
-        plt.savefig(os.path.join(testdir, fname))
+        plt.savefig(os.path.join(emulatordir, fname))
         print(name+".pdf")
         plt.clf()
     return gp

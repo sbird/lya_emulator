@@ -10,6 +10,7 @@ import math
 import numpy as np
 from coarse_grid import Emulator
 from gpemulator import SkLearnGP
+import flux_power
 
 def Hubble(zz, om, H0):
     """ Hubble parameter. Hubble(Redshift) """
@@ -117,3 +118,34 @@ class QuadraticEmulator(Emulator):
         """
         gp = self._get_custom_emulator(emuobj=QuadraticPoly, mean_flux=mean_flux, max_z=max_z,intol=1e-2)
         return gp
+
+    def _get_fv(self, pp,myspec, mean_flux):
+        """Helper function to get a single flux vector, and deal with the mean flux."""
+        di = self.get_outdir(pp)
+        print(di)
+        tau0_factors = None
+        self.mf_done = False
+        if mean_flux:
+            ti = self.dense_param_names['tau0']
+            tlim = self.dense_param_limits[ti]
+            tau0_factors = np.linspace(tlim[0], tlim[1], self.dense_samples)
+	    #First simulation needs extra entries with different mean fluxes.
+            if not self.mf_done:
+                pvals_new = np.zeros((self.dense_samples, len(pp)+1))
+                pvals_new[:,:len(pp)] = np.tile(pp, (self.dense_samples,1))
+                #Use the mean flux at z=3 as the index parameter;
+                #best accuracy should be achieved if the derived parameter is linear in the input.
+                pvals_new[:,-1] = np.exp(-tau0_factors*flux_power.obs_mean_tau(3.))
+                self.mf_done = True
+            else:
+		#Other simulatons just need a mean flux set.
+                pvals_new = np.zeros((1, len(pp)+1))
+                pvals_new[:,:len(pp)] = pp
+                pvals_new[:,len(pp)] = np.exp(-tau0_factors[self.dense_samples//2]*flux_power.obs_mean_tau(3.))
+        else:
+            pvals_new = pp.reshape((1,len(pp)))
+        fv = myspec.get_flux_power(di,self.kf, tau0_factors = tau0_factors)
+        assert np.shape(fv)[0] == np.shape(pvals_new)[0]
+        nsamples = np.shape(self.get_parameters())[0]*np.max([1,mean_flux*self.dense_samples])
+        assert np.shape(fv)[0] == nsamples
+        return pvals_new, fv

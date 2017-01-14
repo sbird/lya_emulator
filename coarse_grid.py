@@ -131,7 +131,8 @@ class Emulator(object):
 
     def _add_dense_params(self, pvals):
         """From the matrix representing the 'sparse' (ie, corresponding to an N-body) simulation,
-        add extra parameters corresponding to each dense parameter, which corresponds to some modification of the spectrum."""
+        add extra parameters corresponding to each dense parameter, which corresponds to some
+        modification of the spectrum."""
         #Index of the first 'dense' parameter
         #The interpolator class doesn't distinguish, but the flux power loader needs to.
         dense = np.shape(pvals)[1]

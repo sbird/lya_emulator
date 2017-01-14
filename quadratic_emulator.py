@@ -30,19 +30,22 @@ class QuadraticPoly(SkLearnGP):
         """Do the actual interpolation. Called in parent's __init__"""
         self.tables = {}
         self.bestfv = flux_vectors[bfnum]
-        self.bestpar = params[bfnum]
-        for pp in range(np.size(params)):
-            self.tables[pp] = self._calc_coeffs(bfnum, flux_vectors,params[:,pp])
+        self.bestpar = params[bfnum,:]
+        for pp in range(np.shape(params)[1]):
+            self.tables[pp] = self._calc_coeffs(flux_vectors,params[:,pp], pp)
 
     def predict(self, params,fSiIII=0.):
         """Get the interpolated quantity by evaluating the quadratic fit"""
         #Interpolate onto desired bins
         #Do parameter correction
         newq = np.array(self.bestfv)
-        for pp,pval in enumerate(params):
+        assert np.shape(params)[0] == 1
+        for pp,pval in enumerate(params[0]):
             dp = pval - self.bestpar[pp]
             newq += self.tables[pp][:,0]*dp**2 +self.tables[pp][:,1]*dp
-        return (newq + 1.0) * self.bestfv
+        mean = newq * self.bestfv
+        std = np.zeros_like(mean)
+        return [mean,], std
 
     def _flux_deriv(self, PFdif, pdif):
         """Calculate the flux-derivative for a single parameter change"""
@@ -51,28 +54,26 @@ class QuadraticPoly(SkLearnGP):
         (derivs, _,_, _)=np.linalg.lstsq(mat, PFdif)
         return derivs
 
-    def _get_changes(self, bfnum, flux_vectors, params):
+    def _get_changes(self, flux_vectors, params, pind):
         """Get the change in parameters, delta p and the corresponding change
         in the flux power spectrum, delta P_F, rebinned to match the desired output bins"""
-        assert np.size(params) > bfnum
-        dfv = flux_vectors/flux_vectors[bfnum] - 1.0
+        dfv = flux_vectors/self.bestfv
         #Compute change in parameters
-        dparams  = params - params[bfnum]
+        dparams  = params - self.bestpar[pind]
         #Find only those positions where this parameter changed.
         ind = np.where(dparams != 0)
         assert len(ind) > 0
         return (dfv[ind], dparams[ind])
 
-    def _calc_coeffs(self, bfnum, flux_vectors, params):
+    def _calc_coeffs(self, flux_vectors, params, pind):
         """
             Calculate the flux derivatives for a single redshift, for a single shifting parameter
             Input:
-                bfnum - which of the simulations to use as the one to expand around
                 sims - list of simulations. Must be of Simulation type above, ie, define a get_quantity, a get_params and a get_bins.
             Output: (kbins d2P...kbins dP (flat vector of length 2xkbins))
         """
         #Get the change in the interpoaltion value with parameter
-        (dfv, dparams) = self._get_changes(bfnum, flux_vectors, params)
+        (dfv, dparams) = self._get_changes(flux_vectors, params,pind)
         #Pass each k value to flux_deriv in turn.
         # Format of returned data from flux_derivs is (a,b) where it fits to:
         # dto_interp = a params**2 + b params

@@ -39,7 +39,7 @@ class QuadraticPoly(SkLearnGP):
         """Get the interpolated quantity by evaluating the quadratic fit"""
         #Interpolate onto desired bins
         #Do parameter correction
-        newq = np.array(self.bestfv)
+        newq = np.ones_like(self.bestfv)
         assert np.shape(params)[0] == 1
         for pp,pval in enumerate(params[0]):
             dp = pval - self.bestpar[pp]

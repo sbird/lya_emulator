@@ -178,6 +178,8 @@ class Emulator(object):
             pvals_new = pp.reshape((1,len(pp)))
         fv = myspec.get_flux_power(di,self.kf, tau0_factors = tau0_factors)
         assert np.shape(fv)[0] == np.shape(pvals_new)[0]
+        nsamples = np.max([1,mean_flux*self.dense_samples])
+        assert np.shape(fv)[0] == nsamples
         return pvals_new, fv
 
     def get_emulator(self, mean_flux=False, max_z=4.2):
@@ -207,8 +209,7 @@ class Emulator(object):
         pvals = np.array(pnew).reshape(-1,np.shape(pnew[0])[1])
         flux_vectors = np.array(fluxes).reshape(-1,np.shape(fluxes[0])[1])
         #Check shape is ok.
-        nsamples = np.shape(self.get_parameters())[0]*np.max([1,mean_flux*self.dense_samples])
-        assert np.shape(flux_vectors) == (nsamples, np.size(myspec.zout)*np.size(self.kf))
+        assert np.shape(flux_vectors)[1] == np.size(myspec.zout)*np.size(self.kf)
         gp = emuobj(params=pvals, kf=self.kf, flux_vectors=flux_vectors, savedir=self.basedir)
         #Check we reproduce the input
         test,_ = gp.predict(pvals[0,:].reshape(1,-1))

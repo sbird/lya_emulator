@@ -129,19 +129,23 @@ class QuadraticEmulator(Emulator):
             ti = self.dense_param_names['tau0']
             tlim = self.dense_param_limits[ti]
             tau0_factors = np.linspace(tlim[0], tlim[1], self.dense_samples)
+            midpt = self.dense_samples//2
 	    #First simulation needs extra entries with different mean fluxes.
             if not self.mf_done:
                 pvals_new = np.zeros((self.dense_samples, len(pp)+1))
                 pvals_new[:,:len(pp)] = np.tile(pp, (self.dense_samples,1))
-                #Use the mean flux at z=3 as the index parameter;
+                #Use the mean flux at z=3 as the index parameter.
                 #best accuracy should be achieved if the derived parameter is linear in the input.
                 pvals_new[:,-1] = np.exp(-tau0_factors*flux_power.obs_mean_tau(3.))
+                #Remove mid value: first entry set below.
+                pvals_new[1:midpt+1] = pvals_new[0:midpt]
                 self.mf_done = True
             else:
 		#Other simulatons just need a mean flux set.
                 pvals_new = np.zeros((1, len(pp)+1))
                 pvals_new[:,:len(pp)] = pp
-                pvals_new[:,len(pp)] = np.exp(-tau0_factors[self.dense_samples//2]*flux_power.obs_mean_tau(3.))
+            #Make sure the central value of the mean flux is always represented.
+            pvals_new[0,len(pp)] = np.exp(-tau0_factors[midpt]*flux_power.obs_mean_tau(3.))
         else:
             pvals_new = pp.reshape((1,len(pp)))
         fv = myspec.get_flux_power(di,self.kf, tau0_factors = tau0_factors)

@@ -10,10 +10,13 @@ import matter_power
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 
-def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2):
+def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emuclass=None):
     """Make a plot showing the interpolation error."""
     data = gpemulator.SDSSData()
-    params = coarse_grid.Emulator(emulatordir)
+    if emuclass is None:
+        params = coarse_grid.Emulator(emulatordir)
+    else:
+        params = emuclass(emulatordir)
     params.load()
     gp = params.get_emulator(mean_flux=mean_flux, max_z=max_z)
     params_test = coarse_grid.Emulator(testdir)

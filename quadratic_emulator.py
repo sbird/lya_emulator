@@ -40,9 +40,9 @@ class QuadraticPoly(SkLearnGP):
         #Interpolate onto desired bins
         #Do parameter correction
         newq = np.ones_like(self.bestfv)
-        assert np.shape(params)[0] == 1
-        for pp,pval in enumerate(params[0]):
-            dp = pval - self.bestpar[pp]
+        assert np.shape(params) == (1,np.shape(self.bestpar)[0])
+        dpp = params[0] - self.bestpar
+        for pp,dp in enumerate(dpp):
             newq += self.tables[pp][:,0]*dp**2 +self.tables[pp][:,1]*dp
         mean = newq * self.bestfv
         std = np.zeros_like(mean)
@@ -58,12 +58,13 @@ class QuadraticPoly(SkLearnGP):
     def _get_changes(self, flux_vectors, params, pind):
         """Get the change in parameters, delta p and the corresponding change
         in the flux power spectrum, delta P_F, rebinned to match the desired output bins"""
-        dfv = flux_vectors/self.bestfv
+        dfv = flux_vectors/self.bestfv - 1.
         #Compute change in parameters
         dparams  = params - self.bestpar[pind]
         #Find only those positions where this parameter changed.
-        ind = np.where(dparams != 0)
-        assert len(ind) > 0
+        ind = np.where(np.abs(dparams) > 1e-3*self.bestpar[pind])
+        assert (pind < 5 and len(ind[0]) == 4) or len(ind[0]) == 9
+        assert len(ind[0]) > 0
         return (dfv[ind], dparams[ind])
 
     def _calc_coeffs(self, flux_vectors, params, pind):
@@ -78,7 +79,7 @@ class QuadraticPoly(SkLearnGP):
         #Pass each k value to flux_deriv in turn.
         # Format of returned data from flux_derivs is (a,b) where it fits to:
         # dto_interp = a params**2 + b params
-        results =np.array([self._flux_deriv(dfv[:,k], dparams) for k in range(np.shape(dfv)[1])])
+        results = np.array([self._flux_deriv(dfv[:,k], dparams) for k in range(np.shape(dfv)[1])])
         #So results should have shape
         assert np.shape(results) == (np.size(self.bestfv), 2)
         return results

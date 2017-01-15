@@ -151,6 +151,4 @@ class QuadraticEmulator(Emulator):
             pvals_new = pp.reshape((1,len(pp)))
         fv = myspec.get_flux_power(di,self.kf, tau0_factors = tau0_factors)
         assert np.shape(fv)[0] == np.shape(pvals_new)[0]
-        nsamples = np.shape(self.get_parameters())[0]*np.max([1,mean_flux*self.dense_samples])
-        assert np.shape(fv)[0] == nsamples
         return pvals_new, fv

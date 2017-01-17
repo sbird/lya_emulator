@@ -206,8 +206,8 @@ class Emulator(object):
             pass
         myspec = flux_power.MySpectra(max_z=max_z)
         pnew, fluxes = zip(*[self._get_fv(pp, myspec, mean_flux=mean_flux) for pp in pvals])
-        pvals = np.array(pnew).reshape(-1,np.shape(pnew[0])[1])
-        flux_vectors = np.array(fluxes).reshape(-1,np.shape(fluxes[0])[1])
+        pvals = np.vstack(pnew)
+        flux_vectors = np.vstack(fluxes)
         #Check shape is ok.
         assert np.shape(flux_vectors)[1] == np.size(myspec.zout)*np.size(self.kf)
         gp = emuobj(params=pvals, kf=self.kf, flux_vectors=flux_vectors, savedir=self.basedir)

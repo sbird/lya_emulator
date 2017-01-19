@@ -55,6 +55,14 @@ class QuadraticPoly(SkLearnGP):
         (derivs, _,_, _)=np.linalg.lstsq(mat, PFdif)
         return derivs
 
+    def dump(self, savedir, dumpfile="quad_training.json"):
+        """Dump training data to a textfile."""
+        super().dump(savedir,dumpfile=dumpfile)
+
+    def load(self,savedir, dumpfile="quad_training.json"):
+        """Load parameters from a textfile."""
+        super().load(savedir,dumpfile=dumpfile)
+
     def _get_changes(self, flux_vectors, params, pind):
         """Get the change in parameters, delta p and the corresponding change
         in the flux power spectrum, delta P_F, rebinned to match the desired output bins"""
@@ -64,7 +72,7 @@ class QuadraticPoly(SkLearnGP):
         #Find only those positions where this parameter changed.
         ind = np.where(np.abs(dparams) > 1e-3*self.bestpar[pind])
         assert (pind < 5 and len(ind[0]) == 4) or len(ind[0]) == 9
-        assert len(ind[0]) > 0
+        assert ind[0]
         return (dfv[ind], dparams[ind])
 
     def _calc_coeffs(self, flux_vectors, params, pind):
@@ -148,7 +156,7 @@ class QuadraticEmulator(Emulator):
                 self.mf_done = True
             #Use the mean flux at z=3 as the index parameter.
             #best accuracy should be achieved if the derived parameter is linear in the input.
-            pvals_new[:,-1] = np.exp(-tau0_factors*flux_power.obs_mean_tau(3.))
+            pvals_new[:,-1] = np.exp(-1*tau0_factors*flux_power.obs_mean_tau(3.))
         else:
             pvals_new = pp.reshape((1,len(pp)))
         fv = myspec.get_flux_power(di,self.kf, tau0_factors = tau0_factors)

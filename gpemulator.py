@@ -39,6 +39,8 @@ class SkLearnGP(object):
         dparams = params - self.paramzero
         self.linearcoeffs = self._get_linear_fit(dparams, normspectra)
         newspec = normspectra / self._get_linear_pred(dparams) -1
+        #Avoid nan from the division
+        newspec[medind,:] = 0
         self.gp.fit(params, newspec)
 
     def _get_linear_fit(self, dparams, normspectra):
@@ -48,7 +50,7 @@ class SkLearnGP(object):
 
     def _get_linear_pred(self, dparams):
         """Get the linear trend prediction."""
-        return np.dot(self.linearcoeffs.T, dparams)
+        return np.dot(self.linearcoeffs.T, dparams.T).T
 
     def predict(self, params,fSiIII=0.):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
@@ -63,10 +65,9 @@ class SkLearnGP(object):
         #Then multiply by linear fit.
         lincorr = self._get_linear_pred(params - self.paramzero)
         lin_predict = (flux_predict +1) * lincorr
-        std *= lincorr
         #Then multiply by mean value to denorm.
         mean = (flux_predict+1)*self.scalefactors
-        std = std * self.scalefactors
+        std = std * self.scalefactors * lincorr
         return mean, std
 
     def get_predict_error(self, test_params, test_exact):

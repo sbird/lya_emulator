@@ -34,10 +34,25 @@ class SkLearnGP(object):
         #This ensures that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
         self.scalefactors = flux_vectors[medind,:]
-        self.gp.fit(params, flux_vectors/self.scalefactors-1.)
+        self.paramzero = params[medind,:]
+        normspectra = flux_vectors/self.scalefactors-1.
+        dparams = params - self.paramzero
+        self.linearcoeffs = self._get_linear_fit(dparams, normspectra)
+        normspectra /= self._get_linear_pred(dparams)
+        self.gp.fit(params, normspectra)
+
+    def _get_linear_fit(self, dparams, normspectra):
+        """Fit a multi-variate linear trend line through the points."""
+        (derivs, _,_, _)=np.linalg.lstsq(dparams, normspectra)
+        return derivs
+
+    def _get_linear_pred(self, dparams):
+        """Get the linear trend prediction."""
+        return np.dot(self.linearcoeffs, dparams)
 
     def predict(self, params,fSiIII=0.):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
+        #First get the residuals
         flux_predict, std = self.gp.predict(params, return_std=True)
 #         flux_predict *= self.SiIIIcorr(fSiIII,tau_means)
         #x = x/q - 1
@@ -45,8 +60,14 @@ class SkLearnGP(object):
         #Var(y) = Var(x)/q^2
         #Make sure std is reasonable
         std = np.max([np.min([std,1e7]),1e-8])
+        #Then multiply by linear fit.
+        lincorr = self._get_linear_pred(params - self.paramzero)
+        flux_predict *= lincorr
+        std *= lincorr
+        #Then multiply by mean value to denorm.
         mean = (flux_predict+1)*self.scalefactors
-        return mean, self.scalefactors*std
+        std = std * self.scalefactors
+        return mean, std
 
     def get_predict_error(self, test_params, test_exact):
         """Get the difference between the predicted GP

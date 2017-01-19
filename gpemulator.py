@@ -38,8 +38,8 @@ class SkLearnGP(object):
         normspectra = flux_vectors/self.scalefactors-1.
         dparams = params - self.paramzero
         self.linearcoeffs = self._get_linear_fit(dparams, normspectra)
-        normspectra /= self._get_linear_pred(dparams)
-        self.gp.fit(params, normspectra)
+        newspec = normspectra / self._get_linear_pred(dparams) -1
+        self.gp.fit(params, newspec)
 
     def _get_linear_fit(self, dparams, normspectra):
         """Fit a multi-variate linear trend line through the points."""
@@ -48,7 +48,7 @@ class SkLearnGP(object):
 
     def _get_linear_pred(self, dparams):
         """Get the linear trend prediction."""
-        return np.dot(self.linearcoeffs, dparams)
+        return np.dot(self.linearcoeffs.T, dparams)
 
     def predict(self, params,fSiIII=0.):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
@@ -62,7 +62,7 @@ class SkLearnGP(object):
         std = np.max([np.min([std,1e7]),1e-8])
         #Then multiply by linear fit.
         lincorr = self._get_linear_pred(params - self.paramzero)
-        flux_predict *= lincorr
+        lin_predict = (flux_predict +1) * lincorr
         std *= lincorr
         #Then multiply by mean value to denorm.
         mean = (flux_predict+1)*self.scalefactors

@@ -14,7 +14,6 @@ class SkLearnGP(object):
             (params, flux_vectors) = self.load(savedir)
             if np.shape(params)[1] != nparams:
                 raise IOError("Parameters in savefile not as expected")
-        self._siIIIform = self._siIIIcorr(kf)
         assert np.shape(flux_vectors)[1] % np.size(kf) == 0
         self._get_interp(params, flux_vectors)
         self.params = params
@@ -52,11 +51,10 @@ class SkLearnGP(object):
         """Get the linear trend prediction."""
         return np.dot(self.linearcoeffs.T, dparams.T).T
 
-    def predict(self, params,fSiIII=0.):
+    def predict(self, params):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         #First get the residuals
         flux_predict, std = self.gp.predict(params, return_std=True)
-#         flux_predict *= self.SiIIIcorr(fSiIII,tau_means)
         #x = x/q - 1
         #E(y) = E(x) /q - 1
         #Var(y) = Var(x)/q^2
@@ -75,26 +73,6 @@ class SkLearnGP(object):
         interpolation and some exactly computed test parameters."""
         test_exact = test_exact.reshape(np.shape(test_params)[0],-1)
         return self.gp.score(test_params, test_exact)
-
-    def _siIIIcorr(self, kf):
-        """For precomputing the shape of the SiIII correlation"""
-        #Compute bin boundaries in logspace.
-        kmids = np.zeros(np.size(kf)+1)
-        kmids[1:-1] = np.exp((np.log(kf[1:])+np.log(kf[:-1]))/2.)
-        #arbitrary final point
-        kmids[-1] = 2*math.pi/2271 + kmids[-2]
-        # This is the average of cos(2271k) across the k interval in the bin
-        siform = np.zeros_like(kf)
-        siform = (np.sin(2271*kmids[1:])-np.sin(2271*kmids[:-1]))/(kmids[1:]-kmids[:-1])/2271.
-        #Correction for the zeroth bin, because the integral is oscillatory there.
-        siform[0] = np.cos(2271*kf[0])
-        return siform
-
-    def SiIIIcorr(self, fSiIII, tau_eff):
-        """The correction for SiIII contamination, as per McDonald."""
-        assert tau_eff > 0
-        aa = fSiIII/(1-np.exp(-tau_eff))
-        return 1 + aa**2 + 2 * aa * self._siIIIform
 
     def dump(self, savedir, dumpfile="gp_training.json"):
         """Dump training data to a textfile."""

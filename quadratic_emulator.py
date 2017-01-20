@@ -35,7 +35,7 @@ class QuadraticPoly(SkLearnGP):
         for pp in range(np.shape(params)[1]):
             self.tables[pp] = self._calc_coeffs(flux_vectors,params[:,pp], pp)
 
-    def predict(self, params,fSiIII=0.):
+    def predict(self, params):
         """Get the interpolated quantity by evaluating the quadratic fit"""
         #Interpolate onto desired bins
         #Do parameter correction

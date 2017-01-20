@@ -7,6 +7,27 @@ import coarse_grid
 import flux_power
 import gpemulator
 
+
+def _siIIIcorr(kf):
+    """For precomputing the shape of the SiIII correlation"""
+    #Compute bin boundaries in logspace.
+    kmids = np.zeros(np.size(kf)+1)
+    kmids[1:-1] = np.exp((np.log(kf[1:])+np.log(kf[:-1]))/2.)
+    #arbitrary final point
+    kmids[-1] = 2*math.pi/2271 + kmids[-2]
+    # This is the average of cos(2271k) across the k interval in the bin
+    siform = np.zeros_like(kf)
+    siform = (np.sin(2271*kmids[1:])-np.sin(2271*kmids[:-1]))/(kmids[1:]-kmids[:-1])/2271.
+    #Correction for the zeroth bin, because the integral is oscillatory there.
+    siform[0] = np.cos(2271*kf[0])
+    return siform
+
+def SiIIIcorr(fSiIII, tau_eff, kf):
+    """The correction for SiIII contamination, as per McDonald."""
+    assert tau_eff > 0
+    aa = fSiIII/(1-np.exp(-tau_eff))
+    return 1 + aa**2 + 2 * aa * _siIIIcorr(kf)
+
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
     def __init__(self, basedir, datadir, mean_flux=True, nsamples=5000):

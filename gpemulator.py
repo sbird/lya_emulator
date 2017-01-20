@@ -66,7 +66,7 @@ class SkLearnGP(object):
         lincorr = self._get_linear_pred(params - self.paramzero)
         lin_predict = (flux_predict +1) * lincorr
         #Then multiply by mean value to denorm.
-        mean = (flux_predict+1)*self.scalefactors
+        mean = (lin_predict+1)*self.scalefactors
         std = std * self.scalefactors * lincorr
         return mean, std
 

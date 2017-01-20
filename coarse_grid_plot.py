@@ -50,10 +50,9 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emucla
         plt.show()
         if mean_flux:
             fname = name+"mf"+str(t0[0])+".pdf"
-            plt.ylim(0.95, 1.05)
         else:
             fname = name+".pdf"
-            plt.ylim(0.9, 1.1)
+        plt.ylim(0.95,1.05)
         plt.savefig(os.path.join(emulatordir, fname))
         print(name+".pdf")
         plt.clf()

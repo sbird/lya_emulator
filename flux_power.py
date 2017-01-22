@@ -1,8 +1,8 @@
 """Modules to generate the flux power spectrum from a simulation box."""
 from __future__ import print_function
 import os.path
-import numpy as np
 import scipy.interpolate
+import numpy as np
 import spectra
 import abstractsnapshot as absn
 
@@ -10,6 +10,47 @@ def obs_mean_tau(redshift):
     """The mean flux from 0711.1862: is (0.0023±0.0007) (1+z)^(3.65±0.21)
     Todo: check for updated values."""
     return 0.0023*(1.0+redshift)**3.65
+
+class FluxPower(object):
+    """Class stores the flux power spectrum."""
+    def __init__(self, kf):
+        self.spectrae = []
+        self.snaps = []
+        self.kf = kf
+
+    def add_snapshot(self,snapshot, spec):
+        """Add a power spectrum to the list."""
+        self.snaps.append(snapshot)
+        self.spectrae.append(spec)
+
+    def len(self):
+        """Get the number of snapshots in the list"""
+        return len(self.spectrae)
+
+    def _gen_flux_pow_from_snap(self,ss, fluxlists, tau0_factors=None):
+        """Generate the flux power for a list of optical depths from a snapshot.
+        flux_powers is a list of lists of arrays, shape [tau0][redshift]
+        If tau0_factors is None, fluxlists has one entry, fluxlists[0]."""
+        mf = None
+        for ii in range(np.size(tau0_factors)):
+            if tau0_factors is not None:
+                mf = np.exp(-obs_mean_tau(ss.red)*tau0_factors[ii])
+            kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
+            #Rebin flux power to have desired k bins
+            rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)
+            fluxlists[ii].append(rebinned(self.kf))
+        return fluxlists
+
+    def get_power(self, tau0_factors):
+        """Get the flux power in the McDonald 2004 format."""
+        if tau0_factors is None:
+            fluxlists = [[],]
+        else:
+            fluxlists = [list([]) for _ in tau0_factors]
+        for ss in self.spectrae:
+            fluxlists = self._gen_flux_pow_from_snap(ss=ss, fluxlists=fluxlists, tau0_factors=tau0_factors)
+        flux_arr = np.array([np.ravel(np.array(ff)) for ff in fluxlists])
+        return flux_arr
 
 class MySpectra(object):
     """This class stores the randomly positioned sightlines once,
@@ -78,49 +119,29 @@ class MySpectra(object):
     def get_flux_power(self, base, kf, tau0_factors=None, snappref="PART_"):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
-        snaplist = []
-        if tau0_factors is None:
-            fluxlists = [[],]
-        else:
-            fluxlists = [list([]) for _ in tau0_factors]
+        powerspectra = FluxPower(kf)
         for snap in range(1000):
             snapdir = os.path.join(base,snappref+str(snap).rjust(3,'0'))
             #We ran out of snapshots
             if not os.path.exists(snapdir):
                 break
             #We have all we need
-            if len(fluxlists[0]) == np.size(self.zout):
+            if powerspectra.len() == np.size(self.zout):
                 break
             try:
                 ss = self._get_spectra_snap(snap, base)
                 if ss is not None:
-                    fluxlists = self._gen_flux_pow_from_snap(kf, ss, fluxlists, tau0_factors)
-                    snaplist.append(snap)
+                    powerspectra.add_snapshot(snap,ss)
             except IOError:
                 #Happens when we haven't transferred the starting snapshots
-                if len(fluxlists[0]) == 0:
+                if len(powerspectra.len()) == 0:
                     continue
                 raise IOError("Could not load snapshot: "+snapdir)
         #Make sure we have enough outputs
-        for ff in fluxlists:
-            if len(ff) != np.size(self.zout):
-                raise ValueError("Found only",len(ff),"of",np.size(self.zout),"from snaps:",snaplist)
-        flux_arr = np.array([np.ravel(np.array(ff)) for ff in fluxlists])
+        if powerspectra.len() != np.size(self.zout):
+            raise ValueError("Found only",powerspectra.len(),"of",np.size(self.zout),"from snaps:",powerspectra.snaps)
+        flux_arr = powerspectra.get_power(tau0_factors)
         return flux_arr
-
-    def _gen_flux_pow_from_snap(self,kf, ss, fluxlists, tau0_factors=None):
-        """Generate the flux power for a list of optical depths from a snapshot.
-        flux_powers is a list of lists of arrays, shape [tau0][redshift]
-        If tau0_factors is None, fluxlists has one entry, fluxlists[0]."""
-        mf = None
-        for ii in range(np.size(tau0_factors)):
-            if tau0_factors is not None:
-                mf = np.exp(-obs_mean_tau(ss.red)*tau0_factors[ii])
-            kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
-            #Rebin flux power to have desired k bins
-            rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)
-            fluxlists[ii].append(rebinned(kf))
-        return fluxlists
 
 def _get_header_attr_from_snap(attr, num, base):
     """Get a header attribute from a snapshot, if it exists."""

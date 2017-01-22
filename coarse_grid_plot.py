@@ -10,7 +10,7 @@ import matter_power
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 
-def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emuclass=None):
+def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emuclass=None,delta=0.05):
     """Make a plot showing the interpolation error."""
     data = gpemulator.SDSSData()
     if emuclass is None:
@@ -52,7 +52,7 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emucla
             fname = name+"mf"+str(t0[0])+".pdf"
         else:
             fname = name+".pdf"
-        plt.ylim(0.95,1.05)
+        plt.ylim(1-delta,1.+delta)
         plt.savefig(os.path.join(emulatordir, fname))
         print(name+".pdf")
         plt.clf()

@@ -40,7 +40,7 @@ class FluxPower(object):
             rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)
             fluxlists.append(rebinned(kf))
         flux_arr = np.ravel(np.array(fluxlists))
-        assert np.shape(flux_arr) == self.len()*np.size(kf)
+        assert np.shape(flux_arr) == (self.len()*np.size(kf),)
         return flux_arr
 
 class MySpectra(object):

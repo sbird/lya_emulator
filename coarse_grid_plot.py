@@ -18,7 +18,7 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emucla
     else:
         params = emuclass(emulatordir)
     params.load()
-    gp = params.get_emulator(mean_flux=mean_flux, max_z=max_z)
+    gp = params.get_emulator(max_z=max_z)
     params_test = coarse_grid.Emulator(testdir)
     params_test.load()
     myspec = flux_power.MySpectra(max_z=max_z)

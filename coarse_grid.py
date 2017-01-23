@@ -176,7 +176,8 @@ class Emulator(object):
             pvals_new[:,-1] = np.exp(-tau0_factors*flux_power.obs_mean_tau(3.))
         else:
             pvals_new = pp.reshape((1,len(pp)))
-        fv = myspec.get_flux_power(di,self.kf, tau0_factors = tau0_factors)
+        powerspectra = myspec.get_snapshot_list(base=di)
+        fv = powerspectra.get_power(kf = self.kf, tau0_factors = tau0_factors)
         assert np.shape(fv)[0] == np.shape(pvals_new)[0]
         nsamples = np.max([1,mean_flux*self.dense_samples])
         assert np.shape(fv)[0] == nsamples

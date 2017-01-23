@@ -24,7 +24,7 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emucla
     myspec = flux_power.MySpectra(max_z=max_z)
     #Constant mean flux.
     if mean_flux:
-        t0 = [1.,]
+        t0 = 1.
     else:
         t0 = None
     for pp in params_test.get_parameters():

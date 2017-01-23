@@ -32,9 +32,9 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emucla
         predicted,std = gp.predict(pp.reshape(1,-1),tau0_factor=t0)
         ps = myspec.get_snapshot_list(dd)
         exact = ps.get_power(kf = data.get_kf(), tau0_factor = t0)
-        ratio = predicted[0]/exact[0]
-        upper = (predicted[0] + std[0])/exact[0]
-        lower = (predicted[0] - std[0])/exact[0]
+        ratio = predicted[0]/exact
+        upper = (predicted[0] + std[0])/exact
+        lower = (predicted[0] - std[0])/exact
         nred = len(myspec.zout)
         nk = len(data.get_kf())
         assert np.shape(ratio) == (nred*nk,)

@@ -160,30 +160,14 @@ class Emulator(object):
         assert np.shape(comb)[1] == 2
         return comb
 
-    def _get_fv(self, pp,myspec, mean_flux):
+    def _get_fv(self, pp,myspec):
         """Helper function to get a single flux vector."""
         di = self.get_outdir(pp)
         print(di)
-        tau0_factors = None
-        if mean_flux:
-            ti = self.dense_param_names['tau0']
-            tlim = self.dense_param_limits[ti]
-            tau0_factors = np.linspace(tlim[0], tlim[1], self.dense_samples)
-            pvals_new = np.zeros((self.dense_samples, len(pp)+1))
-            pvals_new[:,:len(pp)] = np.tile(pp, (self.dense_samples,1))
-            #Use the mean flux at z=3 as the index parameter;
-            #best accuracy should be achieved if the derived parameter is linear in the input.
-            pvals_new[:,-1] = np.exp(-tau0_factors*flux_power.obs_mean_tau(3.))
-        else:
-            pvals_new = pp.reshape((1,len(pp)))
         powerspectra = myspec.get_snapshot_list(base=di)
-        fv = powerspectra.get_power(kf = self.kf, tau0_factors = tau0_factors)
-        assert np.shape(fv)[0] == np.shape(pvals_new)[0]
-        nsamples = np.max([1,mean_flux*self.dense_samples])
-        assert np.shape(fv)[0] == nsamples
-        return pvals_new, fv
+        return powerspectra
 
-    def get_emulator(self, mean_flux=False, max_z=4.2):
+    def get_emulator(self, max_z=4.2):
         """ Build an emulator for the desired k_F and our simulations.
             kf gives the desired k bins in s/km.
             Mean flux rescaling is handled (if mean_flux=True) as follows:
@@ -191,24 +175,17 @@ class Emulator(object):
             2. Each flux power spectrum in the set is rescaled to the same mean flux.
             3.
         """
-        gp = self._get_custom_emulator(emuobj=gpemulator.SkLearnGP, mean_flux=mean_flux, max_z=max_z)
+        gp = self._get_custom_emulator(emuobj=gpemulator.SkLearnGP, max_z=max_z)
         return gp
 
-    def _get_custom_emulator(self, *, emuobj, mean_flux=False, max_z=4.2, intol=1e-5):
+    def _get_custom_emulator(self, *, emuobj, max_z=4.2):
         """Helper to allow supporting different emulators."""
         pvals = self.get_parameters()
         nparams = np.shape(pvals)[1]
-        assert np.shape(pvals)[1] == len(self.param_names)
+        assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z)
-        pnew, fluxes = zip(*[self._get_fv(pp, myspec, mean_flux=mean_flux) for pp in pvals])
-        pvals = np.vstack(pnew)
-        flux_vectors = np.vstack(fluxes)
-        #Check shape is ok.
-        assert np.shape(flux_vectors)[1] == np.size(myspec.zout)*np.size(self.kf)
-        gp = emuobj(params=pvals, kf=self.kf, flux_vectors=flux_vectors, savedir=self.basedir)
-        #Check we reproduce the input
-        test,_ = gp.predict(pvals[0,:].reshape(1,-1))
-        assert np.max(np.abs(test[0] / flux_vectors[0,:]-1)) < intol
+        powers = [self._get_fv(pp, myspec) for pp in pvals]
+        gp = emuobj(params=pvals, kf=self.kf, power = powers)
         return gp
 
 class KnotEmulator(Emulator):
@@ -247,9 +224,9 @@ class MatterPowerEmulator(Emulator):
         super().load(dumpfile=dumpfile)
         self.kf = np.logspace(np.log10(3*math.pi/60.),np.log10(2*math.pi/60.*256),20)
 
-    def _get_fv(self, pp,myspec, mean_flux):
+    def _get_fv(self, pp,myspec):
         """Helper function to get a single matter power vector."""
         di = self.get_outdir(pp)
-        (_,_) = myspec, mean_flux
+        (_,_) = myspec
         fv = matter_power.get_matter_power(di,kk=self.kf, redshift = 3.)
         return fv

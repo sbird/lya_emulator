@@ -29,10 +29,9 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emucla
         t0 = None
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
-        if mean_flux:
-            pp = np.append(pp, np.exp(-1.*flux_power.obs_mean_tau(3.)))
-        predicted,std = gp.predict(pp.reshape(1,-1))
-        exact = myspec.get_flux_power(dd,data.get_kf(),tau0_factors=t0)
+        predicted,std = gp.predict(pp.reshape(1,-1),tau0_factors=t0)
+        ps = myspec.get_snapshot_list(dd)
+        exact = ps.get_power(kf = data.get_kf, tau0_factor = t0)
         ratio = predicted[0]/exact[0]
         upper = (predicted[0] + std[0])/exact[0]
         lower = (predicted[0] - std[0])/exact[0]

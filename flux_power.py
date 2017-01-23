@@ -26,24 +26,21 @@ class FluxPower(object):
         """Get the number of snapshots in the list"""
         return len(self.spectrae)
 
-    def get_power(self, kf, tau0_factors):
+    def get_power(self, kf, tau0_factor):
         """Generate the flux power for a list of optical depths from a snapshot.
         flux_powers is a list of lists of arrays, shape [tau0][redshift]
         If tau0_factors is None, fluxlists has one entry, fluxlists[0]."""
         mf = None
-        if tau0_factors is None:
-            fluxlists = [[],]
-        else:
-            fluxlists = [list([]) for _ in tau0_factors]
+        fluxlists = []
         for ss in self.spectrae:
-            for ii in range(np.size(tau0_factors)):
-                if tau0_factors is not None:
-                    mf = np.exp(-obs_mean_tau(ss.red)*tau0_factors[ii])
-                kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
-                #Rebin flux power to have desired k bins
-                rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)
-                fluxlists[ii].append(rebinned(kf))
-        flux_arr = np.array([np.ravel(np.array(ff)) for ff in fluxlists])
+            if tau0_factor is not None:
+                mf = np.exp(-obs_mean_tau(ss.red)*tau0_factor)
+            kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
+            #Rebin flux power to have desired k bins
+            rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)
+            fluxlists.append(rebinned(kf))
+        flux_arr = np.ravel(np.array(fluxlists))
+        assert np.shape(flux_arr) == self.len()*np.size(kf)
         return flux_arr
 
 class MySpectra(object):

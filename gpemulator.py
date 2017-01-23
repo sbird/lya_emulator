@@ -1,31 +1,24 @@
 """Building a surrogate using a Gaussian Process."""
-import math
-import os.path
-import json
 import numpy as np
 from sklearn import gaussian_process
 from sklearn.gaussian_process import kernels
 
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
-    def __init__(self, *, params, kf, flux_vectors, savedir=None):
-        if isinstance(params, int):
-            nparams = params
-            (params, flux_vectors) = self.load(savedir)
-            if np.shape(params)[1] != nparams:
-                raise IOError("Parameters in savefile not as expected")
-        assert np.shape(flux_vectors)[1] % np.size(kf) == 0
-        self._get_interp(params, flux_vectors)
+    def __init__(self, *, params, kf, powers):
+        self.powers = powers
         self.params = params
-        self.flux_vectors = flux_vectors
-        if savedir is not None:
-            self.dump(savedir)
+        self.cur_tau_factor = -1
+        self.kf = kf
+        self.intol = 1e-5
 
-    def _get_interp(self, params, flux_vectors):
+    def _get_interp(self, tau0_factor=None):
         """Build the actual interpolator."""
+        self.cur_tau_factor = tau0_factor
+        flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factor = tau0_factor) for ps in self.powers])
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
-        kernel = 1.0*kernels.RBF(length_scale=np.ones_like(params[0,:]), length_scale_bounds=(1e-2, 20))
+        kernel = 1.0*kernels.RBF(length_scale=np.ones_like(self.params[0,:]), length_scale_bounds=(1e-2, 20))
         #White noise kernel to account for residual noise in the FFT, etc.
         kernel+= kernels.WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-7, 1e-4))
         self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=False, n_restarts_optimizer = 2,kernel=kernel)
@@ -33,14 +26,17 @@ class SkLearnGP(object):
         #This ensures that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
         self.scalefactors = flux_vectors[medind,:]
-        self.paramzero = params[medind,:]
+        self.paramzero = self.params[medind,:]
         normspectra = flux_vectors/self.scalefactors-1.
-        dparams = params - self.paramzero
+        dparams = self.params - self.paramzero
         self.linearcoeffs = self._get_linear_fit(dparams, normspectra)
         newspec = normspectra / self._get_linear_pred(dparams) -1
         #Avoid nan from the division
         newspec[medind,:] = 0
-        self.gp.fit(params, newspec)
+        self.gp.fit(self.params, newspec)
+        #Check we reproduce the input
+        test,_ = self.predict(self.params[0,:].reshape(1,-1), tau0_factor=tau0_factor)
+        assert np.max(np.abs(test[0] / flux_vectors[0,:]-1)) < self.intol
 
     def _get_linear_fit(self, dparams, normspectra):
         """Fit a multi-variate linear trend line through the points."""
@@ -51,9 +47,11 @@ class SkLearnGP(object):
         """Get the linear trend prediction."""
         return np.dot(self.linearcoeffs.T, dparams.T).T
 
-    def predict(self, params):
+    def predict(self, params,tau0_factor):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         #First get the residuals
+        if tau0_factor is not self.cur_tau_factor:
+            self._get_interp(tau0_factor = tau0_factor)
         flux_predict, std = self.gp.predict(params, return_std=True)
         #x = x/q - 1
         #E(y) = E(x) /q - 1
@@ -73,20 +71,6 @@ class SkLearnGP(object):
         interpolation and some exactly computed test parameters."""
         test_exact = test_exact.reshape(np.shape(test_params)[0],-1)
         return self.gp.score(test_params, test_exact)
-
-    def dump(self, savedir, dumpfile="gp_training.json"):
-        """Dump training data to a textfile."""
-        #Arrays can't be serialised so convert them back and forth to lists
-        ppl = self.params.tolist()
-        fvl = self.flux_vectors.tolist()
-        with open(os.path.join(savedir, dumpfile), 'w') as jsout:
-            json.dump([ppl, fvl], jsout)
-
-    def load(self,savedir, dumpfile="gp_training.json"):
-        """Load parameters from a textfile."""
-        with open(os.path.join(savedir, dumpfile), 'r') as jsin:
-            [ppl, fvl] = json.load(jsin)
-        return (np.array(ppl), np.array(fvl))
 
 class SDSSData(object):
     """A class to store the flux power and corresponding covariance matrix from SDSS. A little tricky because of the redshift binning."""

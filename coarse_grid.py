@@ -198,12 +198,6 @@ class Emulator(object):
         pvals = self.get_parameters()
         nparams = np.shape(pvals)[1]
         assert np.shape(pvals)[1] == len(self.param_names)
-        #Try to load the emulator from the savefile if we can.
-        try:
-            gp = emuobj(params=nparams+mean_flux, flux_vectors=None, kf = self.kf, savedir=self.basedir)
-            return gp
-        except IOError:
-            pass
         myspec = flux_power.MySpectra(max_z=max_z)
         pnew, fluxes = zip(*[self._get_fv(pp, myspec, mean_flux=mean_flux) for pp in pvals])
         pvals = np.vstack(pnew)

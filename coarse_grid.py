@@ -21,7 +21,7 @@ class Emulator(object):
         else:
             self.param_names = param_names
         if param_limits is None:
-            self.param_limits = np.array([[0.6, 1.5], [1.2e-9, 3.0e-9], [-0.3, 0.3],[0.25,2],[0.65,0.75]])
+            self.param_limits = np.array([[0.6, 1.5], [1.2e-9, 3.0e-9], [-0.5, 0.5],[0.5,1.5],[0.65,0.75]])
         else:
             self.param_limits = param_limits
         if kf is None:
@@ -101,7 +101,7 @@ class Emulator(object):
             prior_points = self.sample_params[ii]
         return latin_hypercube.get_hypercube_samples(limits, nsamples,prior_points=prior_points)
 
-    def gen_simulations(self, nsamples, npart=256.,box=60,samples=None):
+    def gen_simulations(self, nsamples, npart=256.,box=40,samples=None):
         """Initialise the emulator by generating simulations for various parameters."""
         if samples is not None:
             self.sample_params = np.vstack([self.sample_params, samples])

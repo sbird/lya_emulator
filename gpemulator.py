@@ -18,10 +18,10 @@ class SkLearnGP(object):
         flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factor = tau0_factor) for ps in self.powers])
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
-        kernel = 1.0*kernels.RBF(length_scale=np.ones_like(self.params[0,:]), length_scale_bounds=(1e-2, 20))
+        kernel = 1.0*kernels.RBF(length_scale=np.ones_like(self.params[0,:]), length_scale_bounds=(1e-3, 2))
         #White noise kernel to account for residual noise in the FFT, etc.
         kernel+= kernels.WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-7, 1e-4))
-        self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=False, n_restarts_optimizer = 2,kernel=kernel)
+        self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=False, n_restarts_optimizer = 20,kernel=kernel)
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]

@@ -41,7 +41,7 @@ class SkLearnGP(object):
         newspec[medind,:] = 0
         self.gp.fit(params_cube, newspec)
         #Check we reproduce the input
-        test,_ = self.predict(params_cube[0,:].reshape(1,-1), tau0_factor=tau0_factor)
+        test,_ = self.predict(self.params[0,:].reshape(1,-1), tau0_factor=tau0_factor)
         worst = np.abs(test[0] / flux_vectors[0,:]-1)
         if np.max(worst) > self.intol:
             print("Bad interpolation at:",np.where(worst > np.max(worst)*0.9))

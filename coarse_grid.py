@@ -185,7 +185,7 @@ class Emulator(object):
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z)
         powers = [self._get_fv(pp, myspec) for pp in pvals]
-        gp = emuobj(params=pvals, kf=self.kf, powers = powers, param_limits = self.get_param_limits())
+        gp = emuobj(params=pvals, kf=self.kf, powers = powers, param_limits = self.get_param_limits(include_dense=False))
         return gp
 
 class KnotEmulator(Emulator):

@@ -25,7 +25,7 @@ class SkLearnGP(object):
         kernel+= kernels.WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-7, 1e-4))
         self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=False, n_restarts_optimizer = 20,kernel=kernel)
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
-        params_cube = map_to_unit_cube(self.params, self.param_limits)
+        params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
@@ -62,7 +62,7 @@ class SkLearnGP(object):
         if tau0_factor is not self.cur_tau_factor:
             self._get_interp(tau0_factor = tau0_factor)
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
-        params_cube = map_to_unit_cube(params, self.param_limits)
+        params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
         flux_predict, std = self.gp.predict(params_cube, return_std=True)
         #x = x/q - 1
         #E(y) = E(x) /q - 1

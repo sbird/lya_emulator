@@ -38,7 +38,10 @@ class FluxPower(object):
             kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
             #Rebin flux power to have desired k bins
             rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)
-            fluxlists.append(rebinned(kf))
+            ii = np.where(kf > kf_sim[0])
+            ff = flux_power_sim[0]*np.ones_like(kf)
+            ff[ii] = rebinned(kf[ii])
+            fluxlists.append(ff)
         flux_arr = np.ravel(np.array(fluxlists))
         assert np.shape(flux_arr) == (self.len()*np.size(kf),)
         return flux_arr
@@ -74,8 +77,7 @@ class MySpectra(object):
         """Check the redshift of a snapshot set is what we want."""
         if np.min(np.abs(red - self.zout)) > 0.01:
             return 0
-        else:
-            return 1
+        return 1
 
     def _get_spectra_snap(self, snap, base):
         """Get a snapshot with generated HI spectra"""

@@ -36,7 +36,10 @@ class SkLearnGP(object):
         self.gp.fit(self.params, newspec)
         #Check we reproduce the input
         test,_ = self.predict(self.params[0,:].reshape(1,-1), tau0_factor=tau0_factor)
-        assert np.max(np.abs(test[0] / flux_vectors[0,:]-1)) < self.intol
+        worst = np.abs(test[0] / flux_vectors[0,:]-1)
+        if np.max(worst) > self.intol:
+            print("Bad interpolation at:",np.where(worst > np.max(worst)*0.9))
+            assert np.max(worst) < self.intol
 
     def _get_linear_fit(self, dparams, normspectra):
         """Fit a multi-variate linear trend line through the points."""

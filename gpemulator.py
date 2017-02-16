@@ -70,7 +70,7 @@ class SkLearnGP(object):
         #Make sure std is reasonable
         std = np.max([np.min([std,1e7]),1e-8])
         #Then multiply by linear fit.
-        lincorr = self._get_linear_pred(params - self.paramzero)
+        lincorr = self._get_linear_pred(params_cube - self.paramzero)
         lin_predict = (flux_predict +1) * lincorr
         #Then multiply by mean value to denorm.
         mean = (lin_predict+1)*self.scalefactors

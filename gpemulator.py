@@ -2,12 +2,14 @@
 import numpy as np
 from sklearn import gaussian_process
 from sklearn.gaussian_process import kernels
+from latin_hypercube import map_to_unit_cube
 
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
-    def __init__(self, *, params, kf, powers):
+    def __init__(self, *, params, kf, powers,param_limits):
         self.powers = powers
         self.params = params
+        self.param_limits = param_limits
         self.cur_tau_factor = -1
         self.kf = kf
         self.intol = 1e-5
@@ -22,20 +24,24 @@ class SkLearnGP(object):
         #White noise kernel to account for residual noise in the FFT, etc.
         kernel+= kernels.WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-7, 1e-4))
         self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=False, n_restarts_optimizer = 20,kernel=kernel)
+        #Map the parameters onto a unit cube so that all the variations are similar in magnitude
+        params_cube = map_to_unit_cube(self.params, self.param_limits)
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
         self.scalefactors = flux_vectors[medind,:]
-        self.paramzero = self.params[medind,:]
+        self.paramzero = params_cube[medind,:]
+        #Normalise by the median value
         normspectra = flux_vectors/self.scalefactors-1.
-        dparams = self.params - self.paramzero
+        dparams = params_cube - self.paramzero
+        #Do a linear fit first, and fit the GP to the residuals.
         self.linearcoeffs = self._get_linear_fit(dparams, normspectra)
         newspec = normspectra / self._get_linear_pred(dparams) -1
         #Avoid nan from the division
         newspec[medind,:] = 0
-        self.gp.fit(self.params, newspec)
+        self.gp.fit(params_cube, newspec)
         #Check we reproduce the input
-        test,_ = self.predict(self.params[0,:].reshape(1,-1), tau0_factor=tau0_factor)
+        test,_ = self.predict(params_cube[0,:].reshape(1,-1), tau0_factor=tau0_factor)
         worst = np.abs(test[0] / flux_vectors[0,:]-1)
         if np.max(worst) > self.intol:
             print("Bad interpolation at:",np.where(worst > np.max(worst)*0.9))
@@ -55,7 +61,9 @@ class SkLearnGP(object):
         #First get the residuals
         if tau0_factor is not self.cur_tau_factor:
             self._get_interp(tau0_factor = tau0_factor)
-        flux_predict, std = self.gp.predict(params, return_std=True)
+        #Map the parameters onto a unit cube so that all the variations are similar in magnitude
+        params_cube = map_to_unit_cube(params, self.param_limits)
+        flux_predict, std = self.gp.predict(params_cube, return_std=True)
         #x = x/q - 1
         #E(y) = E(x) /q - 1
         #Var(y) = Var(x)/q^2

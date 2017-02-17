@@ -45,6 +45,7 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emucla
         plt.ylabel(r"Predicted/Exact")
         name = params_test.build_dirname(pp)
         plt.title(name)
+        plt.xlim(xmax=0.05)
         plt.legend(loc=0)
         plt.show()
         if mean_flux:

@@ -123,7 +123,7 @@ class Emulator(object):
         #at 8 Mpc (k = 0.78) to camb pivot scale
         ns = ev[pn['ns']]
         wmap = (2e-3/(2*math.pi/8.))**(ns-1.) * ev[pn['As']]
-        ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, code_args = ca, code_class=lyasimulation.LymanAlphaMPSim, hubble=hub, omegac=self.omegamh2/hub**2, omegab=0.0483)
+        ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, code_args = ca, code_class=lyasimulation.LymanAlphaMPSim, hubble=hub, omega0=self.omegamh2/hub**2, omegab=0.0483)
         try:
             ss.make_simulation()
         except RuntimeError as e:
@@ -211,7 +211,7 @@ class KnotEmulator(Emulator):
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
         hub = ev[self.param_names['hub']]
         #Use Planck 2015 cosmology
-        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, code_class=lyasimulation.LymanAlphaMPSim, omegac=self.omegamh2/hub**2, omegab=0.0483)
+        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, code_class=lyasimulation.LymanAlphaMPSim, omega0=self.omegamh2/hub**2, omegab=0.0483)
         try:
             ss.make_simulation()
         except RuntimeError as e:

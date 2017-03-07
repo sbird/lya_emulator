@@ -20,9 +20,9 @@ class SkLearnGP(object):
         flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factor = tau0_factor) for ps in self.powers])
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
-        kernel = 1.0*kernels.RBF(length_scale=np.ones_like(self.params[0,:]), length_scale_bounds=(1e-3, 2))
+        kernel = 3.0*kernels.RBF(length_scale=0.1*np.ones_like(self.params[0,:]), length_scale_bounds=(1e-3, 10))
         #White noise kernel to account for residual noise in the FFT, etc.
-        kernel+= kernels.WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-7, 1e-4))
+        kernel+= kernels.WhiteKernel(noise_level=1e-4, noise_level_bounds=(1e-5, 1e-2))
         self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=False, n_restarts_optimizer = 20,kernel=kernel)
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
@@ -36,9 +36,7 @@ class SkLearnGP(object):
         dparams = params_cube - self.paramzero
         #Do a linear fit first, and fit the GP to the residuals.
         self.linearcoeffs = self._get_linear_fit(dparams, normspectra)
-        newspec = normspectra / self._get_linear_pred(dparams) -1
-        #Avoid nan from the division
-        newspec[medind,:] = 0
+        newspec = normspectra - self._get_linear_pred(dparams)
         self.gp.fit(params_cube, newspec)
         #Check we reproduce the input
         test,_ = self.predict(self.params[0,:].reshape(1,-1), tau0_factor=tau0_factor)
@@ -71,7 +69,7 @@ class SkLearnGP(object):
         std = np.max([np.min([std,1e7]),1e-8])
         #Then multiply by linear fit.
         lincorr = self._get_linear_pred(params_cube - self.paramzero)
-        lin_predict = (flux_predict +1) * lincorr
+        lin_predict = flux_predict + lincorr
         #Then multiply by mean value to denorm.
         mean = (lin_predict+1)*self.scalefactors
         std = std * self.scalefactors * lincorr

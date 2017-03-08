@@ -10,7 +10,6 @@ import math
 import numpy as np
 from coarse_grid import Emulator
 from gpemulator import SkLearnGP
-import flux_power
 
 def Hubble(zz, om, H0):
     """ Hubble parameter. Hubble(Redshift) """
@@ -26,17 +25,24 @@ class QuadraticPoly(SkLearnGP):
                      and then multiply to get the best fit.
                      The best fit used in each knot to compute the different coefficients need not be this simulation!
     """
+    def __init__(self, *, kwargs):
+        super().__init__(**kwargs)
+        self.intol = 1e-2
 
-    def _get_interp(self, params, flux_vectors, bfnum=0):
+    def _get_interp(self, tau0_factor = None, bfnum=0):
         """Do the actual interpolation. Called in parent's __init__"""
+        self.cur_tau_factor = tau0_factor
         self.tables = {}
-        self.bestfv = flux_vectors[bfnum]
-        self.bestpar = params[bfnum,:]
-        for pp in range(np.shape(params)[1]):
-            self.tables[pp] = self._calc_coeffs(flux_vectors,params[:,pp], pp)
+        self.flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factor = tau0_factor) for ps in self.powers])
+        self.bestfv = self.flux_vectors[bfnum]
+        self.bestpar = self.params[bfnum,:]
+        for pp in range(np.shape(self.params)[1]):
+            self.tables[pp] = self._calc_coeffs(self.flux_vectors,self.params[:,pp], pp)
 
-    def predict(self, params):
+    def predict(self, params, tau0_factor):
         """Get the interpolated quantity by evaluating the quadratic fit"""
+        if tau0_factor is not self.cur_tau_factor:
+            self._get_interp(tau0_factor = tau0_factor)
         #Interpolate onto desired bins
         #Do parameter correction
         newq = np.ones_like(self.bestfv)
@@ -54,14 +60,6 @@ class QuadraticPoly(SkLearnGP):
         mat=np.vstack([pdif**2, pdif] ).T
         (derivs, _,_, _)=np.linalg.lstsq(mat, PFdif)
         return derivs
-
-    def dump(self, savedir, dumpfile="quad_training.json"):
-        """Dump training data to a textfile."""
-        super().dump(savedir,dumpfile=dumpfile)
-
-    def load(self,savedir, dumpfile="quad_training.json"):
-        """Load parameters from a textfile."""
-        super().load(savedir,dumpfile=dumpfile)
 
     def _get_changes(self, flux_vectors, params, pind):
         """Get the change in parameters, delta p and the corresponding change
@@ -117,7 +115,7 @@ class QuadraticEmulator(Emulator):
                 sims.append(down)
         return np.array(sims)
 
-    def get_emulator(self, mean_flux=False, max_z=4.2):
+    def get_emulator(self, max_z=4.2):
         """ Build an emulator for the desired k_F and our simulations.
             kf gives the desired k bins in s/km.
             Mean flux rescaling is handled (if mean_flux=True) as follows:
@@ -125,40 +123,5 @@ class QuadraticEmulator(Emulator):
             2. Each flux power spectrum in the set is rescaled to the same mean flux.
             3.
         """
-        gp = self._get_custom_emulator(emuobj=QuadraticPoly, mean_flux=mean_flux, max_z=max_z,intol=1e-2)
+        gp = self._get_custom_emulator(emuobj=QuadraticPoly, max_z=max_z)
         return gp
-
-    def _get_fv(self, pp,myspec, mean_flux):
-        """Helper function to get a single flux vector, and deal with the mean flux."""
-        di = self.get_outdir(pp)
-        print(di)
-        tau0_factors = None
-        if mean_flux:
-            ti = self.dense_param_names['tau0']
-            tlim = self.dense_param_limits[ti]
-            tau0_factors = np.linspace(tlim[0], tlim[1], self.dense_samples)
-            midpt = self.dense_samples//2
-	    #First simulation needs extra entries with different mean fluxes.
-            try:
-                self.mf_done
-		#Other simulatons just need a mean flux set.
-                pvals_new = np.zeros((1, len(pp)+1))
-                pvals_new[:,:len(pp)] = pp
-                tau0_factors = np.array([tau0_factors[midpt]])
-            except AttributeError:
-                pvals_new = np.zeros((self.dense_samples, len(pp)+1))
-                pvals_new[:,:len(pp)] = np.tile(pp, (self.dense_samples,1))
-                #Mid value should be zeroth entry so it is central point of the whole emulator
-                tmp = tau0_factors[midpt]
-                tau0_factors[1:midpt+1] = tau0_factors[0:midpt]
-                tau0_factors[0] = tmp
-                assert tau0_factors[0] != tau0_factors[midpt]
-                self.mf_done = True
-            #Use the mean flux at z=3 as the index parameter.
-            #best accuracy should be achieved if the derived parameter is linear in the input.
-            pvals_new[:,-1] = np.exp(-1*tau0_factors*flux_power.obs_mean_tau(3.))
-        else:
-            pvals_new = pp.reshape((1,len(pp)))
-        fv = myspec.get_flux_power(di,self.kf, tau0_factors = tau0_factors)
-        assert np.shape(fv)[0] == np.shape(pvals_new)[0]
-        return pvals_new, fv

@@ -113,11 +113,11 @@ class MySpectra(object):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
         powerspectra = FluxPower()
-        for snap in range(1000):
+        for snap in range(30):
             snapdir = os.path.join(base,snappref+str(snap).rjust(3,'0'))
             #We ran out of snapshots
             if not os.path.exists(snapdir):
-                break
+                continue
             #We have all we need
             if powerspectra.len() == np.size(self.zout):
                 break
@@ -126,10 +126,7 @@ class MySpectra(object):
                 if ss is not None:
                     powerspectra.add_snapshot(snap,ss)
             except IOError:
-                #Happens when we haven't transferred the starting snapshots
-                if len(powerspectra.len()) == 0:
-                    continue
-                raise IOError("Could not load snapshot: "+snapdir)
+                continue
         #Make sure we have enough outputs
         if powerspectra.len() != np.size(self.zout):
             raise ValueError("Found only",powerspectra.len(),"of",np.size(self.zout),"from snaps:",powerspectra.snaps)

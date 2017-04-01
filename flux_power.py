@@ -109,7 +109,7 @@ class MySpectra(object):
             (self.cofm, self.axis) = (ss.cofm, ss.axis)
         return ss
 
-    def get_snapshot_list(self, base, snappref="PART_"):
+    def get_snapshot_list(self, base, snappref="SPECTRA_"):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
         powerspectra = FluxPower()

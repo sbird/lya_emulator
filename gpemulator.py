@@ -55,8 +55,6 @@ class SkLearnGP(object):
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
         kernel = 3.0*kernels.RBF(length_scale=0.1*np.ones_like(self.params[0,:]), length_scale_bounds=(1e-3, 10))
-        #White noise kernel to account for residual noise in the FFT, etc.
-        kernel+= kernels.WhiteKernel(noise_level=1e-4, noise_level_bounds=(1e-5, 1e-2))
         self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=False, n_restarts_optimizer = 0,kernel=kernel, optimizer=fmin_emcee)
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])

@@ -3,6 +3,40 @@ import numpy as np
 from sklearn import gaussian_process
 from sklearn.gaussian_process import kernels
 from latin_hypercube import map_to_unit_cube
+import scipy.optimize
+import emcee
+
+def fmin_bounds(obj_func, initial_theta, bounds):
+    """Call simplex algorithm for optimisation, ignoring the bounds."""
+    result = scipy.optimize.minimize(lambda x0 : obj_func(x0)[0], initial_theta, method="Nelder-Mead")
+    return result.x, result.fun
+
+def fmin_emcee(obj_func, initial_theta, bounds, nwalkers=30, burnin=100, nsamples = 800):
+    """Initialise and run emcee."""
+    #Number of knots plus one cosmology plus one for mean flux.
+    ndim = np.shape(bounds)[0]
+    #Limits: we need to hard-prior to the volume of our emulator.
+    pr = (bounds[:,1]-bounds[:,0])
+    #Priors are assumed to be in the middle.
+    p0 = [initial_theta+2*pr/16.*np.random.rand(ndim)-pr/16. for _ in range(nwalkers)]
+    #assert np.all([np.isfinite(self.lnlike_linear(pp)) for pp in p0])
+    def bnd_obj_func(x0):
+        """Version of obj_func which returns -Nan when outside of bounds"""
+        if np.any(x0 < bounds[:,0]) or np.any(x0 > bounds[:,1]):
+            return -np.inf
+        return -obj_func(x0)[0]
+    emcee_sampler = emcee.EnsembleSampler(nwalkers, ndim, bnd_obj_func)
+    pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
+    #Check things are reasonable
+    assert np.all(emcee_sampler.acceptance_fraction > 0.01)
+    emcee_sampler.reset()
+    emcee_sampler.run_mcmc(pos, nsamples)
+    #Return maximum likelihood
+    lnp = emcee_sampler.flatlnprobability
+    theta,fmin = emcee_sampler.flatchain[np.argmax(lnp)],-np.max(lnp)
+    print("theta_mc=",theta)
+    print("fmin_mc=", fmin)
+    return theta,fmin
 
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
@@ -23,7 +57,7 @@ class SkLearnGP(object):
         kernel = 3.0*kernels.RBF(length_scale=0.1*np.ones_like(self.params[0,:]), length_scale_bounds=(1e-3, 10))
         #White noise kernel to account for residual noise in the FFT, etc.
         kernel+= kernels.WhiteKernel(noise_level=1e-4, noise_level_bounds=(1e-5, 1e-2))
-        self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=False, n_restarts_optimizer = 20,kernel=kernel)
+        self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=False, n_restarts_optimizer = 0,kernel=kernel, optimizer=fmin_emcee)
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
         #Normalise the flux vectors by the median power spectrum.

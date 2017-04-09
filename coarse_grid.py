@@ -151,7 +151,7 @@ class Emulator(object):
         assert not np.any(np.isnan(pvals_new))
         return pvals_new
 
-    def get_param_limits(self, include_dense=True):
+    def get_param_limits(self, include_dense=False):
         """Get the reprocessed limits on the parameters for emcee."""
         if not include_dense:
             return self.param_limits
@@ -185,7 +185,7 @@ class Emulator(object):
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z)
         powers = [self._get_fv(pp, myspec) for pp in pvals]
-        gp = emuobj(params=pvals, kf=self.kf, powers = powers, param_limits = self.get_param_limits(include_dense=False))
+        gp = emuobj(params=pvals, kf=self.kf, powers = powers, param_limits = self.get_param_limits())
         return gp
 
 class KnotEmulator(Emulator):

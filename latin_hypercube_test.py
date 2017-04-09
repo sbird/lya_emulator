@@ -62,10 +62,10 @@ def test_default_metric():
     #Shuffle the second parameter, which should make it better.
     lhs2 = np.vstack([cc, np.roll(cc,2)]).T
     #Check that this better hypercube is actually better.
-    assert latin_hypercube._default_metric_func(lhs) < latin_hypercube._default_metric_func(lhs2)
+    assert latin_hypercube.default_metric_func(lhs) < latin_hypercube.default_metric_func(lhs2)
     #Check that it doesn't matter which order the parameters are in.
     lhs3 = np.vstack([np.roll(cc,2), cc]).T
-    assert latin_hypercube._default_metric_func(lhs3) == latin_hypercube._default_metric_func(lhs2)
+    assert latin_hypercube.default_metric_func(lhs3) == latin_hypercube.default_metric_func(lhs2)
 
 def test_maximin():
     """Test that the maximin finder is working."""

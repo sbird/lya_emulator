@@ -67,7 +67,7 @@ def plot_test_matter_interpolate(emulatordir,testdir, redshift=3.):
     params_test.load()
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
-        predicted = gp.predict(pp)
+        predicted = gp.predict(pp, tau0_factor=None)
         exact = matter_power.get_matter_power(dd,params.kf, redshift=redshift)
         ratio = predicted[0]/exact
         name = params_test.build_dirname(pp)

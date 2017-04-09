@@ -33,7 +33,7 @@ def get_random_samples(param_limits, nsamples):
     assert np.shape(remapped) == (nsamples, ndim)
     return remapped
 
-def _default_metric_func(lhs):
+def default_metric_func(lhs):
     """Default metric function for the maximinlhs, below.
     This is the sum of the Euclidean distances between each point and the closest other point."""
     #First find minimum distance between every two points
@@ -56,7 +56,7 @@ def maximinlhs(n, samples, prior_points = None, metric_func = None, maxlhs = 100
     Note convergence is pretty slow at the moment."""
     #Use the default metric if none is specified.
     if metric_func is None:
-        metric_func = _default_metric_func
+        metric_func = default_metric_func
     #Minimal metric is zero.
     metric = -1
     group = 1000

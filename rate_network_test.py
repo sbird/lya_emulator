@@ -1,8 +1,8 @@
 """Tests for the rate network."""
 
+import time
 import numpy as np
 import rate_network
-import time
 
 def _exact_alphaHp():
     """For hydrogen recombination we have an exact answer from Ferland et al 1992 (http://adsabs.harvard.edu/abs/1992ApJ...387...95F).

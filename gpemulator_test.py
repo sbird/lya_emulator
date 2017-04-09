@@ -4,28 +4,52 @@ for the data."""
 import numpy as np
 import gpemulator
 
+class Power(object):
+    """Mock power object"""
+    def __init__(self,params):
+        self.params = params
+
+    def get_power(self, *, kf, tau0_factor=None):
+        """Get the flux power spectrum."""
+        flux_vector = kf*100.
+        if tau0_factor is not None:
+            flux_vector *= tau0_factor
+        return flux_vector * self.params
+
 def test_emu_multiple():
     """Generate the simplest model possible,
     with an amplitude depending linearly on one parameter."""
     kf = np.array([ 0.00141,  0.00178,  0.00224,  0.00282])
-    params = np.linspace(0.25,1.75,10).reshape(10,1)
-    flux_vector = np.tile(kf*100.,(np.size(params),1))
-    flux_vectors = flux_vector * params
-    gp = gpemulator.SkLearnGP(params=params, kf=kf, flux_vectors=flux_vectors)
-    predict = gp.predict(np.array([0.5]).reshape(1,1))
-    print(predict-0.5*kf*100)
+    params = np.reshape(np.linspace(0.25,1.75,10), (10,1))
+    powers = [Power(par) for par in params]
+    plimits = np.array((0.25,1.75),ndmin=2)
+    gp = gpemulator.SkLearnGP(params = params, kf = kf, powers = powers, param_limits = plimits)
+    predict,_ = gp.predict(np.reshape(np.array([0.5]), (1,1)), tau0_factor = None)
     assert np.sum(np.abs(predict - 0.5 * kf*100)/predict) < 1e-4
-    return flux_vectors
 
 def test_emu_single():
     """Generate the simplest model possible,
         with an amplitude depending linearly on
         one parameter and a single value."""
-    kf = np.array([ 0.00141,])
-    params = np.linspace(0.25,1.75,10).reshape(10,1)
-    gp = gpemulator.SkLearnGP(params=params, kf=kf, flux_vectors=params)
-    predict = gp.predict(np.array([0.5]).reshape(1,1))
-    assert np.abs(predict - 0.5) < 1e-4
+    kf = np.array([ 0.00141])
+    params = np.reshape(np.linspace(0.25,1.75,10),(10,1))
+    plimits = np.array((0.25,1.75),ndmin=2)
+    powers = [Power(par) for par in params]
+    gp = gpemulator.SkLearnGP(params=params, kf=kf, powers = powers, param_limits = plimits)
+    predict, _ = gp.predict(np.reshape(np.array([0.5]), (1,1)), tau0_factor = None)
+    assert np.abs(predict/kf/100 - 0.5) < 1e-4
+
+class MultiPower(object):
+    """Mock power object"""
+    def __init__(self,params):
+        self.params = params
+
+    def get_power(self, *, kf, tau0_factor=None):
+        """Get the flux power spectrum."""
+        flux_vector = kf*100*(self.params[0] + self.params[1]**2)
+        if tau0_factor is not None:
+            flux_vector *= tau0_factor
+        return flux_vector
 
 def test_emu_multi_param():
     """Simplest model possible with multiple parameters.
@@ -36,7 +60,8 @@ def test_emu_multi_param():
     p2 = np.tile(p2,10)
     p1 = np.repeat(p1,10)
     params = np.vstack([p1.T,p2.T]).T
-    flux_vectors = np.array([kf*100*(pp[0] + pp[1]**2) for pp in params])
-    gp = gpemulator.SkLearnGP(params=params, kf=kf, flux_vectors=flux_vectors)
-    predict = gp.predict(np.array([0.5,0.288]).reshape(1,-1))
-    assert np.sum(np.abs(predict - (0.5+0.288**2) * 100*kf)/predict) < 1e-4
+    powers = [MultiPower(par) for par in params]
+    plimits = np.array(((0.25,1.75),(0.1,1)))
+    gp = gpemulator.SkLearnGP(params=params, kf=kf, powers = powers, param_limits = plimits)
+    predict,_ = gp.predict(np.reshape(np.array([0.5,0.288]),(1,-1)), tau0_factor = None)
+    assert np.max(np.abs(predict - (0.5+0.288**2) * 100*kf)/predict) < 1e-4

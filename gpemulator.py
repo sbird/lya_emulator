@@ -8,6 +8,7 @@ import emcee
 
 def fmin_bounds(obj_func, initial_theta, bounds):
     """Call simplex algorithm for optimisation, ignoring the bounds."""
+    _ = bounds
     result = scipy.optimize.minimize(lambda x0 : obj_func(x0)[0], initial_theta, method="Nelder-Mead")
     return result.x, result.fun
 

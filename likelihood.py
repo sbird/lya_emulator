@@ -1,6 +1,7 @@
 """Module for computing the likelihood function for the forest emulator."""
 import os
 import os.path
+import math
 import numpy as np
 import emcee
 import coarse_grid
@@ -30,18 +31,19 @@ def SiIIIcorr(fSiIII, tau_eff, kf):
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, datadir, mean_flux=True, nsamples=5000):
+    def __init__(self, basedir, datadir, nsamples=5000):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Parameter names
         sdss = gpemulator.SDSSData()
         myspec = flux_power.MySpectra(max_z=4.2)
-        self.data_fluxpower = myspec.get_flux_power(datadir,sdss.get_kf(),tau0_factors=[0.8,])[0]
+        pps = myspec.get_snapshot_list(datadir)
+        self.data_fluxpower = pps.get_power(kf=sdss.get_kf(),tau0_factor=0.95)[0]
         #Use the SDSS covariance matrix
         self.data_covar = sdss.get_covar()
         self.emulator = coarse_grid.KnotEmulator(basedir)
         self.emulator.load()
-        self.param_limits = self.emulator.get_param_limits(include_dense=mean_flux)
-        self.gpemu = self.emulator.get_emulator(max_z=4.2, mean_flux=mean_flux)
+        self.param_limits = self.emulator.get_param_limits()
+        self.gpemu = self.emulator.get_emulator(max_z=4.2)
         #Initialise sampler and make a few samples.
         self.sampler = self.init_emcee(nsamples=nsamples)
 
@@ -50,7 +52,8 @@ class LikelihoodClass(object):
         #Set parameter limits as the hull of the original emulator.
         if np.any(params < self.param_limits[:,0]) or np.any(params > self.param_limits[:,1]):
             return -np.inf
-        predicted, std = self.gpemu.predict(params.reshape(1,-1))
+        #note should
+        predicted, std = self.gpemu.predict(params.reshape(1,-1), tau0_factor=None)
         diff = predicted[0]-self.data_fluxpower
         #Ideally I would find a way to avoid this inversion
         icov = np.linalg.inv(self.data_covar + np.diag(std**2))
@@ -92,4 +95,4 @@ class LikelihoodClass(object):
         self.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
 
 if __name__ == "__main__":
-    like = LikelihoodClass(os.path.expanduser("~/data/Lya_Boss/cosmo-only-emulator"), os.path.expanduser("~/data/Lya_Boss/cosmo-only-test/AA0.94BB1.2CC0.71DD1.2hub0.71/output/"),mean_flux=True)
+    like = LikelihoodClass(os.path.expanduser("~/data/Lya_Boss/cosmo-only-emulator"), os.path.expanduser("~/data/Lya_Boss/cosmo-only-test/AA0.94BB1.2CC0.71DD1.2hub0.71/output/"))

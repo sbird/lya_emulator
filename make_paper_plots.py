@@ -1,13 +1,13 @@
 """Make plots for the first emulator paper"""
 import os.path as path
 import numpy as np
-import matplotlib
-matplotlib.use("PDF")
-import matplotlib.pyplot as plt
 import latin_hypercube
 from plot_latin_hypercube import plot_points_hypercube
 import coarse_grid
 import gpemulator
+import matplotlib
+matplotlib.use("PDF")
+import matplotlib.pyplot as plt
 
 plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
 def hypercube_plot():
@@ -42,21 +42,20 @@ def hypercube_plot():
 
 def single_parameter_plot():
     """Plot change in each parameter of an emulator from direct simulations."""
-    emulatordir = path.expanduser("~/data/Lya_Boss/emulator_quadratic")
+    emulatordir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")
     data = gpemulator.SDSSData()
     kf = data.get_kf()
     emu = coarse_grid.Emulator(emulatordir)
     emu.load()
-    gp = emu.get_emulator(mean_flux=True, max_z=4.2)
+    gp = emu.get_emulator(max_z=4.2)
     params = emu.param_names
     defpar = gp.params[5,:]
-    deffv = gp.flux_vectors[5,:]
+    deffv = gp.powers[5].get_power(kf=kf, tau0_factor=1.)
     for (name, index) in params.items():
         ind = np.where((gp.params[:,index] != defpar[index])*(gp.params[:,-1]==defpar[-1]))
         for i in np.ravel(ind):
             tp = gp.params[i,index]
-            fp = (gp.flux_vectors[i,:]/deffv).reshape(-1,len(kf))
-            nred = np.shape(fp)[0]
+            fp = (gp.powers[i].get_power(kf=kf, tau0_factor=1.)/deffv).reshape(-1,len(kf))
             plt.semilogx(kf, fp[7,:], label=name+"="+str(tp)+" (z=3)")
         plt.legend()
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))

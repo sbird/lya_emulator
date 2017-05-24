@@ -32,7 +32,11 @@ class SkLearnGP(object):
         kernel = GPy.kern.Bias(input_dim = nparams)
         kernel += GPy.kern.Matern32(nparams)
         kernel += GPy.kern.Linear(nparams)
-        self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-7)
+        noutput = np.shape(normspectra)[1]
+        if noutput > 1:
+            coreg = GPy.kern.Coregionalize(input_dim=nparams,output_dim=noutput)
+            kernel = kernel.prod(coreg,name='coreg.kern')
+        self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
         self.gp.optimize(messages=True) #, optimizer=fmin_emcee)
         #Check we reproduce the input
         test,_ = self.predict(self.params[0,:].reshape(1,-1), tau0_factor=tau0_factor)

@@ -92,7 +92,9 @@ class SkLearnGP(object):
         """Get the difference between the predicted GP
         interpolation and some exactly computed test parameters."""
         test_exact = test_exact.reshape(np.shape(test_params)[0],-1)
-        return self.gp.score(test_params, test_exact)
+        predict, sigma = self.predict(test_params,tau0_factor=self.cur_tau_factor)
+        #The transposes are because of numpy broadcasting rules only doing the last axis
+        return ((test_exact - predict).T/np.sqrt(sigma)).T
 
 class SDSSData(object):
     """A class to store the flux power and corresponding covariance matrix from SDSS. A little tricky because of the redshift binning."""

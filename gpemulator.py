@@ -2,41 +2,6 @@
 import numpy as np
 import GPy
 from latin_hypercube import map_to_unit_cube
-import scipy.optimize
-import emcee
-
-def fmin_bounds(obj_func, initial_theta, bounds):
-    """Call simplex algorithm for optimisation, ignoring the bounds."""
-    _ = bounds
-    result = scipy.optimize.minimize(lambda x0 : obj_func(x0)[0], initial_theta, method="Nelder-Mead")
-    return result.x, result.fun
-
-def fmin_emcee(obj_func, initial_theta, bounds, nwalkers=30, burnin=100, nsamples = 800):
-    """Initialise and run emcee."""
-    #Number of knots plus one cosmology plus one for mean flux.
-    ndim = np.shape(bounds)[0]
-    #Limits: we need to hard-prior to the volume of our emulator.
-    pr = (bounds[:,1]-bounds[:,0])
-    #Priors are assumed to be in the middle.
-    p0 = [initial_theta+2*pr/16.*np.random.rand(ndim)-pr/16. for _ in range(nwalkers)]
-    #assert np.all([np.isfinite(self.lnlike_linear(pp)) for pp in p0])
-    def bnd_obj_func(x0):
-        """Version of obj_func which returns -Nan when outside of bounds"""
-        if np.any(x0 < bounds[:,0]) or np.any(x0 > bounds[:,1]):
-            return -np.inf
-        return -obj_func(x0)[0]
-    emcee_sampler = emcee.EnsembleSampler(nwalkers, ndim, bnd_obj_func)
-    pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
-    #Check things are reasonable
-    assert np.all(emcee_sampler.acceptance_fraction > 0.01)
-    emcee_sampler.reset()
-    emcee_sampler.run_mcmc(pos, nsamples)
-    #Return maximum likelihood
-    lnp = emcee_sampler.flatlnprobability
-    theta,fmin = emcee_sampler.flatchain[np.argmax(lnp)],-np.max(lnp)
-#     print("theta_mc=",theta)
-#     print("fmin_mc=", fmin)
-    return theta,fmin
 
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""

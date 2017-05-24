@@ -3,12 +3,12 @@ from __future__ import print_function
 import os.path
 import numpy as np
 import matplotlib
+matplotlib.use('PDF')
+import matplotlib.pyplot as plt
 import gpemulator
 import coarse_grid
 import flux_power
 import matter_power
-matplotlib.use('PDF')
-import matplotlib.pyplot as plt
 
 def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emuclass=None,delta=0.05):
     """Make a plot showing the interpolation error."""

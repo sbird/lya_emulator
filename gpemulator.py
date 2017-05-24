@@ -1,7 +1,6 @@
 """Building a surrogate using a Gaussian Process."""
 import numpy as np
-from sklearn import gaussian_process
-from sklearn.gaussian_process import kernels
+import GPy
 from latin_hypercube import map_to_unit_cube
 import scipy.optimize
 import emcee
@@ -54,6 +53,7 @@ class SkLearnGP(object):
         self.cur_tau_factor = tau0_factor
         flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factor = tau0_factor) for ps in self.powers])
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
+        nparams = np.shape(self.params)[1]
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
@@ -64,13 +64,11 @@ class SkLearnGP(object):
         normspectra = flux_vectors/self.scalefactors -1.
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
-        kernel = kernels.ConstantKernel(constant_value=1)
-#         kernel += 3.0*kernels.RBF(length_scale=0.1*np.ones_like(self.params[0,:]), length_scale_bounds=(1e-3, 10))
-#         kernel += 1.*kernels.RBF(length_scale=0.1, length_scale_bounds=(1e-3, 10))
-        kernel += 1.*kernels.Matern()
-        kernel += 1.*kernels.DotProduct()
-        self.gp = gaussian_process.GaussianProcessRegressor(normalize_y=False, n_restarts_optimizer = 0,kernel=kernel, optimizer=fmin_emcee)
-        self.gp.fit(params_cube, normspectra)
+        kernel = GPy.kern.Bias(input_dim = nparams)
+        kernel += GPy.kern.Matern32(nparams)
+        kernel += GPy.kern.Linear(nparams)
+        self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-7)
+        self.gp.optimize(messages=True) #, optimizer=fmin_emcee)
         #Check we reproduce the input
         test,_ = self.predict(self.params[0,:].reshape(1,-1), tau0_factor=tau0_factor)
         worst = np.abs(test[0] / flux_vectors[0,:]-1)
@@ -85,7 +83,7 @@ class SkLearnGP(object):
             self._get_interp(tau0_factor = tau0_factor)
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
-        flux_predict, std = self.gp.predict(params_cube, return_std=True)
+        flux_predict, std = self.gp.predict(params_cube)
         mean = (flux_predict+1)*self.scalefactors
         std = std * self.scalefactors
         return mean, std

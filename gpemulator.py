@@ -46,7 +46,7 @@ class SkLearnGP(object):
         self.param_limits = param_limits
         self.cur_tau_factor = -1
         self.kf = kf
-        self.intol = 1e-5
+        self.intol = 3e-5
 
     def _get_interp(self, tau0_factor=None):
         """Build the actual interpolator."""
@@ -73,7 +73,7 @@ class SkLearnGP(object):
         test,_ = self.predict(self.params[0,:].reshape(1,-1), tau0_factor=tau0_factor)
         worst = np.abs(test[0] / flux_vectors[0,:]-1)
         if np.max(worst) > self.intol:
-            print("Bad interpolation at:",np.where(worst > np.max(worst)*0.9))
+            print("Bad interpolation at:",np.where(worst > np.max(worst)*0.9), np.max(worst))
             assert np.max(worst) < self.intol
 
     def predict(self, params,tau0_factor):

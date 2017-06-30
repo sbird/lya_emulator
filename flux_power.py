@@ -3,8 +3,8 @@ from __future__ import print_function
 import os.path
 import scipy.interpolate
 import numpy as np
-import spectra
-import abstractsnapshot as absn
+from fake_spectra import spectra
+from fake_spectra import abstractsnapshot as absn
 
 def obs_mean_tau(redshift):
     """The mean flux from 0711.1862: is (0.0023±0.0007) (1+z)^(3.65±0.21)

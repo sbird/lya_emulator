@@ -49,10 +49,10 @@ def single_parameter_plot():
     emu.load()
     gp = emu.get_emulator(max_z=4.2)
     params = emu.param_names
-    defpar = gp.params[5,:]
+    defpar = gp.params[0,:]
     deffv = gp.powers[5].get_power(kf=kf, tau0_factor=1.)
     for (name, index) in params.items():
-        ind = np.where((gp.params[:,index] != defpar[index])*(gp.params[:,-1]==defpar[-1]))
+        ind = np.where(gp.params[:,index] != defpar[index])
         for i in np.ravel(ind):
             tp = gp.params[i,index]
             fp = (gp.powers[i].get_power(kf=kf, tau0_factor=1.)/deffv).reshape(-1,len(kf))
@@ -63,3 +63,4 @@ def single_parameter_plot():
 
 if __name__ == "__main__":
     hypercube_plot()
+    single_parameter_plot()

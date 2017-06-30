@@ -32,8 +32,11 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
         predicted,std = gp.predict(pp.reshape(1,-1),tau0_factor=t0)
+        for po in gp.powers:
+            po.drop_table()
         ps = myspec.get_snapshot_list(dd)
         exact = ps.get_power(kf = data.get_kf(), tau0_factor = t0)
+        ps.drop_table()
         ratio = predicted[0]/exact
         upper = (predicted[0] + std[0])/exact
         lower = (predicted[0] - std[0])/exact

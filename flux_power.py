@@ -31,8 +31,8 @@ class FluxPower(object):
         flux_powers is a list of lists of arrays, shape [tau0][redshift]
         If tau0_factors is None, fluxlists has one entry, fluxlists[0]."""
         mf = None
-        fluxlists = []
-        for ss in self.spectrae:
+        flux_arr = np.empty(shape=(self.len(),np.size(kf)))
+        for (i,ss) in enumerate(self.spectrae):
             if tau0_factor is not None:
                 mf = np.exp(-obs_mean_tau(ss.red)*tau0_factor)
             kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
@@ -41,10 +41,15 @@ class FluxPower(object):
             ii = np.where(kf > kf_sim[0])
             ff = flux_power_sim[0]*np.ones_like(kf)
             ff[ii] = rebinned(kf[ii])
-            fluxlists.append(ff)
-        flux_arr = np.ravel(np.array(fluxlists))
+            flux_arr[i] = ff
+        flux_arr = np.ravel(flux_arr)
         assert np.shape(flux_arr) == (self.len()*np.size(kf),)
         return flux_arr
+
+    def drop_table(self):
+        """Reset the H1 tau array in all spectra, so it needs to be loaded from disc again."""
+        for ss in self.spectrae:
+            ss.tau[('H',1,1215)] = np.array([0])
 
 class MySpectra(object):
     """This class stores the randomly positioned sightlines once,

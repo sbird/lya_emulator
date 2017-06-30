@@ -58,6 +58,7 @@ def single_parameter_plot():
         for i in np.ravel(ind):
             tp = gp.params[i,index]
             fp = (gp.powers[i].get_power(kf=kf, tau0_factor=1.)/deffv).reshape(-1,len(kf))
+            gp.powers[i].drop_table()
             plt.semilogx(kf, fp[7,:], label=name+"="+str(tp)+" (z=3)")
         plt.legend()
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
@@ -66,8 +67,8 @@ def single_parameter_plot():
 def test_plots():
     """Plot emulator test-cases"""
     testdir = path.expanduser("~/data/Lya_Boss/hires_s8_test")
-    emudir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")
-    quaddir = path.expanduser("~/data/Lya_Boss/hires_s8")
+    quaddir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")
+    emudir = path.expanduser("~/data/Lya_Boss/hires_s8")
     gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_s8"))
     gp_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"))
     quad_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)

@@ -2,6 +2,7 @@
 from __future__ import print_function
 import os.path
 import numpy as np
+import re
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
@@ -57,6 +58,8 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max
             fname = name+"mf"+str(t0)+".pdf"
         else:
             fname = name+".pdf"
+        #So we can use it in a latex document
+        fname = re.sub(r"\.","_",str(fname))
         plt.savefig(os.path.join(savedir, fname))
         print(name+".pdf")
         plt.clf()

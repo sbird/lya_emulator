@@ -70,7 +70,6 @@ class QuadraticPoly(SkLearnGP):
         #Find only those positions where this parameter changed.
         ind = np.where(np.abs(dparams) > 1e-3*self.bestpar[pind])
         assert (pind < 5 and len(ind[0]) == 4) or len(ind[0]) == 9
-        assert ind[0]
         return (dfv[ind], dparams[ind])
 
     def _calc_coeffs(self, flux_vectors, params, pind):

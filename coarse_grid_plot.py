@@ -57,7 +57,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max
             fname = name+"mf"+str(t0)+".pdf"
         else:
             fname = name+".pdf"
-        plt.ylim(1-delta,1.+delta)
         plt.savefig(os.path.join(savedir, fname))
         print(name+".pdf")
         plt.clf()

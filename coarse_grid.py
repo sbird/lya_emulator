@@ -163,7 +163,6 @@ class Emulator(object):
     def _get_fv(self, pp,myspec):
         """Helper function to get a single flux vector."""
         di = self.get_outdir(pp)
-        print(di)
         powerspectra = myspec.get_snapshot_list(base=di)
         return powerspectra
 

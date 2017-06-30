@@ -2,12 +2,14 @@
 import os.path as path
 import numpy as np
 import latin_hypercube
-from plot_latin_hypercube import plot_points_hypercube
-import coarse_grid
-import gpemulator
 import matplotlib
 matplotlib.use("PDF")
 import matplotlib.pyplot as plt
+from plot_latin_hypercube import plot_points_hypercube
+import coarse_grid
+import coarse_grid_plot
+import gpemulator
+from quadratic_emulator import QuadraticEmulator
 
 plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
 def hypercube_plot():
@@ -61,6 +63,17 @@ def single_parameter_plot():
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
         plt.clf()
 
+def test_plots():
+    """Plot emulator test-cases"""
+    testdir = path.expanduser("~/data/Lya_Boss/hires_s8_test")
+    emudir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")
+    quaddir = path.expanduser("~/data/Lya_Boss/hires_s8")
+    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_s8"))
+    gp_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"))
+    quad_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
+    return (gp_emu, gp_quad, quad_quad)
+
 if __name__ == "__main__":
     hypercube_plot()
     single_parameter_plot()
+    test_plots()

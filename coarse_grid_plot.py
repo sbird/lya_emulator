@@ -10,8 +10,10 @@ import coarse_grid
 import flux_power
 import matter_power
 
-def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emuclass=None,delta=0.05):
+def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max_z=4.2, emuclass=None,delta=0.05):
     """Make a plot showing the interpolation error."""
+    if savedir is None:
+        savedir = emulatordir
     data = gpemulator.SDSSData()
     if emuclass is None:
         params = coarse_grid.Emulator(emulatordir)
@@ -53,7 +55,7 @@ def plot_test_interpolate(emulatordir,testdir, mean_flux=True, max_z=4.2, emucla
         else:
             fname = name+".pdf"
         plt.ylim(1-delta,1.+delta)
-        plt.savefig(os.path.join(emulatordir, fname))
+        plt.savefig(os.path.join(savedir, fname))
         print(name+".pdf")
         plt.clf()
     return gp

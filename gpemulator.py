@@ -5,13 +5,14 @@ from latin_hypercube import map_to_unit_cube
 
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
-    def __init__(self, *, params, kf, powers,param_limits):
+    def __init__(self, *, params, kf, powers,param_limits, coreg=False):
         self.powers = powers
         self.params = params
         self.param_limits = param_limits
         self.cur_tau_factor = -1
         self.kf = kf
         self.intol = 3e-5
+        self.coreg=coreg
 
     def _get_interp(self, tau0_factor=None):
         """Build the actual interpolator."""
@@ -31,13 +32,13 @@ class SkLearnGP(object):
         #they may have very different physical properties.
         kernel = GPy.kern.Bias(input_dim = nparams)
         kernel += GPy.kern.Matern32(nparams)
-        kernel += GPy.kern.Linear(nparams)
+        kernel += GPy.kern.RBF(nparams)
         noutput = np.shape(normspectra)[1]
-        if noutput > 1:
+        if self.coreg and noutput > 1:
             coreg = GPy.kern.Coregionalize(input_dim=nparams,output_dim=noutput)
             kernel = kernel.prod(coreg,name='coreg.kern')
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
-        self.gp.optimize(messages=True) #, optimizer=fmin_emcee)
+        self.gp.optimize(messages=True)
         #Check we reproduce the input
         test,_ = self.predict(self.params[0,:].reshape(1,-1), tau0_factor=tau0_factor)
         worst = np.abs(test[0] / flux_vectors[0,:]-1)

@@ -31,7 +31,7 @@ class SkLearnGP(object):
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
         kernel = GPy.kern.Bias(input_dim = nparams)
-        kernel += GPy.kern.Matern32(nparams)
+        kernel += GPy.kern.Linear(nparams)
         kernel += GPy.kern.RBF(nparams)
         noutput = np.shape(normspectra)[1]
         if self.coreg and noutput > 1:

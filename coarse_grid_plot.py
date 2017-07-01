@@ -55,13 +55,11 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max
         plt.legend(loc=0)
         plt.show()
         if mean_flux:
-            fname = name+"mf"+str(t0)+".pdf"
-        else:
-            fname = name+".pdf"
+            name = name+"mf"+str(t0)
+        name = re.sub(r"\.","_",str(name))+".pdf"
         #So we can use it in a latex document
-        fname = re.sub(r"\.","_",str(fname))
-        plt.savefig(os.path.join(savedir, fname))
-        print(name+".pdf")
+        plt.savefig(os.path.join(savedir, name))
+        print(name)
         plt.clf()
     return gp
 

@@ -191,13 +191,12 @@ class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.
     Thermal parameters turned off."""
     def __init__(self, basedir, nknots=4):
-        param_names = {}
-        param_names['hub'] = nknots
+        param_names = {'heat_slope':nknots, 'heat_amp':nknots+1, 'hub':nknots+2}
         #Assign names like AA, BB, etc.
         for i in range(nknots):
             param_names[string.ascii_uppercase[i]*2] = i
         self.nknots = nknots
-        param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),nknots,axis=0),[[0.65,0.75]],axis=0)
+        param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),nknots,axis=0),[[-0.5, 0.5],[0.5,1.5],[0.65,0.75]],axis=0)
         super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits)
         #Linearly spaced knots in k space:
         #these do not quite hit the edges of the forest region, because we want some coverage over them.
@@ -208,9 +207,11 @@ class KnotEmulator(Emulator):
     def _do_ic_generation(self,ev,npart,box):
         """Do the actual IC generation."""
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
-        hub = ev[self.param_names['hub']]
+        pn = self.param_names
         #Use Planck 2015 cosmology
-        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, code_class=lyasimulation.LymanAlphaMPSim, omega0=self.omegamh2/hub**2, omegab=0.0483)
+        ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}
+        hub = ev[pn['hub']]
+        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, code_class=lyasimulation.LymanAlphaMPSim, code_args = ca, omega0=self.omegamh2/hub**2, omegab=0.0483)
         try:
             ss.make_simulation()
         except RuntimeError as e:

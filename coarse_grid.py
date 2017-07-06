@@ -6,12 +6,12 @@ import string
 import math
 import json
 import numpy as np
-import gpemulator
+from SimulationRunner import simulationics
+from SimulationRunner import lyasimulation
 import latin_hypercube
 import flux_power
 import matter_power
-from SimulationRunner import simulationics
-from SimulationRunner import lyasimulation
+import gpemulator
 
 class Emulator(object):
     """Small wrapper class to store parameter names and limits, generate simulations and get an emulator."""

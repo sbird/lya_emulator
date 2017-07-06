@@ -49,7 +49,7 @@ def single_parameter_plot():
     kf = data.get_kf()
     emu = coarse_grid.Emulator(emulatordir)
     emu.load()
-    gp = emu.get_emulator(max_z=4.2)
+    gp = emu.get_emulator(max_z=2.4)
     params = emu.param_names
     defpar = gp.params[0,:]
     deffv = gp.powers[5].get_power(kf=kf, tau0_factor=1.)
@@ -59,8 +59,10 @@ def single_parameter_plot():
             tp = gp.params[i,index]
             fp = (gp.powers[i].get_power(kf=kf, tau0_factor=1.)/deffv).reshape(-1,len(kf))
             gp.powers[i].drop_table()
-            plt.semilogx(kf, fp[7,:], label=name+"="+str(tp)+" (z=3)")
-        plt.legend()
+            plt.semilogx(kf, fp[0,:], label=name+"="+str(tp)+" (z=2.4)")
+        plt.xlim(1e-3,2e-2)
+        plt.ylim(ymin=0.6)
+        plt.legend(loc=0)
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
         plt.clf()
 

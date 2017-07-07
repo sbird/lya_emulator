@@ -13,11 +13,20 @@ class SkLearnGP(object):
         self.kf = kf
         self.intol = 3e-5
         self.coreg=coreg
+        #In case we need it, we can rescale the errors using cross-validation.
+        #self.sdscale = np.mean([self._get_cv_one(exclude) for exclude in range(len(self.powers))])
 
-    def _get_interp(self, tau0_factor=None):
+    def _get_cv_one(self, exclude):
+        """Get the prediction error for one point when
+        excluding that point from the emulator."""
+        self._get_interp(tau0_factor = 1., exclude=exclude)
+        test_exact = ps.get_power(kf = self.kf, tau0_factor = 1.)
+        return self.get_predict_error(self.params[exclude], test_exact)
+
+    def _get_interp(self, tau0_factor=None, exclude=None):
         """Build the actual interpolator."""
         self.cur_tau_factor = tau0_factor
-        flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factor = tau0_factor) for ps in self.powers])
+        flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factor = tau0_factor) for nn,ps in enumerate(self.powers) if nn is not exclude])
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         nparams = np.shape(self.params)[1]
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])

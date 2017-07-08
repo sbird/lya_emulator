@@ -122,7 +122,9 @@ class MySpectra(object):
             snapdir = os.path.join(base,snappref+str(snap).rjust(3,'0'))
             #We ran out of snapshots
             if not os.path.exists(snapdir):
-                continue
+                snapdir = os.path.join(base,"PART_"+str(snap).rjust(3,'0'))
+                if not os.path.exists(snapdir):
+                    continue
             #We have all we need
             if powerspectra.len() == np.size(self.zout):
                 break

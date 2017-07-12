@@ -66,7 +66,7 @@ def single_parameter_plot():
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
         plt.clf()
 
-def test_plots():
+def test_s8_plots():
     """Plot emulator test-cases"""
     testdir = path.expanduser("~/data/Lya_Boss/hires_s8_test")
     quaddir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")
@@ -76,7 +76,15 @@ def test_plots():
     quad_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
     return (gp_emu, gp_quad, quad_quad)
 
+def test_knot_plots():
+    """Plot emulator test-cases"""
+    testdir = path.expanduser("~/data/Lya_Boss/hires_knots_test")
+    emudir = path.expanduser("~/data/Lya_Boss/hires_knots")
+    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_knots"))
+    return gp_emu
+
 if __name__ == "__main__":
     hypercube_plot()
     single_parameter_plot()
-    test_plots()
+    test_s8_plots()
+    test_knot_plots()

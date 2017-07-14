@@ -98,9 +98,9 @@ def sample_var_plot():
     nred = len(mys.zout)
     nk = len(kf)
     assert np.shape(pk0) == (nred*nk,)
-    for i in range(nred):
-        plt.semilogx(kf,(pk1/pk0)[i*nk:(i+1)*nk],label=mys.zout[i])
-        plt.semilogx(kf,(pk2/pk0)[i*nk:(i+1)*nk],label=mys.zout[i])
+    for i in (5,10):
+        plt.semilogx(kf,(pk1/pk2)[i*nk:(i+1)*nk],label="Seed 1 z="+str(mys.zout[i]))
+        plt.semilogx(kf,(pk0/pk2)[i*nk:(i+1)*nk],label="Seed 2 z="+str(mys.zout[i]))
     plt.xlabel(r"$k_F$ (s/km)")
     plt.ylabel(r"Sample Variance Ratio")
     plt.title("Sample Variance")

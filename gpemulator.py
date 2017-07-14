@@ -1,5 +1,9 @@
 """Building a surrogate using a Gaussian Process."""
 import numpy as np
+#Make sure that we don't accidentally
+#get another backend when we import GPy.
+import matplotlib
+matplotlib.use('PDF')
 import GPy
 from latin_hypercube import map_to_unit_cube
 

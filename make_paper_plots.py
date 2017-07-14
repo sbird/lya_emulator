@@ -2,14 +2,15 @@
 import os.path as path
 import numpy as np
 import latin_hypercube
+import coarse_grid
+import flux_power
+from quadratic_emulator import QuadraticEmulator
 import matplotlib
 matplotlib.use("PDF")
 import matplotlib.pyplot as plt
 from plot_latin_hypercube import plot_points_hypercube
-import coarse_grid
 import coarse_grid_plot
 import gpemulator
-from quadratic_emulator import QuadraticEmulator
 
 plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
 def hypercube_plot():
@@ -83,7 +84,33 @@ def test_knot_plots():
     gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_knots"))
     return gp_emu
 
+def sample_var_plot():
+    """Check the effect of sample variance"""
+    mys = flux_power.MySpectra()
+    sd = gpemulator.SDSSData()
+    kf = sd.get_kf()
+    fp0 = mys.get_snapshot_list("/home/spb/data/Lya_Boss/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7/output/")
+    fp1 = mys.get_snapshot_list("/home/spb/data/Lya_Boss/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed1/output/")
+    fp2 = mys.get_snapshot_list("/home/spb/data/Lya_Boss/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed2/output/")
+    pk0 = fp0.get_power(kf,tau0_factor=None)
+    pk1 = fp1.get_power(kf,tau0_factor=None)
+    pk2 = fp2.get_power(kf,tau0_factor=None)
+    nred = len(mys.zout)
+    nk = len(kf)
+    assert np.shape(pk0) == (nred*nk,)
+    for i in range(nred):
+        plt.semilogx(kf,(pk1/pk0)[i*nk:(i+1)*nk],label=mys.zout[i])
+        plt.semilogx(kf,(pk2/pk0)[i*nk:(i+1)*nk],label=mys.zout[i])
+    plt.xlabel(r"$k_F$ (s/km)")
+    plt.ylabel(r"Sample Variance Ratio")
+    plt.title("Sample Variance")
+    plt.xlim(xmax=0.05)
+    plt.legend(loc=0)
+    plt.savefig(path.join(plotdir, "sample_var.pdf"))
+    plt.clf()
+
 if __name__ == "__main__":
+    sample_var_plot()
     hypercube_plot()
     single_parameter_plot()
     test_s8_plots()

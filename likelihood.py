@@ -11,10 +11,10 @@ from PolyChord.PyPolyChord.settings import PolyChordSettings
 import coarse_grid
 import flux_power
 import getdist.plots
+import lyman_data
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
-import gpemulator
 
 
 def _siIIIcorr(kf):
@@ -42,7 +42,7 @@ class LikelihoodClass(object):
     def __init__(self, basedir, datadir, file_root="lymanalpha"):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Parameter names
-        sdss = gpemulator.SDSSData()
+        sdss = lyman_data.SDSSData()
         myspec = flux_power.MySpectra(max_z=4.2)
         pps = myspec.get_snapshot_list(datadir)
         self.data_fluxpower = pps.get_power(kf=sdss.get_kf(),tau0_factor=0.95)[0]

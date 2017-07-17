@@ -1,21 +1,21 @@
 """Generate a test plot for an emulator"""
 from __future__ import print_function
 import os.path
-import numpy as np
 import re
-import matplotlib
-matplotlib.use('PDF')
-import matplotlib.pyplot as plt
-import gpemulator
+import numpy as np
+import lyman_data
 import coarse_grid
 import flux_power
 import matter_power
+import matplotlib
+matplotlib.use('PDF')
+import matplotlib.pyplot as plt
 
-def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max_z=4.2, emuclass=None,delta=0.05):
+def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max_z=4.2, emuclass=None):
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
-    data = gpemulator.SDSSData()
+    data = lyman_data.SDSSData()
     if emuclass is None:
         params = coarse_grid.Emulator(emulatordir)
     else:

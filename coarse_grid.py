@@ -11,6 +11,7 @@ from SimulationRunner import lyasimulation
 import latin_hypercube
 import flux_power
 import matter_power
+import lyman_data
 import gpemulator
 
 class Emulator(object):
@@ -25,7 +26,7 @@ class Emulator(object):
         else:
             self.param_limits = param_limits
         if kf is None:
-            self.kf = gpemulator.SDSSData().get_kf()
+            self.kf = lyman_data.SDSSData().get_kf()
         else:
             self.kf = kf
         #We fix omega_m h^2 = 0.1199 (Planck best-fit) and vary omega_m and h^2 to match it.

@@ -1,11 +1,11 @@
 """Building a surrogate using a Gaussian Process."""
 import numpy as np
+from latin_hypercube import map_to_unit_cube
 #Make sure that we don't accidentally
 #get another backend when we import GPy.
 import matplotlib
 matplotlib.use('PDF')
 import GPy
-from latin_hypercube import map_to_unit_cube
 
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
@@ -24,7 +24,7 @@ class SkLearnGP(object):
         """Get the prediction error for one point when
         excluding that point from the emulator."""
         self._get_interp(tau0_factor = 1., exclude=exclude)
-        test_exact = ps.get_power(kf = self.kf, tau0_factor = 1.)
+        test_exact = self.powers[exclude].get_power(kf = self.kf, tau0_factor = 1.)
         return self.get_predict_error(self.params[exclude], test_exact)
 
     def _get_interp(self, tau0_factor=None, exclude=None):
@@ -77,41 +77,3 @@ class SkLearnGP(object):
         predict, sigma = self.predict(test_params,tau0_factor=self.cur_tau_factor)
         #The transposes are because of numpy broadcasting rules only doing the last axis
         return ((test_exact - predict).T/np.sqrt(sigma)).T
-
-class SDSSData(object):
-    """A class to store the flux power and corresponding covariance matrix from SDSS. A little tricky because of the redshift binning."""
-    def __init__(self, datafile="data/lya.sdss.table.txt", covarfile="data/lya.sdss.covar.txt"):
-        # Read SDSS best-fit data.
-        # Contains the redshift wavenumber from SDSS
-        # See 0405013 section 5.
-        # First column is redshift
-        # Second is k in (km/s)^-1
-        # Third column is P_F(k)
-        # Fourth column (ignored): square roots of the diagonal elements
-        # of the covariance matrix. We use the full covariance matrix instead.
-        # Fifth column (ignored): The amount of foreground noise power subtracted from each bin.
-        # Sixth column (ignored): The amound of background power subtracted from each bin.
-        # A metal contamination subtraction that McDonald does but we don't.
-        data = np.loadtxt(datafile)
-        self.redshifts = data[:,0]
-        self.kf = data[:,1]
-        self.pf = data[:,1]
-        #The covariance matrix, correlating each k and z bin with every other.
-        #kbins vary first, so that we have 11 bins with z=2.2, then 11 with z=2.4,etc.
-        self.covar = np.loadtxt(covarfile)
-
-    def get_kf(self):
-        """Get the (unique) flux k values"""
-        return np.sort(np.array(list(set(self.kf))))
-
-    def get_redshifts(self):
-        """Get the (unique) redshift bins, sorted in decreasing redshift"""
-        return np.sort(np.array(list(set(self.redshifts))))[::-1]
-
-    def get_icovar(self):
-        """Get the inverse covariance matrix"""
-        return np.linalg.inv(self.covar)
-
-    def get_covar(self):
-        """Get the inverse covariance matrix"""
-        return self.covar

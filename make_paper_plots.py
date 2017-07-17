@@ -5,12 +5,12 @@ import latin_hypercube
 import coarse_grid
 import flux_power
 from quadratic_emulator import QuadraticEmulator
+import lyman_data
 import matplotlib
 matplotlib.use("PDF")
 import matplotlib.pyplot as plt
 from plot_latin_hypercube import plot_points_hypercube
 import coarse_grid_plot
-import gpemulator
 
 plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
 def hypercube_plot():
@@ -46,7 +46,7 @@ def hypercube_plot():
 def single_parameter_plot():
     """Plot change in each parameter of an emulator from direct simulations."""
     emulatordir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")
-    data = gpemulator.SDSSData()
+    data = lyman_data.SDSSData()
     kf = data.get_kf()
     emu = coarse_grid.Emulator(emulatordir)
     emu.load()
@@ -87,7 +87,7 @@ def test_knot_plots():
 def sample_var_plot():
     """Check the effect of sample variance"""
     mys = flux_power.MySpectra()
-    sd = gpemulator.SDSSData()
+    sd = lyman_data.SDSSData()
     kf = sd.get_kf()
     fp0 = mys.get_snapshot_list("/home/spb/data/Lya_Boss/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7/output/")
     fp1 = mys.get_snapshot_list("/home/spb/data/Lya_Boss/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed1/output/")

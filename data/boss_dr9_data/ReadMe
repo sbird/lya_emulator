@@ -1,0 +1,166 @@
+J/A+A/559/A85    1D Lya forest power spectrum     (Palanque-Delabrouille+, 2013)
+================================================================================
+The one-dimensional Ly{alpha} forest power spectrum from BOSS.
+    Palanque-Delabrouille N., Yeche C., Borde A., Le Goff J.-M., Rossi G.,
+    Viel M., Aubourg E., Bailey S., Bautista J., Blomqvist M., Bolton A.,
+    Bolton J.S., Busca N.G., Carithers B., Croft R.A.C., Dawson K.S.,
+    Delubac T., Font-Ribera A., Ho S., Kirkby D., Lee K.-G., Margala D.,
+    Miralda-Escude J., Muna D., Myers A.D., Noterdaeme P., Paris I.,
+    Petitjean P., Pieri M.M., Rich J., Rollinde E., Ross N.P., Schlegel D.J.,
+    Schneider D.P., Slosar A., Weinberg D.H.
+   <Astron. Astrophys. 559, A85 (2013)>
+   =2013A&A...559A..85P
+================================================================================
+ADC_Keywords: Models ; Spectroscopy
+Keywords: cosmology: observations - large scale structure of the Universe -
+          intergalactic medium - cosmological parameters
+
+Abstract:
+    We have developed two independent methods to measure the
+    one-dimensional power spectrum of the transmitted flux in the
+    Lyman-{alpha} forest. The first method is based on a Fourier
+    transform, and the second on a maximum likelihood estimator. The two
+    methods are independent and have different systematic uncertainties.
+    The determination of the noise level in the data spectra was subject
+    to a novel treatment, because of its significant impact on the derived
+    power spectrum.
+
+    We applied the two methods to 13,821 quasar spectra from SDSS-III/BOSS
+    DR9 (Baryon Oscillation Spectroscopic Survey, BOSS,
+    2013AJ....145...10D) selected from a larger sample of over 60,000
+    spectra on the basis of their high quality, large signal-to-noise
+    ratio, and good spectral resolution. The power spectra measured using
+    either approach are in good agreement over all twelve redshift bins
+    from <z>=2.2 to <z>=4.4, and scales from 0.001(km/s)^-1^ to
+    0.02(km/s)^-1^. We determine the methodological and instrumental
+    systematic uncertainties of our measurements.
+
+Description:
+    The files contain the data describing the measured 1D power spectrum
+    and the correlations between bins from the BOSS Lyman-alpha data.
+
+    table4a.dat and table5a.dat:
+    P_1D_ results obtained with the Fourier transform and the likelihood
+    method respectively, for each k and z bin.
+
+    cct4b*.dat and cct5b*.dat:
+    Correlation matrices between k bins for each z bin, for the Fourier
+    transform and the likelihood method respectively. There are 12 HDUs,
+    one for each redshift bin from <z>=2.2 (HDU 1, table[45]b1.dat) to
+    <z>=4.4 (HDU 12, table[45]b12.dat).
+
+    Each HDU contains a binary table with 35 bins x 35 entries for the
+    Fourier transform method, and 32 bins x 32 entries for the likelihood
+    method. The tables contain the correlation coefficients. The scale k_i_
+    corresponding to entry (or bin) i can be read in the corresponding
+    entry of table4a.dat or table5a.dat.
+
+File Summary:
+--------------------------------------------------------------------------------
+ FileName   Lrecl  Records   Explanations
+--------------------------------------------------------------------------------
+ReadMe         80        .   This file
+table4a.dat    92      420   Power spectrum with the Fourier transform
+table5a.dat    92      384   Power spectrum with the likelihood
+cct4b1.dat    489       35   Fourier k-bin correlations for redshift bin <z>=2.2
+cct4b2.dat    489       35   Fourier k-bin correlations for redshift bin <z>=2.4
+cct4b3.dat    489       35   Fourier k-bin correlations for redshift bin <z>=2.6
+cct4b4.dat    489       35   Fourier k-bin correlations for redshift bin <z>=2.8
+cct4b5.dat    489       35   Fourier k-bin correlations for redshift bin <z>=3.0
+cct4b6.dat    489       35   Fourier k-bin correlations for redshift bin <z>=3.2
+cct4b7.dat    489       35   Fourier k-bin correlations for redshift bin <z>=3.4
+cct4b8.dat    489       35   Fourier k-bin correlations for redshift bin <z>=3.6
+cct4b9.dat    489       35   Fourier k-bin correlations for redshift bin <z>=3.8
+cct4b10.dat   489       35   Fourier k-bin correlations for redshift bin <z>=4.0
+cct4b11.dat   489       35   Fourier k-bin correlations for redshift bin <z>=4.2
+cct4b12.dat   489       35   Fourier k-bin correlations for redshift bin <z>=4.4
+cct5b1.dat    447       32   Likelihood k-bin correlations, redshift bin <z>=2.2
+cct5b2.dat    447       32   Likelihood k-bin correlations, redshift bin <z>=2.4
+cct5b3.dat    447       32   Likelihood k-bin correlations, redshift bin <z>=2.6
+cct5b4.dat    447       32   Likelihood k-bin correlations, redshift bin <z>=2.8
+cct5b5.dat    447       32   Likelihood k-bin correlations, redshift bin <z>=3.0
+cct5b6.dat    447       32   Likelihood k-bin correlations, redshift bin <z>=3.2
+cct5b7.dat    447       32   Likelihood k-bin correlations, redshift bin <z>=3.4
+cct5b8.dat    447       32   Likelihood k-bin correlations, redshift bin <z>=3.6
+cct5b9.dat    447       32   Likelihood k-bin correlations, redshift bin <z>=3.8
+cct5b10.dat   447       32   Likelihood k-bin correlations, redshift bin <z>=4.0
+cct5b11.dat   447       32   Likelihood k-bin correlations, redshift bin <z>=4.2
+cct5b12.dat   447       32   Likelihood k-bin correlations, redshift bin <z>=4.4
+table4a.fits 2880        7   FITS version of table4a
+table5a.fits 2880        6   FITS version of table5a
+table4b.fits 2880       73   k-bin correlations with the Fourier transform
+                              tables cct4* as unique FITS file
+table5b.fits 2880       61   k-bin correlations with the likelihood,
+                              tables cct5* as unique FITS file
+--------------------------------------------------------------------------------
+
+Byte-by-byte Description of file: table4a.dat table5a.dat
+--------------------------------------------------------------------------------
+   Bytes Format Units   Label     Explanations
+--------------------------------------------------------------------------------
+   1-  2  I2    ---     nz        [1/12] Redshift bin number
+   4-  5  I2    ---     nk        [1/35] Scale number within the redshift bin
+   7-  9  F3.1  ---     z         [2.2/4.4] Redshift bin (1)
+  11- 22  E12.8 s/km    k         [0.001/0.020] Scale value (2)
+  25- 36  E12.8 km/s    Pk        Power spectrum Pk
+  39- 50  E12.8 km/s    Pkstat    Statistical 1{sigma} uncertainty on Pk
+  53- 64  E12.8 km/s    Pknoise   Noise power spectrum Pk_noise-/W^2^
+  67- 78  E12.8 km/s    Pkmetal   Metals power spectrum Pk_metal_
+  81- 92  E12.8 km/s    Pksyst    Systematic 1{sigma} uncertainty on Pk
+--------------------------------------------------------------------------------
+Note (1): Redshifts values are 2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 
+     4.0, 4.2 and 4.4.
+Note (2): Scale value for the correlation coefficient k(nk) in 
+     tables 4b and 5b resp. (cct4b* and cct5b*)
+--------------------------------------------------------------------------------
+
+Byte-by-byte Description of file: cct4b*.dat cct5b*.dat
+--------------------------------------------------------------------------------
+   Bytes Format Units   Label    Explanations
+--------------------------------------------------------------------------------
+   1- 13  E13.8 ---     k1       Correlation coefficient for scale k1 (1)
+  15- 27  E13.8 ---     k2       Correlation coefficient for scale k2 (1)
+  29- 41  E13.8 ---     k3       Correlation coefficient for scale k3 (1)
+  43- 55  E13.8 ---     k4       Correlation coefficient for scale k4 (1)
+  57- 69  E13.8 ---     k5       Correlation coefficient for scale k5 (1)
+  71- 83  E13.8 ---     k6       Correlation coefficient for scale k6 (1)
+  85- 97  E13.8 ---     k7       Correlation coefficient for scale k7 (1)
+  99-111  E13.8 ---     k8       Correlation coefficient for scale k8 (1)
+ 113-125  E13.8 ---     k9       Correlation coefficient for scale k9 (1)
+ 127-139  E13.8 ---     k10      Correlation coefficient for scale k10 (1)
+ 141-153  E13.8 ---     k11      Correlation coefficient for scale k11 (1)
+ 155-167  E13.8 ---     k12      Correlation coefficient for scale k12 (1)
+ 169-181  E13.8 ---     k13      Correlation coefficient for scale k13 (1)
+ 183-195  E13.8 ---     k14      Correlation coefficient for scale k14 (1)
+ 197-209  E13.8 ---     k15      Correlation coefficient for scale k15 (1)
+ 211-223  E13.8 ---     k16      Correlation coefficient for scale k16 (1)
+ 225-237  E13.8 ---     k17      Correlation coefficient for scale k17 (1)
+ 239-251  E13.8 ---     k18      Correlation coefficient for scale k18 (1)
+ 253-265  E13.8 ---     k19      Correlation coefficient for scale k19 (1)
+ 267-279  E13.8 ---     k20      Correlation coefficient for scale k20 (1)
+ 281-293  E13.8 ---     k21      Correlation coefficient for scale k21 (1)
+ 295-307  E13.8 ---     k22      Correlation coefficient for scale k22 (1)
+ 309-321  E13.8 ---     k23      Correlation coefficient for scale k23 (1)
+ 323-335  E13.8 ---     k24      Correlation coefficient for scale k24 (1)
+ 337-349  E13.8 ---     k25      Correlation coefficient for scale k25 (1)
+ 351-363  E13.8 ---     k26      Correlation coefficient for scale k26 (1)
+ 365-377  E13.8 ---     k27      Correlation coefficient for scale k27 (1)
+ 379-391  E13.8 ---     k28      Correlation coefficient for scale k28 (1)
+ 393-405  E13.8 ---     k29      Correlation coefficient for scale k29 (1)
+ 407-419  E13.8 ---     k30      Correlation coefficient for scale k30 (1)
+ 421-433  E13.8 ---     k31      Correlation coefficient for scale k31 (1)
+ 435-447  E13.8 ---     k32      Correlation coefficient for scale k32 (1)
+ 449-461  E13.8 ---     k33      ? Correlation coefficient for scale k33 (1) (2)
+ 463-475  E13.8 ---     k34      ? Correlation coefficient for scale k34 (1) (2)
+ 477-489  E13.8 ---     k35      ? Correlation coefficient for scale k35 (1) (2)
+--------------------------------------------------------------------------------
+Note (1): kN for table[45]bJ.dat:
+   Coefficient for Scale value in table[45]a.dat at nk=N and nz=J.
+Note (2): only for cct4b*.dat.
+--------------------------------------------------------------------------------
+
+Acknowledgements:
+     Nathalie Palanque-Delabrouille, nathalie.palanque-delabrouille(at)cea.fr
+
+================================================================================
+(End)                                        Patricia Vannier [CDS]  12-Sep-2013

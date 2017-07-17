@@ -3,9 +3,17 @@ import os
 import os.path
 import math
 import numpy as np
-import emcee
+from latin_hypercube import map_from_unit_cube
+#Import PolyChord
+import PolyChord.PyPolyChord.PyPolyChord as PolyChord
+from PolyChord.PyPolyChord.priors import UniformPrior
+from PolyChord.PyPolyChord.settings import PolyChordSettings
 import coarse_grid
 import flux_power
+import getdist.plots
+import matplotlib
+matplotlib.use('PDF')
+import matplotlib.pyplot as plt
 import gpemulator
 
 
@@ -31,51 +39,57 @@ def SiIIIcorr(fSiIII, tau_eff, kf):
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, datadir, nsamples=5000):
+    def __init__(self, basedir, datadir, file_root="lymanalpha"):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Parameter names
         sdss = gpemulator.SDSSData()
         myspec = flux_power.MySpectra(max_z=4.2)
         pps = myspec.get_snapshot_list(datadir)
         self.data_fluxpower = pps.get_power(kf=sdss.get_kf(),tau0_factor=0.95)[0]
+        self.file_root = file_root
         #Use the SDSS covariance matrix
         self.data_covar = sdss.get_covar()
         self.emulator = coarse_grid.KnotEmulator(basedir)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits()
+        self.ndim = np.shape(self.param_limits)[0]
         self.gpemu = self.emulator.get_emulator(max_z=4.2)
-        #Initialise sampler and make a few samples.
-        self.sampler = self.init_emcee(nsamples=nsamples)
+        #Make sure there is a save directory, and we can write to it.
+        if not os.access("chains/clusters", os.W_OK):
+            os.makedirs("chains/clusters")
 
-    def lnlike_linear(self, params):
-        """A simple emcee likelihood function for the Lyman-alpha forest."""
+    def prior(self, hypercube):
+        """ Uniform prior from [-1,1]^D. """
+        theta = [0.0] * self.ndim
+        for i, x in enumerate(hypercube):
+            theta[i] = UniformPrior(0, 1)(x)
+        return theta
+
+    def likelihood(self, params):
+        """A simple likelihood function for the Lyman-alpha forest.
+        Assumes data is quadratic with a covariance matrix."""
         #Set parameter limits as the hull of the original emulator.
-        if np.any(params < self.param_limits[:,0]) or np.any(params > self.param_limits[:,1]):
-            return -np.inf
-        #note should
-        predicted, std = self.gpemu.predict(params.reshape(1,-1), tau0_factor=None)
+        new_params = map_from_unit_cube(np.array(params), self.param_limits)
+        predicted, std = self.gpemu.predict(new_params.reshape(1,-1), tau0_factor=None)
         diff = predicted[0]-self.data_fluxpower
         #Ideally I would find a way to avoid this inversion
         icov = np.linalg.inv(self.data_covar + np.diag(std**2))
-        return -np.dot(diff,np.dot(icov,diff))/2.0
+        #PolyChord requires a second argument for derived parameters
+        return (-np.dot(diff,np.dot(icov,diff))/2.0,[])
 
-    def init_emcee(self,nwalkers=100, burnin=500, nsamples = 5000):
-        """Initialise and run emcee."""
+    def do_sampling(self):
+        """Initialise and run PolyChord."""
         #Number of knots plus one cosmology plus one for mean flux.
-        ndim = np.shape(self.param_limits)[0]
-        #Limits: we need to hard-prior to the volume of our emulator.
-        pr = (self.param_limits[:,1]-self.param_limits[:,0])
-        #Priors are assumed to be in the middle.
-        cent = (self.param_limits[:,1]+self.param_limits[:,0])/2.
-        p0 = [cent+2*pr/16.*np.random.rand(ndim)-pr/16. for _ in range(nwalkers)]
-        #assert np.all([np.isfinite(self.lnlike_linear(pp)) for pp in p0])
-        emcee_sampler = emcee.EnsembleSampler(nwalkers, ndim, self.lnlike_linear)
-        pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
+        settings = PolyChordSettings(self.ndim, 0)
+        settings.file_root = self.file_root
+        settings.do_clustering = False
+        #Make output
+        result = PolyChord.run_polychord(self.likelihood, self.ndim, 0, settings, self.prior)
+        #Save output
+        result.make_paramnames_files(list(self.emulator.param_names.keys()))
         #Check things are reasonable
-        assert np.all(emcee_sampler.acceptance_fraction > 0.01)
-        emcee_sampler.reset()
-        emcee_sampler.run_mcmc(pos, nsamples)
-        return emcee_sampler
+        self.cur_result = result
+        return result
 
     def new_parameter_limits(self, all_samples, coverage=99):
         """Find a square region which includes coverage of the parameters in each direction, for refinement."""
@@ -90,9 +104,17 @@ class LikelihoodClass(object):
 
     def refinement(self,nsamples,coverage=99):
         """Do the refinement step."""
-        new_limits = self.new_parameter_limits(self.sampler.flatchain,coverage=coverage)
+        new_limits = self.new_parameter_limits(self.cur_result.posterior,coverage=coverage)
         new_samples = self.emulator.build_params(nsamples=nsamples,limits=new_limits, use_existing=True)
         self.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
 
+    def make_plot(self, chain):
+        """Make a plot of parameter posterior values"""
+        posterior = chain.posterior
+        g = getdist.plots.getSubplotPlotter()
+        g.triangle_plot(posterior, filled=True)
+        plt.show()
+
 if __name__ == "__main__":
-    like = LikelihoodClass(os.path.expanduser("~/data/Lya_Boss/cosmo-only-emulator"), os.path.expanduser("~/data/Lya_Boss/cosmo-only-test/AA0.94BB1.2CC0.71DD1.2hub0.71/output/"))
+    like = LikelihoodClass(os.path.expanduser("~/data/Lya_Boss/hires_knots"), os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA1.1BB0.82CC0.82DD0.67heat_slope-0.42heat_amp0.58hub0.66/output/"))
+    output = like.do_sampling()

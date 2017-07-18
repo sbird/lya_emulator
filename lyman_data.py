@@ -51,18 +51,23 @@ class BOSSData(SDSSData):
         self.redshifts = data[:,2]
         self.kf = data[:,3]
         self.pf = data[:,4]
-        self.covar_diag = np.sqrt(data[:,5]**2 + data[:,8]**2)
+        self.covar_diag = data[:,5]**2 + data[:,8]**2
         #The covariance matrix, correlating each k and z bin with every other.
         #kbins vary first, so that we have 11 bins with z=2.2, then 11 with z=2.4,etc.
         self.covar = np.zeros((len(self.redshifts),len(self.redshifts)))
+        self.covar_bins = []
         for bb in range(12):
             dfile = os.path.join(covardir,"cct4b"+str(bb+1)+".dat")
             dd = np.loadtxt(dfile)
+            self.covar_bins.append(dd)
             self.covar[35*bb:35*(bb+1),35*bb:35*(bb+1)] = dd
 
     def get_covar(self, zbin=None):
         """Get the covariance matrix"""
-        return self.covar * self.covar_diag
+        if zbin is None:
+            return self.covar * self.covar_diag
+        else:
+            return self.covar_bins[zbin] * self.covar_diag[zbin*35:(zbin+1)*35]
 
     def get_covar_diag(self):
         """Get the covariance matrix"""

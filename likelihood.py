@@ -109,7 +109,7 @@ class LikelihoodClass(object):
         nz = np.shape(diff)[0]/nkf
         #'Slow' likelihood using full covariance matrix
         chi2 = 0
-        for bb in range(nkf):
+        for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
             icov_bin = np.linalg.inv(self.sdss.get_covar(bb) + np.diag(std**2))
             chi2 += - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.

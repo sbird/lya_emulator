@@ -11,11 +11,23 @@ from PolyChord.PyPolyChord.settings import PolyChordSettings
 import coarse_grid
 import flux_power
 import getdist.plots
+import getdist.mcsamples
 import lyman_data
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 
+
+def load_chain(file_root):
+    """Load a chain using getdist"""
+    return getdist.mcsamples.loadMCSamples(file_root)
+
+def make_plot(chain):
+    """Make a plot of parameter posterior values"""
+    posterior = chain.posterior
+    g = getdist.plots.getSubplotPlotter()
+    g.triangle_plot(posterior, filled=True)
+    plt.show()
 
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""
@@ -41,19 +53,23 @@ class LikelihoodClass(object):
     """Class to contain likelihood computations."""
     def __init__(self, basedir, datadir, file_root="lymanalpha"):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
-        #Parameter names
-        sdss = lyman_data.SDSSData()
+        #Use the BOSS covariance matrix
+        self.sdss = lyman_data.BOSSData()
+        #'Data' now is a simulation
         myspec = flux_power.MySpectra(max_z=4.2)
         pps = myspec.get_snapshot_list(datadir)
-        self.data_fluxpower = pps.get_power(kf=sdss.get_kf(),tau0_factor=0.95)[0]
+        self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factor=0.95)[0]
         self.file_root = file_root
-        #Use the SDSS covariance matrix
-        self.data_covar = sdss.get_covar()
+        #Get the emulator
         self.emulator = coarse_grid.KnotEmulator(basedir)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits()
         self.ndim = np.shape(self.param_limits)[0]
         self.gpemu = self.emulator.get_emulator(max_z=4.2)
+        #Set this to false when we are sufficiently refined:
+        #it ignores off-diagonal elements of the covariance matrix
+        #Underestimates errors by 10% or so.
+        self.fast_run = True
         #Make sure there is a save directory, and we can write to it.
         if not os.access("chains/clusters", os.W_OK):
             os.makedirs("chains/clusters")
@@ -70,12 +86,21 @@ class LikelihoodClass(object):
         Assumes data is quadratic with a covariance matrix."""
         #Set parameter limits as the hull of the original emulator.
         new_params = map_from_unit_cube(np.array(params), self.param_limits)
-        predicted, std = self.gpemu.predict(new_params.reshape(1,-1), tau0_factor=None)
+        predicted, std = self.gpemu.predict(new_params.reshape(1,-1), tau0_factor=0.95)
         diff = predicted[0]-self.data_fluxpower
-        #Ideally I would find a way to avoid this inversion
-        icov = np.linalg.inv(self.data_covar + np.diag(std**2))
+        #'Fast' likelihood ignoring off-diagonal terms in covariance matrix, for refinement.
+        if self.fast_run:
+            return -np.sum(diff*diff/(std**2 + self.sdss.get_covar_diag()))/2.
+        nkf = np.shape(self.sdss.get_kf())
+        nz = np.shape(diff)[0]/nkf
+        #'Slow' likelihood using full covariance matrix
+        chi2 = 0
+        for bb in range(nkf):
+            diff_bin = diff[nkf*bb:nkf*(bb+1)]
+            icov_bin = np.linalg.inv(self.sdss.get_covar(bb) + np.diag(std**2))
+            chi2 += - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
         #PolyChord requires a second argument for derived parameters
-        return (-np.dot(diff,np.dot(icov,diff))/2.0,[])
+        return (chi2,[])
 
     def do_sampling(self):
         """Initialise and run PolyChord."""
@@ -83,10 +108,11 @@ class LikelihoodClass(object):
         settings = PolyChordSettings(self.ndim, 0)
         settings.file_root = self.file_root
         settings.do_clustering = False
+        #Save parameter names
+        result.make_paramnames_files(self.emulator.print_pnames())
         #Make output
         result = PolyChord.run_polychord(self.likelihood, self.ndim, 0, settings, self.prior)
         #Save output
-        result.make_paramnames_files(list(self.emulator.param_names.keys()))
         #Check things are reasonable
         self.cur_result = result
         return result
@@ -104,16 +130,9 @@ class LikelihoodClass(object):
 
     def refinement(self,nsamples,coverage=99):
         """Do the refinement step."""
-        new_limits = self.new_parameter_limits(self.cur_result.posterior,coverage=coverage)
+        new_limits = self.new_parameter_limits(self.cur_result.posterior.samples,coverage=coverage)
         new_samples = self.emulator.build_params(nsamples=nsamples,limits=new_limits, use_existing=True)
         self.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
-
-    def make_plot(self, chain):
-        """Make a plot of parameter posterior values"""
-        posterior = chain.posterior
-        g = getdist.plots.getSubplotPlotter()
-        g.triangle_plot(posterior, filled=True)
-        plt.show()
 
 if __name__ == "__main__":
     like = LikelihoodClass(os.path.expanduser("~/data/Lya_Boss/hires_knots"), os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA1.1BB0.82CC0.82DD0.67heat_slope-0.42heat_amp0.58hub0.66/output/"))

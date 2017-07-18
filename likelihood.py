@@ -3,7 +3,6 @@ import os
 import os.path
 import math
 import numpy as np
-from latin_hypercube import map_from_unit_cube
 #Import PolyChord
 import PolyChord.PyPolyChord.PyPolyChord as PolyChord
 from PolyChord.PyPolyChord.priors import UniformPrior
@@ -17,6 +16,21 @@ import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 
+
+def map_from_hypercube(param_vec, param_limits):
+    """
+    Map a parameter vector from the (-1,1)^D to the original dimensions of the space.
+    Arguments:
+    param_vec - the vector of parameters to map. Should all be [0,1]
+    param_limits - the maximal limits of the parameters to choose.
+    """
+    assert (np.size(param_vec),2) == np.shape(param_limits)
+    assert np.all((param_vec >= -1)*(param_vec <= 1))
+    assert np.all(param_limits[:,0] <= param_limits[:,1])
+    new_params = param_limits[:,1]/2. + param_limits[:,0]/2. + param_vec*(param_limits[:,1] - param_limits[:,0])/2.
+    assert np.all(new_params <= param_limits[:,1])
+    assert np.all(new_params >= param_limits[:,0])
+    return new_params
 
 def load_chain(file_root):
     """Load a chain using getdist"""
@@ -78,14 +92,14 @@ class LikelihoodClass(object):
         """ Uniform prior from [-1,1]^D. """
         theta = [0.0] * self.ndim
         for i, x in enumerate(hypercube):
-            theta[i] = UniformPrior(0, 1)(x)
+            theta[i] = UniformPrior(-1, 1)(x)
         return theta
 
     def likelihood(self, params):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix."""
         #Set parameter limits as the hull of the original emulator.
-        new_params = map_from_unit_cube(np.array(params), self.param_limits)
+        new_params = map_from_hypercube(np.array(params), self.param_limits)
         predicted, std = self.gpemu.predict(new_params.reshape(1,-1), tau0_factor=0.95)
         diff = predicted[0]-self.data_fluxpower
         #'Fast' likelihood ignoring off-diagonal terms in covariance matrix, for refinement.

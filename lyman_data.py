@@ -42,7 +42,7 @@ class SDSSData(object):
 
 class BOSSData(SDSSData):
     """A class to store the flux power and corresponding covariance matrix from BOSS."""
-    def __init__(self, datafile="data/boss_dr9_data/table4a.dat", covardir="data/boss_dr9_data"):
+    def __init__(self, datafile="data/boss_dr9_data/table4a.dat", covardir="data/boss_dr9_data", zmax=None):
         # Read SDSS best-fit data.
         # Contains the redshift wavenumber from SDSS
         # See Readme file.
@@ -61,6 +61,17 @@ class BOSSData(SDSSData):
             dd = np.loadtxt(dfile)
             self.covar_bins.append(dd)
             self.covar[35*bb:35*(bb+1),35*bb:35*(bb+1)] = dd
+
+        #Restrict ourselves to some redshift range
+        if zmax is not None:
+            ii = np.where(self.redshifts <= zmax)
+            self.redshifts = self.redshifts[ii]
+            self.kf = self.kf[ii]
+            self.pf = self.pf[ii]
+            self.covar_diag = self.covar_diag[ii]
+            self.covar = self.covar[ii, ii]
+            mzbin = int(len(self.redshifts)/len(self.get_kf()))
+            self.covar_bins = self.covar_bins[:mzbin]
 
     def get_covar(self, zbin=None):
         """Get the covariance matrix"""

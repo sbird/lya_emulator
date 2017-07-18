@@ -68,7 +68,7 @@ class LikelihoodClass(object):
     def __init__(self, basedir, datadir, file_root="lymanalpha"):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Use the BOSS covariance matrix
-        self.sdss = lyman_data.BOSSData()
+        self.sdss = lyman_data.BOSSData(zmax=4.2)
         #'Data' now is a simulation
         myspec = flux_power.MySpectra(max_z=4.2)
         pps = myspec.get_snapshot_list(datadir)

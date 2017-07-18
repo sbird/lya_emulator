@@ -108,10 +108,10 @@ class LikelihoodClass(object):
         settings = PolyChordSettings(self.ndim, 0)
         settings.file_root = self.file_root
         settings.do_clustering = False
-        #Save parameter names
-        result.make_paramnames_files(self.emulator.print_pnames())
         #Make output
         result = PolyChord.run_polychord(self.likelihood, self.ndim, 0, settings, self.prior)
+        #Save parameter names
+        result.make_paramnames_files(self.emulator.print_pnames())
         #Save output
         #Check things are reasonable
         self.cur_result = result

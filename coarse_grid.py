@@ -26,7 +26,7 @@ class Emulator(object):
         else:
             self.param_limits = param_limits
         if kf is None:
-            self.kf = lyman_data.SDSSData().get_kf()
+            self.kf = lyman_data.BOSSData().get_kf()
         else:
             self.kf = kf
         #Names for pretty-printing some parameters in Latex
@@ -206,14 +206,14 @@ class Emulator(object):
 class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.
     Thermal parameters turned off."""
-    def __init__(self, basedir, nknots=4):
+    def __init__(self, basedir, nknots=4, kf=None):
         param_names = {'heat_slope':nknots, 'heat_amp':nknots+1, 'hub':nknots+2}
         #Assign names like AA, BB, etc.
         for i in range(nknots):
             param_names[string.ascii_uppercase[i]*2] = i
         self.nknots = nknots
         param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),nknots,axis=0),[[-0.5, 0.5],[0.5,1.5],[0.65,0.75]],axis=0)
-        super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits)
+        super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits, kf=kf)
         #Linearly spaced knots in k space:
         #these do not quite hit the edges of the forest region, because we want some coverage over them.
         self.knot_pos = np.linspace(0.15, 1.5,nknots)

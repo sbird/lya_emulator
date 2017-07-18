@@ -75,7 +75,7 @@ class LikelihoodClass(object):
         self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factor=0.95)[0]
         self.file_root = file_root
         #Get the emulator
-        self.emulator = coarse_grid.KnotEmulator(basedir)
+        self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.sdss.get_kf())
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits()
         self.ndim = np.shape(self.param_limits)[0]

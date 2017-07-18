@@ -29,6 +29,8 @@ class Emulator(object):
             self.kf = lyman_data.SDSSData().get_kf()
         else:
             self.kf = kf
+        #Names for pretty-printing some parameters in Latex
+        self.print_names = { 'ns': r'n_\mathrm{s}', 'As': r'A_\mathrm{s}', 'heat_slope': r'H_\mathrm{S}', 'heat_amp': r'H_\mathrm{A}', 'hub':'h'}
         #We fix omega_m h^2 = 0.1199 (Planck best-fit) and vary omega_m and h^2 to match it.
         #h^2 itself has no effect on the forest.
         self.omegamh2 = 0.1199
@@ -52,6 +54,19 @@ class Emulator(object):
             parts[val] = nn+'%.2g' % params[val]
         name = ''.join(str(elem) for elem in parts)
         return name
+
+    def _get_latex(self, key):
+        """Get a latex name if it exists, otherwise return the key."""
+        if key in self.print_names.keys():
+            return self.print_names[key]
+        else:
+            return key
+
+    def print_pnames(self):
+        """Get parameter names for printing"""
+        p_names = list(self.param_names.keys())
+        n_latex = [(kk, self._get_latex(kk)) for kk in p_names]
+        return n_latex
 
     def _fromarray(self):
         """Convert the data stored as lists back to arrays."""

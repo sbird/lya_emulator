@@ -80,10 +80,6 @@ class LikelihoodClass(object):
         self.param_limits = self.emulator.get_param_limits()
         self.ndim = np.shape(self.param_limits)[0]
         self.gpemu = self.emulator.get_emulator(max_z=4.2)
-        #Set this to false when we are sufficiently refined:
-        #it ignores off-diagonal elements of the covariance matrix
-        #Underestimates errors by 10% or so.
-        self.fast_run = True
         #Make sure there is a save directory, and we can write to it.
         if not os.access("chains/clusters", os.W_OK):
             os.makedirs("chains/clusters")
@@ -102,12 +98,9 @@ class LikelihoodClass(object):
         new_params = map_from_hypercube(np.array(params), self.param_limits)
         predicted, std = self.gpemu.predict(new_params.reshape(1,-1), tau0_factor=0.95)
         diff = predicted[0]-self.data_fluxpower
-        #'Fast' likelihood ignoring off-diagonal terms in covariance matrix, for refinement.
-        if self.fast_run:
-            return -np.sum(diff*diff/(std**2 + self.sdss.get_covar_diag()))/2.
-        nkf = np.shape(self.sdss.get_kf())
-        nz = np.shape(diff)[0]/nkf
-        #'Slow' likelihood using full covariance matrix
+        nkf = len(self.sdss.get_kf())
+        nz = int(len(diff)/nkf)
+        #Likelihood using full covariance matrix
         chi2 = 0
         for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]

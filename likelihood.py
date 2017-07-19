@@ -117,7 +117,7 @@ class LikelihoodClass(object):
         #Number of knots plus one cosmology plus one for mean flux.
         settings = PolyChordSettings(self.ndim, 0)
         settings.file_root = self.file_root
-        settings.do_clustering = True
+        settings.do_clustering = False
         settings.nlive = 300
         #Make output
         result = PolyChord.run_polychord(self.likelihood, self.ndim, 0, settings, self.prior)

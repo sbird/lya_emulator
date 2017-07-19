@@ -64,7 +64,7 @@ class Emulator(object):
 
     def print_pnames(self):
         """Get parameter names for printing"""
-        p_names = list(self.param_names.keys())
+        p_names = [self.param_names[i] for i in range(len(self.param_names))]
         n_latex = [(kk, get_latex(kk)) for kk in p_names]
         return n_latex
 

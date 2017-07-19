@@ -14,6 +14,15 @@ import matter_power
 import lyman_data
 import gpemulator
 
+def get_latex(key):
+    """Get a latex name if it exists, otherwise return the key."""
+    #Names for pretty-printing some parameters in Latex
+    print_names = { 'ns': r'n_\mathrm{s}', 'As': r'A_\mathrm{s}', 'heat_slope': r'H_\mathrm{S}', 'heat_amp': r'H_\mathrm{A}', 'hub':'h'}
+    try:
+        return print_names[key]
+    except KeyError:
+        return key
+
 class Emulator(object):
     """Small wrapper class to store parameter names and limits, generate simulations and get an emulator."""
     def __init__(self, basedir, param_names=None, param_limits=None, kf=None):
@@ -29,8 +38,6 @@ class Emulator(object):
             self.kf = lyman_data.BOSSData().get_kf()
         else:
             self.kf = kf
-        #Names for pretty-printing some parameters in Latex
-        self.print_names = { 'ns': r'n_\mathrm{s}', 'As': r'A_\mathrm{s}', 'heat_slope': r'H_\mathrm{S}', 'heat_amp': r'H_\mathrm{A}', 'hub':'h'}
         #We fix omega_m h^2 = 0.1199 (Planck best-fit) and vary omega_m and h^2 to match it.
         #h^2 itself has no effect on the forest.
         self.omegamh2 = 0.1199
@@ -55,17 +62,10 @@ class Emulator(object):
         name = ''.join(str(elem) for elem in parts)
         return name
 
-    def _get_latex(self, key):
-        """Get a latex name if it exists, otherwise return the key."""
-        if key in self.print_names.keys():
-            return self.print_names[key]
-        else:
-            return key
-
     def print_pnames(self):
         """Get parameter names for printing"""
         p_names = list(self.param_names.keys())
-        n_latex = [(kk, self._get_latex(kk)) for kk in p_names]
+        n_latex = [(kk, get_latex(kk)) for kk in p_names]
         return n_latex
 
     def _fromarray(self):
@@ -125,7 +125,8 @@ class Emulator(object):
             self.sample_params = self.build_params(nsamples)
         self.dump()
         #Generate ICs for each set of parameter inputs
-        [self._do_ic_generation(ev, npart, box) for ev in self.sample_params]
+        for ev in self.sample_params:
+            self._do_ic_generation(ev, npart, box)
         return
 
     def _do_ic_generation(self,ev,npart,box):

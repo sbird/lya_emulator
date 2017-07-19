@@ -87,16 +87,19 @@ class LikelihoodClass(object):
     def prior(self, hypercube):
         """ Uniform prior from [-1,1]^D. """
         theta = [0.0] * self.ndim
+        #Sample only from the inner 90% of the hypercube,
+        #to avoid edge effects from the emulator.
+        lower = map_from_hypercube(-0.90*np.ones_like(hypercube), self.param_limits)
+        upper = map_from_hypercube(0.90*np.ones_like(hypercube), self.param_limits)
         for i, x in enumerate(hypercube):
-            theta[i] = UniformPrior(-1, 1)(x)
+            theta[i] = UniformPrior(lower[i], upper[i])(x)
         return theta
 
     def likelihood(self, params):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix."""
         #Set parameter limits as the hull of the original emulator.
-        new_params = map_from_hypercube(np.array(params), self.param_limits)
-        predicted, std = self.gpemu.predict(new_params.reshape(1,-1), tau0_factor=0.95)
+        predicted, std = self.gpemu.predict(np.array(params).reshape(1,-1), tau0_factor=0.95)
         diff = predicted[0]-self.data_fluxpower
         nkf = len(self.sdss.get_kf())
         nz = int(len(diff)/nkf)

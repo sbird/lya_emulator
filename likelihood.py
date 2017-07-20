@@ -80,9 +80,11 @@ class LikelihoodClass(object):
         self.param_limits = self.emulator.get_param_limits()
         self.ndim = np.shape(self.param_limits)[0]
         self.gpemu = self.emulator.get_emulator(max_z=4.2)
-        #Make sure there is a save directory, and we can write to it.
-        if not os.access("chains/clusters", os.W_OK):
+        #Make sure there is a save directory
+        try:
             os.makedirs("chains/clusters")
+        except FileExistsError:
+            pass
 
     def prior(self, hypercube):
         """ Uniform prior from [-1,1]^D. """

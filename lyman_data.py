@@ -42,7 +42,7 @@ class SDSSData(object):
 
 class BOSSData(SDSSData):
     """A class to store the flux power and corresponding covariance matrix from BOSS."""
-    def __init__(self, datafile="data/boss_dr9_data/table4a.dat", covardir="data/boss_dr9_data", zmax=None):
+    def __init__(self, datafile="data/boss_dr9_data/table4a.dat", covardir="data/boss_dr9_data"):
         # Read SDSS best-fit data.
         # Contains the redshift wavenumber from SDSS
         # See Readme file.
@@ -55,30 +55,18 @@ class BOSSData(SDSSData):
         #The covariance matrix, correlating each k and z bin with every other.
         #kbins vary first, so that we have 11 bins with z=2.2, then 11 with z=2.4,etc.
         self.covar = np.zeros((len(self.redshifts),len(self.redshifts)))
-        self.covar_bins = []
         for bb in range(12):
             dfile = os.path.join(covardir,"cct4b"+str(bb+1)+".dat")
             dd = np.loadtxt(dfile)
-            self.covar_bins.append(dd)
             self.covar[35*bb:35*(bb+1),35*bb:35*(bb+1)] = dd
-
-        #Restrict ourselves to some redshift range
-        if zmax is not None:
-            ii = np.where(self.redshifts <= zmax)
-            self.redshifts = self.redshifts[ii]
-            self.kf = self.kf[ii]
-            self.pf = self.pf[ii]
-            self.covar_diag = self.covar_diag[ii]
-            self.covar = self.covar[ii, ii]
-            mzbin = int(len(self.redshifts)/len(self.get_kf()))
-            self.covar_bins = self.covar_bins[:mzbin]
 
     def get_covar(self, zbin=None):
         """Get the covariance matrix"""
         if zbin is None:
             return self.covar * self.covar_diag
         else:
-            return self.covar_bins[zbin] * self.covar_diag[zbin*35:(zbin+1)*35]
+            ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
+            return self.covar[ii,ii] * self.covar_diag[ii]
 
     def get_covar_diag(self):
         """Get the covariance matrix"""

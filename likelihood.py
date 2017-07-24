@@ -68,7 +68,7 @@ class LikelihoodClass(object):
     def __init__(self, basedir, datadir, file_root="lymanalpha"):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Use the BOSS covariance matrix
-        self.sdss = lyman_data.BOSSData(zmax=4.2)
+        self.sdss = lyman_data.BOSSData()
         #'Data' now is a simulation
         myspec = flux_power.MySpectra(max_z=4.2)
         pps = myspec.get_snapshot_list(datadir)
@@ -107,9 +107,11 @@ class LikelihoodClass(object):
         nz = int(len(diff)/nkf)
         #Likelihood using full covariance matrix
         chi2 = 0
+        #Redshifts
+        zout = self.gpemu.zout
         for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
-            icov_bin = np.linalg.inv(self.sdss.get_covar(bb) + np.diag(std**2))
+            icov_bin = np.linalg.inv(self.sdss.get_covar(zout[bb]) + np.diag(std**2))
             chi2 += - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
         #PolyChord requires a second argument for derived parameters
         return (chi2,[])

@@ -11,6 +11,7 @@ class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
     def __init__(self, *, params, kf, powers,param_limits, coreg=False):
         self.powers = powers
+        self.zout = self.powers[0].zout
         self.params = params
         self.param_limits = param_limits
         self.cur_tau_factor = -1

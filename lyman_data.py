@@ -66,7 +66,8 @@ class BOSSData(SDSSData):
             return self.covar * self.covar_diag
         else:
             ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
-            return self.covar[ii,ii] * self.covar_diag[ii]
+            rr = (np.min(ii), np.max(ii)+1)
+            return self.covar[rr[0]:rr[1],rr[0]:rr[1]] * self.covar_diag[rr[0]:rr[1]]
 
     def get_covar_diag(self):
         """Get the covariance matrix"""

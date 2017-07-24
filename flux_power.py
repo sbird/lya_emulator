@@ -46,6 +46,9 @@ class FluxPower(object):
         assert np.shape(flux_arr) == (self.len()*np.size(kf),)
         return flux_arr
 
+    def get_zout(self):
+        return np.array([ss.red for ss in self.spectrae])
+
     def drop_table(self):
         """Reset the H1 tau array in all spectra, so it needs to be loaded from disc again."""
         for ss in self.spectrae:

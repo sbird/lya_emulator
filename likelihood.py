@@ -4,7 +4,6 @@ import os.path
 import math
 import numpy as np
 import PolyChord.PyPolyChord.PyPolyChord as PolyChord
-from PolyChord.PyPolyChord.priors import UniformPrior
 from PolyChord.PyPolyChord.settings import PolyChordSettings
 import coarse_grid
 import flux_power
@@ -22,9 +21,8 @@ def load_chain(file_root):
 
 def make_plot(chain):
     """Make a plot of parameter posterior values"""
-    posterior = chain.posterior
     g = getdist.plots.getSubplotPlotter()
-    g.triangle_plot(posterior, filled=True)
+    g.triangle_plot(chain)
     plt.show()
 
 def _siIIIcorr(kf):
@@ -56,7 +54,8 @@ class LikelihoodClass(object):
         #'Data' now is a simulation
         myspec = flux_power.MySpectra(max_z=4.2)
         pps = myspec.get_snapshot_list(datadir)
-        self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factor=0.95)[0]
+        self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factor=0.95)
+        assert np.size(self.data_fluxpower) % np.size(self.sdss.get_kf) == 0
         self.file_root = file_root
         #Get the emulator
         self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.sdss.get_kf())
@@ -90,8 +89,12 @@ class LikelihoodClass(object):
         zout = self.gpemu.zout
         for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
-            icov_bin = np.linalg.inv(self.sdss.get_covar(zout[bb]) + np.diag(std**2))
+            covar_bin = self.sdss.get_covar(zout[bb])
+            icov_bin = np.linalg.inv(covar_bin + np.diag(std**2))
             chi2 += - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
+            #Normalize the likelihood:
+            chi2 += (np.shape(icov_bin)[0]-1)/2*np.log(np.trace(covar_bin))
+        assert 0 > chi2 > -2**31
         #PolyChord requires a second argument for derived parameters
         return (chi2,[])
 

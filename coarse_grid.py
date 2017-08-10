@@ -46,7 +46,6 @@ class Emulator(object):
         #Limits on factors to multiply the thermal history by.
         #Mean flux is known to about 10% from SDSS, so we don't need a big range.
         self.dense_param_limits = np.array([[0.7,1.3],])
-        self.dense_samples = 10
         self.sample_params = []
         self.basedir = os.path.expanduser(basedir)
         if not os.path.exists(basedir):
@@ -66,7 +65,7 @@ class Emulator(object):
         """Get parameter names for printing"""
         n_latex = []
         sort_names = sorted(list(self.param_names.items()), key=lambda k:(k[1],k[0]))
-        for key, value in sort_names:
+        for key, _ in sort_names:
             n_latex.append((key, get_latex(key)))
         return n_latex
 
@@ -95,7 +94,6 @@ class Emulator(object):
             indict = json.load(jsin)
         #Make sure dense parameters are not over-written
         indict['dense_param_limits'] = self.dense_param_limits
-        indict['dense_samples'] = self.dense_samples
         self.__dict__ = indict
         self._fromarray()
         self.kf = kf
@@ -148,36 +146,18 @@ class Emulator(object):
         except RuntimeError as e:
             print(str(e), " while building: ",outdir)
 
-    def _add_dense_params(self, pvals):
-        """From the matrix representing the 'sparse' (ie, corresponding to an N-body) simulation,
-        add extra parameters corresponding to each dense parameter, which corresponds to some
-        modification of the spectrum."""
-        #Index of the first 'dense' parameter
-        #The interpolator class doesn't distinguish, but the flux power loader needs to.
-        dense = np.shape(pvals)[1]
-        #Number of dense parameters
-        ndense = len(self.dense_param_names)
-        #This grid will hold the expanded grid of parameters: dense parameters are on the end.
-        #Initially make it NaN as a poisoning technique.
-        pvals_new = np.nan*np.zeros((np.shape(pvals)[0]*self.dense_samples, np.shape(pvals)[1]+ndense))
-        pvals_new[:,:dense] = np.tile(pvals,(self.dense_samples,1))
-        for dd in range(dense, dense+ndense):
-            #Build grid of mean fluxes
-            dlim = self.dense_param_limits[dd-dense]
-            #This is not right for ndense > 1.
-            dense = np.repeat(np.linspace(dlim[0], dlim[1], self.dense_samples),np.shape(pvals)[0])
-            pvals_new[:,dd] = dense
-        assert not np.any(np.isnan(pvals_new))
-        return pvals_new
-
     def get_param_limits(self, include_dense=False):
-        """Get the reprocessed limits on the parameters for emcee."""
+        """Get the reprocessed limits on the parameters for the likelihood."""
         if not include_dense:
             return self.param_limits
-        comb = np.vstack([self.param_limits, self.dense_param_limits])
-        comb[-1,:] = np.exp(-comb[-1,::-1]*flux_power.obs_mean_tau(3.))
+        #Dense parameters go first as they are 'slow'
+        comb = np.vstack([self.dense_param_limits, self.param_limits])
         assert np.shape(comb)[1] == 2
         return comb
+
+    def get_nsample_params(self):
+        """Get the number of sparse parameters, those sampled by simulations."""
+        return np.shape(self.param_limits)[0]
 
     def _get_fv(self, pp,myspec):
         """Helper function to get a single flux vector."""
@@ -203,7 +183,7 @@ class Emulator(object):
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z)
         powers = [self._get_fv(pp, myspec) for pp in pvals]
-        gp = emuobj(params=pvals, kf=self.kf, powers = powers, param_limits = self.get_param_limits())
+        gp = emuobj(params=pvals, kf=self.kf, powers = powers, param_limits = self.get_param_limits(include_dense=False))
         return gp
 
 class KnotEmulator(Emulator):

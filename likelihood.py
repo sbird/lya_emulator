@@ -60,8 +60,10 @@ class LikelihoodClass(object):
         #Get the emulator
         self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.sdss.get_kf())
         self.emulator.load()
-        self.param_limits = self.emulator.get_param_limits()
+        self.param_limits = self.emulator.get_param_limits(include_dense=True)
         self.ndim = np.shape(self.param_limits)[0]
+        self.firstfast = self.ndim - self.emulator.get_nsample_params()
+        print(self.firstfast)
         self.gpemu = self.emulator.get_emulator(max_z=4.2)
         #Make sure there is a save directory
         try:
@@ -79,7 +81,9 @@ class LikelihoodClass(object):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix."""
         #Set parameter limits as the hull of the original emulator.
-        predicted, std = self.gpemu.predict(np.array(params).reshape(1,-1), tau0_factor=0.95)
+        tau0_factor = params[0]
+        nparams = params[self.firstfast:]
+        predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factor=tau0_factor)
         diff = predicted[0]-self.data_fluxpower
         nkf = len(self.sdss.get_kf())
         nz = int(len(diff)/nkf)
@@ -105,6 +109,8 @@ class LikelihoodClass(object):
         settings.file_root = self.file_root
         settings.do_clustering = False
         settings.nlive = 300
+        settings.grade_frac = [0.5,0.5]
+        settings.grade_dims = [1,self.ndim -1]
         #Make output
         result = PolyChord.run_polychord(self.likelihood, self.ndim, 0, settings, self.prior)
         #Save parameter names

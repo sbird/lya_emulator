@@ -17,6 +17,8 @@ class SkLearnGP(object):
         self.cur_tau_factor = -1
         self.kf = kf
         self.intol = 3e-5
+        #Should we test the built emulator?
+        self._test_interp = True
         self.coreg=coreg
         #In case we need it, we can rescale the errors using cross-validation.
         #self.sdscale = np.mean([self._get_cv_one(exclude) for exclude in range(len(self.powers))])
@@ -53,11 +55,13 @@ class SkLearnGP(object):
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
         self.gp.optimize(messages=True)
         #Check we reproduce the input
-        test,_ = self.predict(self.params[0,:].reshape(1,-1), tau0_factor=tau0_factor)
-        worst = np.abs(test[0] / flux_vectors[0,:]-1)
-        if np.max(worst) > self.intol:
-            print("Bad interpolation at:",np.where(worst > np.max(worst)*0.9), np.max(worst))
-            assert np.max(worst) < self.intol
+        if self._test_interp:
+            test,_ = self.predict(self.params[0,:].reshape(1,-1), tau0_factor=tau0_factor)
+            worst = np.abs(test[0] / flux_vectors[0,:]-1)
+            if np.max(worst) > self.intol:
+                print("Bad interpolation at:",np.where(worst > np.max(worst)*0.9), np.max(worst))
+                assert np.max(worst) < self.intol
+            self._test_interp = False
 
     def predict(self, params,tau0_factor):
         """Get the predicted flux at a parameter value (or list of parameter values)."""

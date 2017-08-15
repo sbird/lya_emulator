@@ -15,6 +15,7 @@ class SkLearnGP(object):
         self.params = params
         self.param_limits = param_limits
         self.cur_tau_factor = -1
+        self.ncalls = 0
         self.kf = kf
         self.intol = 3e-5
         #Should we test the built emulator?
@@ -66,8 +67,11 @@ class SkLearnGP(object):
     def predict(self, params,tau0_factor):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         #First get the residuals
-        if tau0_factor is not self.cur_tau_factor:
+        if np.abs(tau0_factor - self.cur_tau_factor) > np.abs(1e-7*self.cur_tau_factor):
+            print("tau0 calls: ",self.ncalls)
+            self.ncalls = 0
             self._get_interp(tau0_factor = tau0_factor)
+        self.ncalls+=1
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
         flux_predict, var = self.gp.predict(params_cube)

@@ -63,7 +63,6 @@ class LikelihoodClass(object):
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
         self.ndim = np.shape(self.param_limits)[0]
         self.firstfast = self.ndim - self.emulator.get_nsample_params()
-        print(self.firstfast)
         self.gpemu = self.emulator.get_emulator(max_z=4.2)
         #Make sure there is a save directory
         try:
@@ -108,9 +107,10 @@ class LikelihoodClass(object):
         settings = PolyChordSettings(self.ndim, 0)
         settings.file_root = self.file_root
         settings.do_clustering = False
-        settings.nlive = 300
-        settings.grade_frac = [0.5,0.5]
-        settings.grade_dims = [1,self.ndim -1]
+        settings.grade_frac = [0.99,0.01]
+        settings.grade_dims = [self.firstfast,self.ndim-self.firstfast]
+        settings.feedback = 3
+        settings.read_resume = False
         #Make output
         result = PolyChord.run_polychord(self.likelihood, self.ndim, 0, settings, self.prior)
         #Save parameter names
@@ -138,5 +138,5 @@ class LikelihoodClass(object):
         self.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
 
 if __name__ == "__main__":
-    like = LikelihoodClass(os.path.expanduser("~/data/Lya_Boss/hires_knots"), os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA1.1BB0.82CC0.82DD0.67heat_slope-0.42heat_amp0.58hub0.66/output/"))
+    like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA1.1BB0.82CC0.82DD0.67heat_slope-0.42heat_amp0.58hub0.66/output/"))
     output = like.do_sampling()

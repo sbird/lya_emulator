@@ -90,13 +90,15 @@ class Emulator(object):
     def load(self,dumpfile="emulator_params.json"):
         """Load parameters from a textfile."""
         kf = self.kf
-        with open(os.path.join(self.basedir, dumpfile), 'r') as jsin:
+        real_basedir = self.basedir
+        with open(os.path.join(real_basedir, dumpfile), 'r') as jsin:
             indict = json.load(jsin)
         #Make sure dense parameters are not over-written
         indict['dense_param_limits'] = self.dense_param_limits
         self.__dict__ = indict
         self._fromarray()
         self.kf = kf
+        self.basedir = real_basedir
 
     def get_outdir(self, pp):
         """Get the simulation output directory path for a parameter set."""

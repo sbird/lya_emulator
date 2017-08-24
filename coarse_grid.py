@@ -193,8 +193,12 @@ class Emulator(object):
         myspec = flux_power.MySpectra(max_z=max_z)
         powers = [self._get_fv(pp, myspec) for pp in pvals]
         tau0_factors = self.mf.get_t0()
+        dpvals = self.mf.get_params()
         flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factors = t0) for t0 in tau0_factors for ps in powers])
-        aparams = np.array([np.concatenate(dp,pv) for dp in dpvals for pv in pvals])
+        if dpvals is not None:
+            aparams = np.array([np.concatenate(dp,pv) for dp in dpvals for pv in pvals])
+        else:
+            aparams = pvals
         return aparams, flux_vectors
 
     def _get_custom_emulator(self, *, emuobj, max_z=4.2):

@@ -36,8 +36,9 @@ class SDSSData(object):
         """Get the inverse covariance matrix"""
         return np.linalg.inv(self.covar)
 
-    def get_covar(self):
+    def get_covar(self, zbin=None):
         """Get the inverse covariance matrix"""
+        _ = zbin
         return self.covar
 
 class BOSSData(SDSSData):
@@ -64,10 +65,9 @@ class BOSSData(SDSSData):
         """Get the covariance matrix"""
         if zbin is None:
             return self.covar * self.covar_diag
-        else:
-            ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
-            rr = (np.min(ii), np.max(ii)+1)
-            return self.covar[rr[0]:rr[1],rr[0]:rr[1]] * self.covar_diag[rr[0]:rr[1]]
+        ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
+        rr = (np.min(ii), np.max(ii)+1)
+        return self.covar[rr[0]:rr[1],rr[0]:rr[1]] * self.covar_diag[rr[0]:rr[1]]
 
     def get_covar_diag(self):
         """Get the covariance matrix"""

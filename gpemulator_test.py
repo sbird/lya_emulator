@@ -24,7 +24,7 @@ def test_emu_multiple():
     powers = [Power(par) for par in params]
     plimits = np.array((0.25,1.75),ndmin=2)
     gp = gpemulator.SkLearnGP(params = params, kf = kf, powers = powers, param_limits = plimits)
-    predict,_ = gp.predict(np.reshape(np.array([0.5]), (1,1)), tau0_factor = None)
+    predict,_ = gp.predict(np.reshape(np.array([0.5]), (1,1)))
     assert np.sum(np.abs(predict - 0.5 * kf*100)/predict) < 1e-4
 
 def test_emu_single():
@@ -36,7 +36,7 @@ def test_emu_single():
     plimits = np.array((0.25,1.75),ndmin=2)
     powers = [Power(par) for par in params]
     gp = gpemulator.SkLearnGP(params=params, kf=kf, powers = powers, param_limits = plimits)
-    predict, _ = gp.predict(np.reshape(np.array([0.5]), (1,1)), tau0_factor = None)
+    predict, _ = gp.predict(np.reshape(np.array([0.5]), (1,1)))
     assert np.abs(predict/kf/100 - 0.5) < 1e-4
 
 class MultiPower(object):
@@ -63,5 +63,5 @@ def test_emu_multi_param():
     powers = [MultiPower(par) for par in params]
     plimits = np.array(((0.25,1.75),(0.1,1)))
     gp = gpemulator.SkLearnGP(params=params, kf=kf, powers = powers, param_limits = plimits)
-    predict,_ = gp.predict(np.reshape(np.array([0.5,0.288]),(1,-1)), tau0_factor = None)
+    predict,_ = gp.predict(np.reshape(np.array([0.5,0.288]),(1,-1)))
     assert np.max(np.abs(predict - (0.5+0.288**2) * 100*kf)/predict) < 1e-4

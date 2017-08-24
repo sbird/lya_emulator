@@ -2,7 +2,7 @@
 import numpy as np
 # import emcee
 import gpemulator
-
+import lyman_data
 import linear_theory
 import latin_hypercube
 
@@ -31,7 +31,7 @@ def init_lnlike(nsamples, data=None):
 #     param_names = ['bias_flux', 'ns', 'As']
     param_limits = np.array([[-2., 0], [0.5, 1.5], [1.5e-8, 8.0e-9]])
     params = latin_hypercube.get_hypercube_samples(param_limits, nsamples)
-    data = gpemulator.SDSSData()
+    data = lyman_data.SDSSData()
     #Get unique values
     powers = [Powers(pp, zz=data.get_redshifts()) for pp in params]
     gp = gpemulator.SkLearnGP(params=params, kf=data.kf, powers = powers, param_limits = param_limits)
@@ -41,7 +41,7 @@ def build_fake_fluxes(nsamples):
     """Simple function using linear test case to build an emulator."""
     param_limits = np.array([[-1., 0], [0.9, 1.0], [1.5e-9, 3.0e-9]])
     params = latin_hypercube.get_hypercube_samples(param_limits, nsamples)
-    data = gpemulator.SDSSData()
+    data = lyman_data.SDSSData()
     powers = [Powers(pp, zz=data.get_redshifts()) for pp in params]
     gp = gpemulator.SkLearnGP(params=params, kf=data.kf, powers = powers, param_limits=param_limits)
     random_samples = latin_hypercube.get_random_samples(param_limits, nsamples//2)

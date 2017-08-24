@@ -13,6 +13,7 @@ import flux_power
 import matter_power
 import lyman_data
 import gpemulator
+from mean_flux import ConstMeanFlux
 
 def get_latex(key):
     """Get a latex name if it exists, otherwise return the key."""
@@ -25,7 +26,7 @@ def get_latex(key):
 
 class Emulator(object):
     """Small wrapper class to store parameter names and limits, generate simulations and get an emulator."""
-    def __init__(self, basedir, param_names=None, param_limits=None, kf=None):
+    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None):
         if param_names is None:
             self.param_names = {'ns':0, 'As':1, 'heat_slope':2, 'heat_amp':3, 'hub':4}
         else:
@@ -38,14 +39,15 @@ class Emulator(object):
             self.kf = lyman_data.BOSSData().get_kf()
         else:
             self.kf = kf
+        if mf is None:
+            self.mf = ConstMeanFlux(None)
+        else:
+            self.mf = mf
         #We fix omega_m h^2 = 0.1199 (Planck best-fit) and vary omega_m and h^2 to match it.
         #h^2 itself has no effect on the forest.
         self.omegamh2 = 0.1199
         #Corresponds to omega_m = (0.23, 0.31) which should be enough.
         self.dense_param_names = { 'tau0': 0 }
-        #Limits on factors to multiply the thermal history by.
-        #Mean flux is known to about 10% from SDSS, so we don't need a big range.
-        self.dense_param_limits = np.array([[0.7,1.3],])
         self.sample_params = []
         self.basedir = os.path.expanduser(basedir)
         if not os.path.exists(basedir):
@@ -93,8 +95,6 @@ class Emulator(object):
         real_basedir = self.basedir
         with open(os.path.join(real_basedir, dumpfile), 'r') as jsin:
             indict = json.load(jsin)
-        #Make sure dense parameters are not over-written
-        indict['dense_param_limits'] = self.dense_param_limits
         self.__dict__ = indict
         self._fromarray()
         self.kf = kf
@@ -148,14 +148,16 @@ class Emulator(object):
         except RuntimeError as e:
             print(str(e), " while building: ",outdir)
 
-    def get_param_limits(self, include_dense=False):
+    def get_param_limits(self, include_dense=True):
         """Get the reprocessed limits on the parameters for the likelihood."""
         if not include_dense:
             return self.param_limits
-        #Dense parameters go first as they are 'slow'
-        comb = np.vstack([self.dense_param_limits, self.param_limits])
-        assert np.shape(comb)[1] == 2
-        return comb
+        dlim = self.mf.get_limits()
+        if dlim is not None:
+            #Dense parameters go first as they are 'slow'
+            plimits = np.vstack([dlim, self.param_limits])
+            assert np.shape(plimits)[1] == 2
+        return self.param_limits
 
     def get_nsample_params(self):
         """Get the number of sparse parameters, those sampled by simulations."""
@@ -178,27 +180,36 @@ class Emulator(object):
         gp = self._get_custom_emulator(emuobj=gpemulator.SkLearnGP, max_z=max_z)
         return gp
 
-    def _get_custom_emulator(self, *, emuobj, max_z=4.2):
-        """Helper to allow supporting different emulators."""
+    def get_flux_vectors(self, max_z=4.2):
+        """Get the desired flux vectors and their parameters"""
         pvals = self.get_parameters()
         nparams = np.shape(pvals)[1]
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z)
         powers = [self._get_fv(pp, myspec) for pp in pvals]
-        gp = emuobj(params=pvals, kf=self.kf, powers = powers, param_limits = self.get_param_limits(include_dense=False))
+        tau0_factors = self.mf.get_t0()
+        flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factors = t0) for t0 in tau0_factors for ps in powers])
+        aparams = np.array([np.concatenate(dp,pv) for dp in dpvals for pv in pvals])
+        return aparams, flux_vectors
+
+    def _get_custom_emulator(self, *, emuobj, max_z=4.2):
+        """Helper to allow supporting different emulators."""
+        aparams, flux_vectors = self.get_flux_vectors(max_z=max_z)
+        plimits = self.get_param_limits(include_dense=True)
+        gp = emuobj(params=aparams, kf=self.kf, powers = flux_vectors, param_limits = plimits)
         return gp
 
 class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.
     Thermal parameters turned off."""
-    def __init__(self, basedir, nknots=4, kf=None):
+    def __init__(self, basedir, nknots=4, kf=None, mf=None):
         param_names = {'heat_slope':nknots, 'heat_amp':nknots+1, 'hub':nknots+2}
         #Assign names like AA, BB, etc.
         for i in range(nknots):
             param_names[string.ascii_uppercase[i]*2] = i
         self.nknots = nknots
         param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),nknots,axis=0),[[-0.5, 0.5],[0.5,1.5],[0.65,0.75]],axis=0)
-        super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits, kf=kf)
+        super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits, kf=kf, mf=mf)
         #Linearly spaced knots in k space:
         #these do not quite hit the edges of the forest region, because we want some coverage over them.
         self.knot_pos = np.linspace(0.15, 1.5,nknots)

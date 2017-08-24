@@ -29,20 +29,16 @@ class QuadraticPoly(SkLearnGP):
         super().__init__(*args, **kwargs)
         self.intol = 1e-2
 
-    def _get_interp(self, tau0_factor = None, bfnum=0):
+    def _get_interp(self, flux_vectors, bfnum=0):
         """Do the actual interpolation. Called in parent's __init__"""
-        self.cur_tau_factor = tau0_factor
         self.tables = {}
-        self.flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factor = tau0_factor) for ps in self.powers])
-        self.bestfv = self.flux_vectors[bfnum]
+        self.bestfv = flux_vectors[bfnum]
         self.bestpar = self.params[bfnum,:]
         for pp in range(np.shape(self.params)[1]):
-            self.tables[pp] = self._calc_coeffs(self.flux_vectors,self.params[:,pp], pp)
+            self.tables[pp] = self._calc_coeffs(flux_vectors,self.params[:,pp], pp)
 
-    def predict(self, params, tau0_factor):
+    def predict(self, params):
         """Get the interpolated quantity by evaluating the quadratic fit"""
-        if tau0_factor is not self.cur_tau_factor:
-            self._get_interp(tau0_factor = tau0_factor)
         #Interpolate onto desired bins
         #Do parameter correction
         newq = np.ones_like(self.bestfv)

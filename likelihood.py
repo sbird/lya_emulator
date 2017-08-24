@@ -10,6 +10,7 @@ import flux_power
 import getdist.plots
 import getdist.mcsamples
 import lyman_data
+from mean_flux import ConstMeanFlux
 from latin_hypercube import map_from_unit_cube
 import matplotlib
 matplotlib.use('PDF')
@@ -58,11 +59,12 @@ class LikelihoodClass(object):
         assert np.size(self.data_fluxpower) % np.size(self.sdss.get_kf) == 0
         self.file_root = file_root
         #Get the emulator
-        self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.sdss.get_kf())
+        mf = ConstMeanFlux(value = 0.95)
+        self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.sdss.get_kf(), mf=mf)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
         self.ndim = np.shape(self.param_limits)[0]
-        self.firstfast = self.ndim - self.emulator.get_nsample_params()
+        self.firstfast = 0
         self.gpemu = self.emulator.get_emulator(max_z=4.2)
         #Make sure there is a save directory
         try:
@@ -80,9 +82,8 @@ class LikelihoodClass(object):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix."""
         #Set parameter limits as the hull of the original emulator.
-        tau0_factor = params[0]
         nparams = params[self.firstfast:]
-        predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factor=tau0_factor)
+        predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1))
         diff = predicted[0]-self.data_fluxpower
         nkf = len(self.sdss.get_kf())
         nz = int(len(diff)/nkf)

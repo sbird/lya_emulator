@@ -7,6 +7,7 @@ import lyman_data
 import coarse_grid
 import flux_power
 import matter_power
+from mean_flux import ConstMeanFlux
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
@@ -16,23 +17,23 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max
     if savedir is None:
         savedir = emulatordir
     data = lyman_data.SDSSData()
+    t0 = None
+    if mean_flux:
+        t0 = 0.95
+    mf = ConstMeanFlux(value=t0)
     if emuclass is None:
-        params = coarse_grid.Emulator(emulatordir)
+        params = coarse_grid.Emulator(emulatordir, mf=mf)
     else:
-        params = emuclass(emulatordir)
+        params = emuclass(emulatordir, mf=mf)
     params.load()
     gp = params.get_emulator(max_z=max_z)
     params_test = coarse_grid.Emulator(testdir)
     params_test.load()
     myspec = flux_power.MySpectra(max_z=max_z)
     #Constant mean flux.
-    if mean_flux:
-        t0 = 1.
-    else:
-        t0 = None
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
-        predicted,std = gp.predict(pp.reshape(1,-1),tau0_factor=t0)
+        predicted,std = gp.predict(pp.reshape(1,-1))
         for po in gp.powers:
             po.drop_table()
         ps = myspec.get_snapshot_list(dd)
@@ -72,7 +73,7 @@ def plot_test_matter_interpolate(emulatordir,testdir, redshift=3.):
     params_test.load()
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
-        predicted = gp.predict(pp, tau0_factor=None)
+        predicted = gp.predict(pp)
         exact = matter_power.get_matter_power(dd,params.kf, redshift=redshift)
         ratio = predicted[0]/exact
         name = params_test.build_dirname(pp)

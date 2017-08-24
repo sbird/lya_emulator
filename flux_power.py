@@ -47,6 +47,7 @@ class FluxPower(object):
         return flux_arr
 
     def get_zout(self):
+        """Get output redshifts"""
         return np.array([ss.red for ss in self.spectrae])
 
     def drop_table(self):

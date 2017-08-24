@@ -5,6 +5,7 @@ import latin_hypercube
 import coarse_grid
 import flux_power
 from quadratic_emulator import QuadraticEmulator
+from mean_flux import ConstMeanFlux
 import lyman_data
 import matplotlib
 matplotlib.use("PDF")
@@ -48,18 +49,18 @@ def single_parameter_plot():
     emulatordir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")
     data = lyman_data.SDSSData()
     kf = data.get_kf()
-    emu = coarse_grid.Emulator(emulatordir)
+    mf = ConstMeanFlux(value=1.)
+    emu = coarse_grid.Emulator(emulatordir, mf=mf)
     emu.load()
-    gp = emu.get_emulator(max_z=2.4)
+    par, flux_vectors = emu.get_flux_vectors(max_z=2.4)
     params = emu.param_names
-    defpar = gp.params[0,:]
-    deffv = gp.powers[5].get_power(kf=kf, tau0_factor=1.)
+    defpar = par[0,:]
+    deffv = flux_vectors[0]
     for (name, index) in params.items():
-        ind = np.where(gp.params[:,index] != defpar[index])
+        ind = np.where(par[:,index] != defpar[index])
         for i in np.ravel(ind):
-            tp = gp.params[i,index]
-            fp = (gp.powers[i].get_power(kf=kf, tau0_factor=1.)/deffv).reshape(-1,len(kf))
-            gp.powers[i].drop_table()
+            tp = par[i,index]
+            fp = (flux_vectors[i]/deffv).reshape(-1,len(kf))
             plt.semilogx(kf, fp[0,:], label=name+"="+str(tp)+" (z=2.4)")
         plt.xlim(1e-3,2e-2)
         plt.ylim(ymin=0.6)

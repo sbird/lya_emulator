@@ -81,6 +81,8 @@ class Emulator(object):
         """Dump parameters to a textfile."""
         #Arrays can't be serialised so convert them back and forth to lists
         self.really_arrays = []
+        mf = self.mf
+        self.mf = []
         for nn, val in self.__dict__.items():
             if isinstance(val, np.ndarray):
                 self.__dict__[nn] = val.tolist()
@@ -88,16 +90,19 @@ class Emulator(object):
         with open(os.path.join(self.basedir, dumpfile), 'w') as jsout:
             json.dump(self.__dict__, jsout)
         self._fromarray()
+        self.mf = mf
 
     def load(self,dumpfile="emulator_params.json"):
         """Load parameters from a textfile."""
         kf = self.kf
+        mf = self.mf
         real_basedir = self.basedir
         with open(os.path.join(real_basedir, dumpfile), 'r') as jsin:
             indict = json.load(jsin)
         self.__dict__ = indict
         self._fromarray()
         self.kf = kf
+        self.mf = mf
         self.basedir = real_basedir
 
     def get_outdir(self, pp):

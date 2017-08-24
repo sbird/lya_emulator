@@ -10,7 +10,7 @@ class ConstMeanFlux(object):
 
     def get_t0(self):
         """Get change in mean optical depth from parameter values"""
-        return self.value
+        return [self.value,]
 
     def get_params(self):
         """Returns a list of parameters where the mean flux is evaluated."""

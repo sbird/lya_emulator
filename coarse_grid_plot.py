@@ -37,7 +37,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max
         for po in gp.powers:
             po.drop_table()
         ps = myspec.get_snapshot_list(dd)
-        exact = ps.get_power(kf = data.get_kf(), tau0_factor = t0)
+        exact = ps.get_power(kf = data.get_kf(), tau0_factors = t0)
         ps.drop_table()
         ratio = predicted[0]/exact
         upper = (predicted[0] + std[0])/exact

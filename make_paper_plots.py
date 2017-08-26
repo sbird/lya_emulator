@@ -47,11 +47,10 @@ def hypercube_plot():
 def single_parameter_plot():
     """Plot change in each parameter of an emulator from direct simulations."""
     emulatordir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")
-    data = lyman_data.SDSSData()
-    kf = data.get_kf()
     mf = ConstMeanFlux(value=1.)
     emu = coarse_grid.Emulator(emulatordir, mf=mf)
     emu.load()
+    kf = emu.kf()
     par, flux_vectors = emu.get_flux_vectors(max_z=2.4)
     params = emu.param_names
     defpar = par[0,:]

@@ -32,7 +32,7 @@ class FluxPower(object):
         flux_arr = np.empty(shape=(self.len(),np.size(kf)))
         for (i,ss) in enumerate(self.spectrae):
             if tau0_factors is not None:
-                if np.shape(tau0_factors)[0] > 1:
+                if isinstance(tau0_factors, np.ndarray) and np.size(tau0_factors) > 1:
                     mf = np.exp(-obs_mean_tau(ss.red)*tau0_factors[i])
                 else:
                     mf = np.exp(-obs_mean_tau(ss.red)*tau0_factors)

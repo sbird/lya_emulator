@@ -50,7 +50,6 @@ def single_parameter_plot():
     mf = ConstMeanFlux(value=1.)
     emu = coarse_grid.Emulator(emulatordir, mf=mf)
     emu.load()
-    kf = emu.kf()
     par, flux_vectors = emu.get_flux_vectors(max_z=2.4)
     params = emu.param_names
     defpar = par[0,:]
@@ -59,8 +58,8 @@ def single_parameter_plot():
         ind = np.where(par[:,index] != defpar[index])
         for i in np.ravel(ind):
             tp = par[i,index]
-            fp = (flux_vectors[i]/deffv).reshape(-1,len(kf))
-            plt.semilogx(kf, fp[0,:], label=name+"="+str(tp)+" (z=2.4)")
+            fp = (flux_vectors[i]/deffv).reshape(-1,len(emu.kf))
+            plt.semilogx(emu.kf, fp[0,:], label=name+"="+str(tp)+" (z=2.4)")
         plt.xlim(1e-3,2e-2)
         plt.ylim(ymin=0.6)
         plt.legend(loc=0)

@@ -10,7 +10,6 @@ import GPy
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
     def __init__(self, *, params, kf, powers,param_limits, coreg=False):
-        self.zout = powers[0].get_zout()
         self.params = params
         self.param_limits = param_limits
         self.kf = kf

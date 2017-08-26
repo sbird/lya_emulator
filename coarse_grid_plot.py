@@ -3,7 +3,6 @@ from __future__ import print_function
 import os.path
 import re
 import numpy as np
-import lyman_data
 import coarse_grid
 import flux_power
 import matter_power
@@ -16,7 +15,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
-    data = lyman_data.SDSSData()
     t0 = None
     if mean_flux:
         t0 = 0.95
@@ -27,6 +25,8 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max
         params = emuclass(emulatordir, mf=mf)
     params.load()
     gp = params.get_emulator(max_z=max_z)
+    kf = params.kf
+    del params
     params_test = coarse_grid.Emulator(testdir)
     params_test.load()
     myspec = flux_power.MySpectra(max_z=max_z)
@@ -34,20 +34,17 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
         predicted,std = gp.predict(pp.reshape(1,-1))
-        for po in gp.powers:
-            po.drop_table()
         ps = myspec.get_snapshot_list(dd)
-        exact = ps.get_power(kf = data.get_kf(), tau0_factors = t0)
-        ps.drop_table()
+        exact = ps.get_power(kf = kf, tau0_factors = t0)
         ratio = predicted[0]/exact
         upper = (predicted[0] + std[0])/exact
         lower = (predicted[0] - std[0])/exact
         nred = len(myspec.zout)
-        nk = len(data.get_kf())
+        nk = len(kf)
         assert np.shape(ratio) == (nred*nk,)
         for i in range(nred):
-            plt.semilogx(data.get_kf(),ratio[i*nk:(i+1)*nk],label=myspec.zout[i])
-            plt.fill_between(data.get_kf(),lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk],alpha=0.3, color="grey")
+            plt.semilogx(kf,ratio[i*nk:(i+1)*nk],label=myspec.zout[i])
+            plt.fill_between(kf,lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk],alpha=0.3, color="grey")
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
         name = params_test.build_dirname(pp)

@@ -162,6 +162,7 @@ class Emulator(object):
             #Dense parameters go first as they are 'slow'
             plimits = np.vstack([dlim, self.param_limits])
             assert np.shape(plimits)[1] == 2
+            return plimits
         return self.param_limits
 
     def get_nsample_params(self):
@@ -196,7 +197,7 @@ class Emulator(object):
         dpvals = self.mf.get_params()
         flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factors = t0) for t0 in tau0_factors for ps in powers])
         if dpvals is not None:
-            aparams = np.array([np.concatenate(dp,pv) for dp in dpvals for pv in pvals])
+            aparams = np.array([np.concatenate([dp,pv]) for dp in dpvals for pv in pvals])
         else:
             aparams = pvals
         return aparams, flux_vectors

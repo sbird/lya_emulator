@@ -15,7 +15,7 @@ class SkLearnGP(object):
         self.kf = kf
         self.intol = 3e-5
         #Should we test the built emulator?
-        self._test_interp = True
+        self._test_interp = False
         self.coreg=coreg
         #Get the flux power and build an emulator
         self._get_interp(flux_vectors=powers)

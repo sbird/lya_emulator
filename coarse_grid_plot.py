@@ -6,12 +6,12 @@ import numpy as np
 import coarse_grid
 import flux_power
 import matter_power
-from mean_flux import ConstMeanFlux
+from mean_flux import ConstMeanFlux,MeanFluxFactor
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 
-def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max_z=4.2, emuclass=None):
+def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=4.2, emuclass=None):
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
@@ -19,6 +19,8 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max
     if mean_flux:
         t0 = 0.95
     mf = ConstMeanFlux(value=t0)
+    if mean_flux == 2:
+        mf = MeanFluxFactor()
     if emuclass is None:
         params = coarse_grid.Emulator(emulatordir, mf=mf)
     else:
@@ -33,6 +35,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=True, max
     #Constant mean flux.
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
+        pp = np.concatenate([[t0,], pp])
         predicted,std = gp.predict(pp.reshape(1,-1))
         ps = myspec.get_snapshot_list(dd)
         exact = ps.get_power(kf = kf, tau0_factors = t0)

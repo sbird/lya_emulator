@@ -53,13 +53,16 @@ class Emulator(object):
         if not os.path.exists(basedir):
             os.mkdir(basedir)
 
-    def build_dirname(self,params):
+    def build_dirname(self,params, include_dense=False):
         """Make a directory name for a given set of parameter values"""
-        parts = ['',]*len(self.param_names)
+        ndense = include_dense * len(self.dense_param_names)
+        parts = ['',]*(len(self.param_names) + ndense)
         #Transform the dictionary into a list of string parts,
         #sorted in the same way as the parameter array.
-        for nn,val in self.param_names.items():
+        for nn,val in self.dense_param_names.items():
             parts[val] = nn+'%.2g' % params[val]
+        for nn,val in self.param_names.items():
+            parts[ndense+val] = nn+'%.2g' % params[ndense+val]
         name = ''.join(str(elem) for elem in parts)
         return name
 

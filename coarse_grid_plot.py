@@ -50,7 +50,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
             plt.fill_between(kf,lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk],alpha=0.3, color="grey")
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
-        name = params_test.build_dirname(pp)
+        name = params_test.build_dirname(pp, include_dense=True)
         plt.title(name)
         plt.xlim(xmax=0.05)
         plt.legend(loc=0)

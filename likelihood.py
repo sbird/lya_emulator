@@ -10,7 +10,7 @@ import flux_power
 import getdist.plots
 import getdist.mcsamples
 import lyman_data
-from mean_flux import ConstMeanFlux
+from mean_flux import MeanFluxFactor, ConstMeanFlux
 from latin_hypercube import map_from_unit_cube
 import matplotlib
 matplotlib.use('PDF')
@@ -48,7 +48,7 @@ def SiIIIcorr(fSiIII, tau_eff, kf):
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, datadir, file_root="lymanalpha"):
+    def __init__(self, basedir, datadir, file_root="lymanalpha", mean_flux='f'):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
@@ -59,12 +59,14 @@ class LikelihoodClass(object):
         assert np.size(self.data_fluxpower) % np.size(self.sdss.get_kf) == 0
         self.file_root = file_root
         #Get the emulator
-        mf = ConstMeanFlux(value = 0.95)
+        if mean_flux == 'c':
+            mf = ConstMeanFlux(value = 0.95)
+        elif mean_flux == 'f':
+            mf = MeanFluxFactor()
         self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.sdss.get_kf(), mf=mf)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
         self.ndim = np.shape(self.param_limits)[0]
-        self.firstfast = 0
         self.gpemu = self.emulator.get_emulator(max_z=4.2)
         #Make sure there is a save directory
         try:
@@ -82,15 +84,14 @@ class LikelihoodClass(object):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix."""
         #Set parameter limits as the hull of the original emulator.
-        nparams = params[self.firstfast:]
-        predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1))
+        predicted, std = self.gpemu.predict(np.array(params).reshape(1,-1))
         diff = predicted[0]-self.data_fluxpower
         nkf = len(self.sdss.get_kf())
         nz = int(len(diff)/nkf)
         #Likelihood using full covariance matrix
         chi2 = 0
         #Redshifts
-        zout = self.gpemu.zout
+        zout = self.sdss.get_redshifts()
         for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
             covar_bin = self.sdss.get_covar(zout[bb])
@@ -99,6 +100,7 @@ class LikelihoodClass(object):
             #Normalize the likelihood:
             chi2 += (np.shape(icov_bin)[0]-1)/2*np.log(np.trace(covar_bin))
         assert 0 > chi2 > -2**31
+        assert not np.isnan(chi2)
         #PolyChord requires a second argument for derived parameters
         return (chi2,[])
 
@@ -108,8 +110,6 @@ class LikelihoodClass(object):
         settings = PolyChordSettings(self.ndim, 0)
         settings.file_root = self.file_root
         settings.do_clustering = False
-        settings.grade_frac = [0.99,0.01]
-        settings.grade_dims = [self.firstfast,self.ndim-self.firstfast]
         settings.feedback = 3
         settings.read_resume = False
         #Make output

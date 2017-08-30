@@ -18,7 +18,7 @@ from mean_flux import ConstMeanFlux
 def get_latex(key):
     """Get a latex name if it exists, otherwise return the key."""
     #Names for pretty-printing some parameters in Latex
-    print_names = { 'ns': r'n_\mathrm{s}', 'As': r'A_\mathrm{s}', 'heat_slope': r'H_\mathrm{S}', 'heat_amp': r'H_\mathrm{A}', 'hub':'h'}
+    print_names = { 'ns': r'n_\mathrm{s}', 'As': r'A_\mathrm{s}', 'heat_slope': r'H_\mathrm{S}', 'heat_amp': r'H_\mathrm{A}', 'hub':'h', 'tau0':r'\tau_0'}
     try:
         return print_names[key]
     except KeyError:
@@ -66,6 +66,9 @@ class Emulator(object):
     def print_pnames(self):
         """Get parameter names for printing"""
         n_latex = []
+        sort_names = sorted(list(self.dense_param_names.items()), key=lambda k:(k[1],k[0]))
+        for key, _ in sort_names:
+            n_latex.append((key, get_latex(key)))
         sort_names = sorted(list(self.param_names.items()), key=lambda k:(k[1],k[0]))
         for key, _ in sort_names:
             n_latex.append((key, get_latex(key)))

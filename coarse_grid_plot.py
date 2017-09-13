@@ -6,7 +6,7 @@ import numpy as np
 import coarse_grid
 import flux_power
 import matter_power
-from mean_flux import ConstMeanFlux,MeanFluxFactor
+import mean_flux as mflux
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
@@ -15,12 +15,19 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
+    params_test = coarse_grid.Emulator(testdir)
+    params_test.load()
+    myspec = flux_power.MySpectra(max_z=max_z)
     t0 = None
-    if mean_flux:
+    if mean_flux < 3:
         t0 = 0.95
-    mf = ConstMeanFlux(value=t0)
+    else:
+        t0 = 0.95 * ((1+myspec.zout)/3.5)**3.5
+    mf = mflux.ConstMeanFlux(value=t0)
     if mean_flux == 2:
-        mf = MeanFluxFactor()
+        mf = mflux.MeanFluxFactor()
+    elif mean_flux == 3:
+        mf = mflux.MeanFluxSlope(zzs = myspec.zout)
     if emuclass is None:
         params = coarse_grid.Emulator(emulatordir, mf=mf)
     else:
@@ -29,9 +36,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
     gp = params.get_emulator(max_z=max_z)
     kf = params.kf
     del params
-    params_test = coarse_grid.Emulator(testdir)
-    params_test.load()
-    myspec = flux_power.MySpectra(max_z=max_z)
     #Constant mean flux.
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
@@ -56,7 +60,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
         plt.legend(loc=0)
         plt.show()
         if mean_flux:
-            name = name+"mf"+str(t0)
+            name = name+"mf0.95"
         name = re.sub(r"\.","_",str(name))+".pdf"
         #So we can use it in a latex document
         plt.savefig(os.path.join(savedir, name))

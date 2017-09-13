@@ -7,6 +7,7 @@ class ConstMeanFlux(object):
     """
     def __init__(self, value = 0.95):
         self.value = value
+        self.dense_param_names = {}
 
     def get_t0(self):
         """Get change in mean optical depth from parameter values"""
@@ -32,6 +33,7 @@ class MeanFluxFactor(ConstMeanFlux):
         else:
             self.dense_param_limits = dense_limits
         self.dense_samples = dense_samples
+        self.dense_param_names = { 'tau0': 0, }
 
     def get_t0(self):
         return self.get_params()
@@ -64,6 +66,7 @@ class MeanFluxSlope(MeanFluxFactor):
         #Mean flux is known to about 10% from SDSS, so we don't need a big range.
         super().__init__(self, dense_samples = dense_samples, dense_limits = np.array([[0.7,1.3],[3,4]]))
         self.zzs = zzs
+        self.dense_param_names = { 'tau0': 0 , 'dtau0': 1}
 
     def get_t0(self):
         t0fac = self.get_params()

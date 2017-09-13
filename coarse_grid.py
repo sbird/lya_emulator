@@ -18,7 +18,7 @@ from mean_flux import ConstMeanFlux
 def get_latex(key):
     """Get a latex name if it exists, otherwise return the key."""
     #Names for pretty-printing some parameters in Latex
-    print_names = { 'ns': r'n_\mathrm{s}', 'As': r'A_\mathrm{s}', 'heat_slope': r'H_\mathrm{S}', 'heat_amp': r'H_\mathrm{A}', 'hub':'h', 'tau0':r'\tau_0'}
+    print_names = { 'ns': r'n_\mathrm{s}', 'As': r'A_\mathrm{s}', 'heat_slope': r'H_\mathrm{S}', 'heat_amp': r'H_\mathrm{A}', 'hub':'h', 'tau0':r'\tau_0', 'dtau0':r'd\tau_0'}
     try:
         return print_names[key]
     except KeyError:
@@ -47,7 +47,6 @@ class Emulator(object):
         #h^2 itself has no effect on the forest.
         self.omegamh2 = 0.1199
         #Corresponds to omega_m = (0.23, 0.31) which should be enough.
-        self.dense_param_names = { 'tau0': 0 }
         self.sample_params = []
         self.basedir = os.path.expanduser(basedir)
         if not os.path.exists(basedir):
@@ -55,11 +54,11 @@ class Emulator(object):
 
     def build_dirname(self,params, include_dense=False):
         """Make a directory name for a given set of parameter values"""
-        ndense = include_dense * len(self.dense_param_names)
+        ndense = include_dense * len(self.mf.dense_param_names)
         parts = ['',]*(len(self.param_names) + ndense)
         #Transform the dictionary into a list of string parts,
         #sorted in the same way as the parameter array.
-        for nn,val in self.dense_param_names.items():
+        for nn,val in self.mf.dense_param_names.items():
             parts[val] = nn+'%.2g' % params[val]
         for nn,val in self.param_names.items():
             parts[ndense+val] = nn+'%.2g' % params[ndense+val]
@@ -69,7 +68,7 @@ class Emulator(object):
     def print_pnames(self):
         """Get parameter names for printing"""
         n_latex = []
-        sort_names = sorted(list(self.dense_param_names.items()), key=lambda k:(k[1],k[0]))
+        sort_names = sorted(list(self.mf.dense_param_names.items()), key=lambda k:(k[1],k[0]))
         for key, _ in sort_names:
             n_latex.append((key, get_latex(key)))
         sort_names = sorted(list(self.param_names.items()), key=lambda k:(k[1],k[0]))

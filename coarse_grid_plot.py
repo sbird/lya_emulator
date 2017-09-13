@@ -19,8 +19,9 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
     params_test.load()
     myspec = flux_power.MySpectra(max_z=max_z)
     t0 = None
-    if mean_flux < 3:
+    if mean_flux:
         t0 = 0.95
+        t1 = 3.5
     else:
         t0 = 0.95 * ((1+myspec.zout)/3.5)**3.5
     mf = mflux.ConstMeanFlux(value=t0)
@@ -39,9 +40,15 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
     #Constant mean flux.
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
-        pp = np.concatenate([[t0,], pp])
+        if mean_flux == 2:
+            pp = np.concatenate([[t0,], pp])
+        elif mean_flux == 3:
+            pp = np.concatenate([[t0,t1], pp])
         predicted,std = gp.predict(pp.reshape(1,-1))
         ps = myspec.get_snapshot_list(dd)
+        tfac = t0
+        if mean_flux == 3:
+            tfac = t0 * ((1+myspec.zout)/3.5)**t1
         exact = ps.get_power(kf = kf, tau0_factors = t0)
         ratio = predicted[0]/exact
         upper = (predicted[0] + std[0])/exact

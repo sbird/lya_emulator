@@ -24,10 +24,13 @@ class MeanFluxFactor(ConstMeanFlux):
     """Object which implements different mean flux models. This model parametrises
     uncertainty in the mean flux with a simple scaling factor.
     """
-    def __init__(self, dense_samples = 5):
+    def __init__(self, dense_samples = 5, dense_limits = None):
         #Limits on factors to multiply the thermal history by.
         #Mean flux is known to about 10% from SDSS, so we don't need a big range.
-        self.dense_param_limits = np.array([[0.7,1.3],])
+        if dense_limits is None:
+            self.dense_param_limits = np.array([[0.7,1.3],])
+        else:
+            self.dense_param_limits = dense_limits
         self.dense_samples = dense_samples
 
     def get_t0(self):
@@ -51,3 +54,17 @@ class MeanFluxFactor(ConstMeanFlux):
     def get_limits(self):
         """Get limits on the dense parameters"""
         return self.dense_param_limits
+
+class MeanFluxSlope(MeanFluxFactor):
+    """Object which implements different mean flux models. This model parametrises
+    uncertainty in the mean flux with a scaling factor and a slope.
+    """
+    def __init__(self, zzs, dense_samples = 5):
+        #Limits on factors to multiply the thermal history by.
+        #Mean flux is known to about 10% from SDSS, so we don't need a big range.
+        super().__init__(self, dense_samples = dense_samples, dense_limits = np.array([[0.7,1.3],[3,4]]))
+        self.zzs = zzs
+
+    def get_t0(self):
+        t0fac = self.get_params()
+        return np.array([t0[0] * ((1 + self.zzs)/3.5)**t0[1] for t0 in t0fac])

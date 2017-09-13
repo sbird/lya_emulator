@@ -97,8 +97,6 @@ class LikelihoodClass(object):
             covar_bin = self.sdss.get_covar(zout[bb])
             icov_bin = np.linalg.inv(covar_bin + np.diag(std**2))
             chi2 += - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
-            #Normalize the likelihood:
-            chi2 += (np.shape(icov_bin)[0]-1)/2*np.log(np.trace(covar_bin))
         assert 0 > chi2 > -2**31
         assert not np.isnan(chi2)
         #PolyChord requires a second argument for derived parameters

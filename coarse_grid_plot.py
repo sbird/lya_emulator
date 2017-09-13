@@ -15,20 +15,18 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
-    params_test = coarse_grid.Emulator(testdir)
-    params_test.load()
     myspec = flux_power.MySpectra(max_z=max_z)
     t0 = None
     if mean_flux:
         t0 = 0.95
-        t1 = 3.5
-    else:
-        t0 = 0.95 * ((1+myspec.zout)/3.5)**3.5
+        t1 = 0.05
     mf = mflux.ConstMeanFlux(value=t0)
     if mean_flux == 2:
         mf = mflux.MeanFluxFactor()
     elif mean_flux == 3:
         mf = mflux.MeanFluxSlope(zzs = myspec.zout)
+    params_test = coarse_grid.Emulator(testdir,mf=mf)
+    params_test.load()
     if emuclass is None:
         params = coarse_grid.Emulator(emulatordir, mf=mf)
     else:

@@ -3,8 +3,8 @@ import os
 import os.path
 import math
 import numpy as np
-import PolyChord.PyPolyChord.PyPolyChord as PolyChord
-from PolyChord.PyPolyChord.settings import PolyChordSettings
+import PyPolyChord
+from PyPolyChord.settings import PolyChordSettings
 import coarse_grid
 import flux_power
 import getdist.plots
@@ -111,7 +111,7 @@ class LikelihoodClass(object):
         settings.feedback = 3
         settings.read_resume = False
         #Make output
-        result = PolyChord.run_polychord(self.likelihood, self.ndim, 0, settings, self.prior)
+        result = PyPolyChord.run_polychord(self.likelihood, self.ndim, 0, settings, self.prior)
         #Save parameter names
         result.make_paramnames_files(self.emulator.print_pnames())
         #Save output

@@ -64,7 +64,7 @@ class MeanFluxSlope(MeanFluxFactor):
     def __init__(self, zzs, dense_samples = 5):
         #Limits on factors to multiply the thermal history by.
         #Mean flux is known to about 10% from SDSS, so we don't need a big range.
-        super().__init__(dense_samples = dense_samples, dense_limits = np.array([[0.7,1.3],[-0.5,0.5]]))
+        super().__init__(dense_samples = dense_samples**2, dense_limits = np.array([[0.7,1.3],[-0.5,0.5]]))
         self.zzs = zzs
         self.dense_param_names = { 'tau0': 0 , 'dtau0': 1}
 

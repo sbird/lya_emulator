@@ -121,7 +121,7 @@ class LikelihoodClass(object):
         self.cur_result = result
         return result
 
-    def new_parameter_limits(self, all_samples, coverage=99):
+    def new_parameter_limits(self, all_samples, coverage=99.9):
         """Find a square region which includes coverage of the parameters in each direction, for refinement."""
         assert 50 < coverage < 100
         #Use the marginalised distributions to find the square region.
@@ -129,8 +129,8 @@ class LikelihoodClass(object):
         #We could rotate the parameters here,
         #but ideally we would do that before running the coarse grid anyway.
         new_par = np.percentile(all_samples,[100-coverage,coverage],axis=0)
-        nsparse = np.shape(self.emulator.get_param_limits(include_dense=False))[0]
-        return new_par.T[:nsparse,:]
+        ndense = len(self.emulator.mf.dense_param_names)
+        return new_par.T[ndense:,:]
 
     def refinement(self,nsamples,coverage=99):
         """Do the refinement step."""

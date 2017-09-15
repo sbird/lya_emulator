@@ -10,7 +10,7 @@ import flux_power
 import getdist.plots
 import getdist.mcsamples
 import lyman_data
-from mean_flux import MeanFluxFactor, ConstMeanFlux
+import mean_flux as mflux
 from latin_hypercube import map_from_unit_cube
 import matplotlib
 matplotlib.use('PDF')
@@ -48,7 +48,7 @@ def SiIIIcorr(fSiIII, tau_eff, kf):
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, datadir, file_root="lymanalpha", mean_flux='f'):
+    def __init__(self, basedir, datadir, file_root="lymanalpha", mean_flux='s'):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
@@ -60,11 +60,11 @@ class LikelihoodClass(object):
         self.file_root = file_root
         #Get the emulator
         if mean_flux == 'c':
-            mf = ConstMeanFlux(value = 0.95)
+            mf = mflux.ConstMeanFlux(value = 0.95)
         elif mean_flux == 'f':
-            mf = MeanFluxFactor()
+            mf = mflux.MeanFluxFactor()
         elif mean_flux == 's':
-            mf = MeanFluxSlope(zzs=myspec.zout)
+            mf = mflux.MeanFluxSlope(zzs=myspec.zout)
         self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.sdss.get_kf(), mf=mf)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits(include_dense=True)

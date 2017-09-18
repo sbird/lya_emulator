@@ -25,6 +25,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
         mf = mflux.MeanFluxFactor()
     elif mean_flux == 3:
         mf = mflux.MeanFluxSlope()
+        t0 = -0.5
     params_test = coarse_grid.Emulator(testdir,mf=mf)
     params_test.load()
     if emuclass is None:
@@ -44,9 +45,9 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
             pp = np.concatenate([[t0,t1], pp])
         predicted,std = gp.predict(pp.reshape(1,-1))
         ps = myspec.get_snapshot_list(dd)
-        tfac = t0
+        tfac = t0*mflux.obs_mean_tau(myspec.zout)
         if mean_flux == 3:
-            tfac = t0 * ((1+myspec.zout)/3.5)**t1
+            tfac = mflux.obs_mean_tau(myspec.zout, amp=t0, slope=t1)
         exact = ps.get_power(kf = kf, tau0_factors = tfac)
         ratio = predicted[0]/exact
         upper = (predicted[0] + std[0])/exact

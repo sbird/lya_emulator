@@ -198,7 +198,7 @@ class Emulator(object):
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z)
         powers = [self._get_fv(pp, myspec) for pp in pvals]
-        tau0_factors = self.mf.get_t0()
+        tau0_factors = self.mf.get_t0(myspec.zout)
         dpvals = self.mf.get_params()
         flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factors = t0) for t0 in tau0_factors for ps in powers])
         if dpvals is not None:

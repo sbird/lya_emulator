@@ -64,7 +64,7 @@ class LikelihoodClass(object):
         elif mean_flux == 'f':
             mf = mflux.MeanFluxFactor()
         elif mean_flux == 's':
-            mf = mflux.MeanFluxSlope(zzs=myspec.zout)
+            mf = mflux.MeanFluxSlope()
         self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.sdss.get_kf(), mf=mf)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits(include_dense=True)

@@ -6,11 +6,6 @@ import numpy as np
 from fake_spectra import spectra
 from fake_spectra import abstractsnapshot as absn
 
-def obs_mean_tau(redshift):
-    """The mean flux from 0711.1862: is (0.0023±0.0007) (1+z)^(3.65±0.21)
-    Todo: check for updated values."""
-    return 0.0023*(1.0+redshift)**3.65
-
 class FluxPower(object):
     """Class stores the flux power spectrum."""
     def __init__(self):
@@ -32,10 +27,7 @@ class FluxPower(object):
         flux_arr = np.empty(shape=(self.len(),np.size(kf)))
         for (i,ss) in enumerate(self.spectrae):
             if tau0_factors is not None:
-                if isinstance(tau0_factors, np.ndarray) and np.size(tau0_factors) > 1:
-                    mf = np.exp(-obs_mean_tau(ss.red)*tau0_factors[i])
-                else:
-                    mf = np.exp(-obs_mean_tau(ss.red)*tau0_factors)
+                mf = np.exp(-tau0_factors[i])
             kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
             #Rebin flux power to have desired k bins
             rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)

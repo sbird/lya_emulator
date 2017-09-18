@@ -66,7 +66,7 @@ def single_parameter_plot():
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
         plt.clf()
 
-def test_s8_plots(mf=1):
+def test_s8_plots():
     """Plot emulator test-cases"""
     testdir = path.expanduser("~/data/Lya_Boss/hires_s8_test")
     quaddir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")

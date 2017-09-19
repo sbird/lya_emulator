@@ -74,7 +74,7 @@ class MeanFluxSlope(MeanFluxFactor):
         #Convert Kim constraints to z=2
         maxt = 7 * 3**0.23 + 23 * (3**0.23 - 1)
         mint = -7 * 3**-0.23 + 23 * (3**-0.23 - 1)
-        super().__init__(dense_samples = dense_samples**2, dense_limits = np.array([[mint,maxt],[-0.23,0.23]]))
+        super().__init__(dense_samples = dense_samples**2, dense_limits = np.array([[mint*1e-4,maxt*1e-4],[-0.23,0.23]]))
         self.dense_param_names = { 'tau0': 0 , 'dtau0': 1}
 
     def get_t0(self, zzs):

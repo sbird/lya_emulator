@@ -21,12 +21,16 @@ class MultiBinGP(object):
         gp = lambda i: SkLearnGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits, coreg=coreg)
         self.gps = [gp(i) for i in range(self.nz)]
 
-    def predict(self,params):
+    def predict(self,params, t0_factors=None):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         std = np.zeros([1,self.nk*self.nz])
         means = np.zeros([1,self.nk*self.nz])
         for i, gp in enumerate(self.gps):
-            (m, s) = gp.predict(params)
+            #Adjust the slope of the mean flux for this bin
+            zparams = np.array(params)
+            if t0_factors is not None:
+                zparams[0] *= t0_factors[i]
+            (m, s) = gp.predict(zparams)
             means[0,i*self.nk:(i+1)*self.nk] = m
             std[0,i*self.nk:(i+1)*self.nk] = s
         return means, std

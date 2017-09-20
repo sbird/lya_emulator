@@ -55,7 +55,7 @@ class LikelihoodClass(object):
         #'Data' now is a simulation
         myspec = flux_power.MySpectra(max_z=4.2)
         pps = myspec.get_snapshot_list(datadir)
-        self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factors=mean_flux.obs_mean_tau(myspec.zout, amp = -0.5))
+        self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factors=mean_flux.obs_mean_tau(myspec.zout, amp = -0.5e-4))
         assert np.size(self.data_fluxpower) % np.size(self.sdss.get_kf) == 0
         self.file_root = file_root
         #Get the emulator

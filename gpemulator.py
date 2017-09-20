@@ -7,12 +7,35 @@ import matplotlib
 matplotlib.use('PDF')
 import GPy
 
+class MultiBinGP(object):
+    """A wrapper around the emulator that constructs a separate emulator for each bin.
+    Each one has a separate mean flux parameter.
+    The t0 parameter fed to the emulator should be constant factors."""
+    def __init__(self, *, params, kf, powers, param_limits, coreg=False):
+        #Build an emulator for each redshift separately. This means that the
+        #mean flux for each bin can be separated.
+        self.kf = kf
+        self.nk = np.size(kf)
+        assert np.shape(powers)[1] % self.nk == 0
+        self.nz = int(np.shape(powers)[1]/self.nk)
+        gp = lambda i: SkLearnGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits, coreg=coreg)
+        self.gps = [gp(i) for i in range(self.nz)]
+
+    def predict(self,params):
+        """Get the predicted flux at a parameter value (or list of parameter values)."""
+        std = np.zeros([1,self.nk*self.nz])
+        means = np.zeros([1,self.nk*self.nz])
+        for i, gp in enumerate(self.gps):
+            (m, s) = gp.predict(params)
+            means[0,i*self.nk:(i+1)*self.nk] = m
+            std[0,i*self.nk:(i+1)*self.nk] = s
+        return means, std
+
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
-    def __init__(self, *, params, kf, powers,param_limits, coreg=False):
+    def __init__(self, *, params, powers,param_limits, coreg=False):
         self.params = params
         self.param_limits = param_limits
-        self.kf = kf
         self.intol = 3e-5
         #Should we test the built emulator?
         self._test_interp = False
@@ -50,7 +73,7 @@ class SkLearnGP(object):
             coreg = GPy.kern.Coregionalize(input_dim=nparams,output_dim=noutput)
             kernel = kernel.prod(coreg,name='coreg.kern')
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
-        self.gp.optimize(messages=True)
+        self.gp.optimize(messages=False)
         #Check we reproduce the input
         if self._test_interp:
             test,_ = self.predict(self.params[0,:].reshape(1,-1))
@@ -72,6 +95,7 @@ class SkLearnGP(object):
     def get_predict_error(self, test_params, test_exact):
         """Get the difference between the predicted GP
         interpolation and some exactly computed test parameters."""
+        #Note: this is not used anywhere
         test_exact = test_exact.reshape(np.shape(test_params)[0],-1)
         predict, sigma = self.predict(test_params)
         #The transposes are because of numpy broadcasting rules only doing the last axis

@@ -188,7 +188,7 @@ class Emulator(object):
             2. Each flux power spectrum in the set is rescaled to the same mean flux.
             3.
         """
-        gp = self._get_custom_emulator(emuobj=gpemulator.SkLearnGP, max_z=max_z)
+        gp = self._get_custom_emulator(emuobj=gpemulator.MultiBinGP, max_z=max_z)
         return gp
 
     def get_flux_vectors(self, max_z=4.2):

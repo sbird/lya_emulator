@@ -55,20 +55,28 @@ class LikelihoodClass(object):
         #'Data' now is a simulation
         myspec = flux_power.MySpectra(max_z=4.2)
         pps = myspec.get_snapshot_list(datadir)
-        self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factors=mean_flux.obs_mean_tau(myspec.zout, amp = -0.5e-4))
+        self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factors=mflux.obs_mean_tau(myspec.zout, amp = -0.5e-4))
         assert np.size(self.data_fluxpower) % np.size(self.sdss.get_kf) == 0
         self.file_root = file_root
         #Get the emulator
         if mean_flux == 'c':
             mf = mflux.ConstMeanFlux(value = 0.95)
-        elif mean_flux == 'f':
+        else:
             mf = mflux.MeanFluxFactor()
-        elif mean_flux == 's':
-            mf = mflux.MeanFluxSlope()
         self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.sdss.get_kf(), mf=mf)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
+        #As each redshift bin is independent, for redshift-dependent mean flux models
+        #we just need to convert the input parameters to a list of mean flux scalings
+        #in each redshift bin.
+        #This is an example which parametrises the mean flux as an amplitude and slope.
+        self.mf_slope = False
+        if mean_flux == 's':
+            #Add a slope to the parameter limits
+            self.param_limits = np.vstack([[-0.25, 0.25], self.param_limits])
+            self.mf_slope = True
         self.ndim = np.shape(self.param_limits)[0]
+        assert np.shape(self.param_limits)[1] == 2
         self.gpemu = self.emulator.get_emulator(max_z=4.2)
         #Make sure there is a save directory
         try:
@@ -85,15 +93,19 @@ class LikelihoodClass(object):
     def likelihood(self, params):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix."""
+        #Redshifts
+        zout = self.sdss.get_redshifts()
+        nparams = params
+        if self.mf_slope:
+            tau0_fac = mflux.mean_flux_slope_to_factor(zout, params[0])
+            nparams = params[1:]
         #Set parameter limits as the hull of the original emulator.
-        predicted, std = self.gpemu.predict(np.array(params).reshape(1,-1))
+        predicted, std = self.gpemu.predict(np.array(nparams, tau0_factors = tau0_fac).reshape(1,-1))
         diff = predicted[0]-self.data_fluxpower
         nkf = len(self.sdss.get_kf())
         nz = int(len(diff)/nkf)
         #Likelihood using full covariance matrix
         chi2 = 0
-        #Redshifts
-        zout = self.sdss.get_redshifts()
         for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
             covar_bin = self.sdss.get_covar(zout[bb])

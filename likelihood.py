@@ -74,6 +74,9 @@ class LikelihoodClass(object):
         if mean_flux == 's':
             #Add a slope to the parameter limits
             self.param_limits = np.vstack([[-0.25, 0.25], self.param_limits])
+            #Shrink param limits t0 so that even with
+            #a slope they are within the emulator range
+            self.param_limits[0,:] = [0.75,1.25]
             self.mf_slope = True
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2

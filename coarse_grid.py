@@ -2,6 +2,7 @@
 from __future__ import print_function
 import os
 import os.path
+import shutil
 import string
 import math
 import json
@@ -84,6 +85,14 @@ class Emulator(object):
 
     def dump(self, dumpfile="emulator_params.json"):
         """Dump parameters to a textfile."""
+        #Backup existing parameter file
+        if os.path.exists(dumpfile):
+            backup = dumpfile + ".backup"
+            r=1
+            while os.path.exists(backup):
+                backup = dumpfile + "_r"+str(r)+".backup"
+                r+=1
+            shutil.move(dumpfile, backup)
         #Arrays can't be serialised so convert them back and forth to lists
         self.really_arrays = []
         mf = self.mf

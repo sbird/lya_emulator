@@ -29,7 +29,7 @@ class MultiBinGP(object):
             #Adjust the slope of the mean flux for this bin
             zparams = np.array(params)
             if tau0_factors is not None:
-                zparams[0] *= t0_factors[i]
+                zparams[0][0] *= tau0_factors[i]
             (m, s) = gp.predict(zparams)
             means[0,i*self.nk:(i+1)*self.nk] = m
             std[0,i*self.nk:(i+1)*self.nk] = s

@@ -54,8 +54,9 @@ class LikelihoodClass(object):
         self.sdss = lyman_data.BOSSData()
         #'Data' now is a simulation
         myspec = flux_power.MySpectra(max_z=4.2)
+        self.zout = myspec.zout
         pps = myspec.get_snapshot_list(datadir)
-        self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factors=mflux.obs_mean_tau(myspec.zout, amp = -0.5e-4))
+        self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
         assert np.size(self.data_fluxpower) % np.size(self.sdss.get_kf) == 0
         self.file_root = file_root
         #Get the emulator
@@ -76,7 +77,7 @@ class LikelihoodClass(object):
             self.param_limits = np.vstack([[-0.25, 0.25], self.param_limits])
             #Shrink param limits t0 so that even with
             #a slope they are within the emulator range
-            self.param_limits[0,:] = [0.75,1.25]
+            self.param_limits[1,:] = [0.75,1.25]
             self.mf_slope = True
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
@@ -96,22 +97,22 @@ class LikelihoodClass(object):
     def likelihood(self, params):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix."""
-        #Redshifts
-        zout = self.sdss.get_redshifts()
         nparams = params
         if self.mf_slope:
-            tau0_fac = mflux.mean_flux_slope_to_factor(zout, params[0])
+            tau0_fac = mflux.mean_flux_slope_to_factor(self.zout, params[0])
             nparams = params[1:]
         #Set parameter limits as the hull of the original emulator.
-        predicted, std = self.gpemu.predict(np.array(nparams, tau0_factors = tau0_fac).reshape(1,-1))
+        predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
         diff = predicted[0]-self.data_fluxpower
         nkf = len(self.sdss.get_kf())
         nz = int(len(diff)/nkf)
         #Likelihood using full covariance matrix
         chi2 = 0
+        #Redshifts
+        sdssz = self.sdss.get_redshifts()
         for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
-            covar_bin = self.sdss.get_covar(zout[bb])
+            covar_bin = self.sdss.get_covar(sdssz[bb])
             icov_bin = np.linalg.inv(covar_bin + np.diag(std**2))
             chi2 += - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
         assert 0 > chi2 > -2**31

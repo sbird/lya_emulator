@@ -140,22 +140,33 @@ class LikelihoodClass(object):
         self.cur_result = result
         return result
 
-    def new_parameter_limits(self, all_samples, coverage=99.9):
-        """Find a square region which includes coverage of the parameters in each direction, for refinement."""
-        assert 50 < coverage < 100
+    def new_parameter_limits(self, confidence=0.99):
+        """Find a square region which includes coverage of the parameters in each direction, for refinement.
+        Confidence must be 0.68, 0.95 or 0.99."""
         #Use the marginalised distributions to find the square region.
         #If there are strong degeneracies this will be very inefficient.
         #We could rotate the parameters here,
         #but ideally we would do that before running the coarse grid anyway.
-        new_par = np.percentile(all_samples,[100-coverage,coverage],axis=0)
+        #Get marginalised statistics.
+        stats = like.cur_result.posterior.getMargeStats()
+        #Find confidence limit
+        ii = np.where(stats.limits == confidence)
+        assert np.size(ii) > 0
+        #All parameters
+        parlist = stats.parsWithNames("*")
+        #Discard dense params
         ndense = len(self.emulator.mf.dense_param_names)
         if self.mf_slope:
             ndense+=1
-        return new_par.T[ndense:,:]
+        upper = [pm.limits[ii[0][0]].upper for pm in parlist[ndense:]]
+        lower = [pm.limits[ii[0][0]].lower for pm in parlist[ndense:]]
+        assert np.all(lower < upper)
+        new_par = np.vstack([lower, upper]).T
+        return new_par
 
-    def refinement(self,nsamples,coverage=99):
+    def refinement(self,nsamples,confidence=0.99):
         """Do the refinement step."""
-        new_limits = self.new_parameter_limits(self.cur_result.posterior.samples,coverage=coverage)
+        new_limits = self.new_parameter_limits(confidence=confidence)
         new_samples = self.emulator.build_params(nsamples=nsamples,limits=new_limits, use_existing=True)
         self.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
 

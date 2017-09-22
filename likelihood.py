@@ -131,7 +131,10 @@ class LikelihoodClass(object):
         #Make output
         result = PyPolyChord.run_polychord(self.likelihood, self.ndim, 0, settings, self.prior)
         #Save parameter names
-        result.make_paramnames_files(self.emulator.print_pnames())
+        pnames = self.emulator.print_pnames()
+        if self.mf_slope:
+            pnames = [('dtau0',r'd\tau_0'),]+pnames
+        result.make_paramnames_files(pnames)
         #Save output
         #Check things are reasonable
         self.cur_result = result
@@ -146,6 +149,8 @@ class LikelihoodClass(object):
         #but ideally we would do that before running the coarse grid anyway.
         new_par = np.percentile(all_samples,[100-coverage,coverage],axis=0)
         ndense = len(self.emulator.mf.dense_param_names)
+        if self.mf_slope:
+            ndense+=1
         return new_par.T[ndense:,:]
 
     def refinement(self,nsamples,coverage=99):

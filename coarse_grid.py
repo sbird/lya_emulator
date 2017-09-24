@@ -86,13 +86,14 @@ class Emulator(object):
     def dump(self, dumpfile="emulator_params.json"):
         """Dump parameters to a textfile."""
         #Backup existing parameter file
-        if os.path.exists(os.path.join(self.basedir,dumpfile)):
-            backup = dumpfile + ".backup"
+        fdump = os.path.join(self.basedir, dumpfile)
+        if os.path.exists(fdump):
+            backup = fdump + ".backup"
             r=1
             while os.path.exists(backup):
-                backup = dumpfile + "_r"+str(r)+".backup"
+                backup = fdump + "_r"+str(r)+".backup"
                 r+=1
-            shutil.move(dumpfile, backup)
+            shutil.move(fdump, backup)
         #Arrays can't be serialised so convert them back and forth to lists
         self.really_arrays = []
         mf = self.mf
@@ -101,7 +102,7 @@ class Emulator(object):
             if isinstance(val, np.ndarray):
                 self.__dict__[nn] = val.tolist()
                 self.really_arrays.append(nn)
-        with open(os.path.join(self.basedir, dumpfile), 'w') as jsout:
+        with open(fdump, 'w') as jsout:
             json.dump(self.__dict__, jsout)
         self._fromarray()
         self.mf = mf
@@ -142,11 +143,13 @@ class Emulator(object):
         """Initialise the emulator by generating simulations for various parameters."""
         if samples is not None:
             self.sample_params = np.vstack([self.sample_params, samples])
-        if len(self.sample_params) == 0:
-            self.sample_params = self.build_params(nsamples)
+        else:
+            if len(self.sample_params) == 0:
+                self.sample_params = self.build_params(nsamples)
+            samples = self.sample_params
         self.dump()
         #Generate ICs for each set of parameter inputs
-        for ev in self.sample_params:
+        for ev in samples:
             self._do_ic_generation(ev, npart, box)
         return
 

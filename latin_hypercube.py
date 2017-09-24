@@ -94,9 +94,6 @@ def lhscentered(n, samples, prior_points = None):
         prior_points = np.empty([0,n])
 
     npriors = np.shape(prior_points)[0]
-    #Enforce that we are subsampling the earlier distribution, not supersampling it.
-    assert samples > npriors
-    new_samples = samples - npriors
     # Generate the intervals
     cut = np.linspace(0, 1, samples + 1)
 
@@ -107,7 +104,7 @@ def lhscentered(n, samples, prior_points = None):
     #Get list of central values
     _center = (a + b)/2
     # Choose a permutation so each sample is in one bin for each factor.
-    H = np.zeros((new_samples, n))
+    H = np.zeros((samples, n))
     for j in range(n):
         #Remove all values within cells covered by prior samples for this parameter.
         #The prior samples must also be a latin hypercube!
@@ -116,8 +113,8 @@ def lhscentered(n, samples, prior_points = None):
         else:
             new_center = _center
         H[:, j] = np.random.permutation(new_center)
-    assert np.shape(Hp) == (samples-npriors, n)
-    return Hp
+    assert np.shape(H) == (samples-npriors, n)
+    return H
 
 def map_from_unit_cube(param_vec, param_limits):
     """

@@ -123,14 +123,14 @@ class LikelihoodClass(object):
         #PolyChord requires a second argument for derived parameters
         return (chi2,[])
 
-    def do_sampling(self):
+    def do_sampling(self, resume=True):
         """Initialise and run PolyChord."""
         #Number of knots plus one cosmology plus one for mean flux.
         settings = PolyChordSettings(self.ndim, 0)
         settings.file_root = self.file_root
         settings.do_clustering = False
         settings.feedback = 3
-        settings.read_resume = False
+        settings.read_resume = resume
         #Make output
         result = PyPolyChord.run_polychord(self.likelihood, self.ndim, 0, settings, self.prior)
         #Save parameter names

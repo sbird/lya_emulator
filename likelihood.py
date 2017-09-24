@@ -94,7 +94,7 @@ class LikelihoodClass(object):
         #to avoid edge effects from the emulator.
         return list(map_from_unit_cube(np.array(hypercube), self.param_limits))
 
-    def likelihood(self, params):
+    def likelihood(self, params, include_emu=True):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix."""
         nparams = params
@@ -113,7 +113,10 @@ class LikelihoodClass(object):
         for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
             covar_bin = self.sdss.get_covar(sdssz[bb])
-            icov_bin = np.linalg.inv(covar_bin + np.diag(std**2))
+            if include_emu:
+                icov_bin = np.linalg.inv(covar_bin + np.diag(std**2))
+            else:
+                icov_bin = np.linalg.inv(covar_bin)
             chi2 += - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
         assert 0 > chi2 > -2**31
         assert not np.isnan(chi2)
@@ -140,7 +143,7 @@ class LikelihoodClass(object):
         self.cur_result = result
         return result
 
-    def new_parameter_limits(self, confidence=0.99):
+    def new_parameter_limits(self, confidence=0.99, include_dense=False):
         """Find a square region which includes coverage of the parameters in each direction, for refinement.
         Confidence must be 0.68, 0.95 or 0.99."""
         #Use the marginalised distributions to find the square region.
@@ -158,11 +161,35 @@ class LikelihoodClass(object):
         ndense = len(self.emulator.mf.dense_param_names)
         if self.mf_slope:
             ndense+=1
+        if include_dense:
+            ndense = 0
         upper = [pm.limits[ii[0][0]].upper for pm in parlist[ndense:]]
         lower = [pm.limits[ii[0][0]].lower for pm in parlist[ndense:]]
         assert np.all(lower < upper)
         new_par = np.vstack([lower, upper]).T
         return new_par
+
+    def check_for_refinement(self, conf = 0.95, frac = 1.3):
+        """Crude check for refinement: check whether the likelihood is dominated by
+           emulator error at the 1 sigma contours."""
+        limits = self.new_parameter_limits(confidence=conf, include_dense = True)
+        while True:
+            midpt = np.mean(limits, axis=1)
+            limits[:,0] = 1.4*(limits[:,0] - midpt) + midpt
+            limits[:,0] = np.max([limits[:,0], like.param_limits[:,0]],axis=0)
+            limits[:,1] = 1.4*(limits[:,1] - midpt) + midpt
+            limits[:,1] = np.min([limits[:,1], like.param_limits[:,1]],axis=0)
+            if np.all(limits == like.param_limits):
+                break
+            ue = self.likelihood(limits[:,0])[0]
+            un = self.likelihood(limits[:,0],include_emu=False)[0]
+            le = self.likelihood(limits[:,1])[0]
+            ln = self.likelihood(limits[:,1],include_emu=False)[0]
+            #This should be close to 1.
+            print("up =",un/ue," low=",ln/le)
+            if (un/ue < frac) and (ln/le < frac):
+                break
+        return limits
 
     def refinement(self,nsamples,confidence=0.99):
         """Do the refinement step."""
@@ -171,7 +198,7 @@ class LikelihoodClass(object):
         self.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
 
 if __name__ == "__main__":
-    like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA1.3BB0.67CC0.97DD0.97heat_slope-0.083heat_amp1.1hub0.72/output"))
+    like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))
     #Works very well!
     #     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots/AA0.96BB1.3CC1DD1.3heat_slope-5.6e-17heat_amp1.2hub0.66/output"))
     output = like.do_sampling()

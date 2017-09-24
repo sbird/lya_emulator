@@ -116,8 +116,7 @@ def lhscentered(n, samples, prior_points = None):
         else:
             new_center = _center
         H[:, j] = np.random.permutation(new_center)
-    Hp = np.vstack((prior_points, H))
-    assert np.shape(Hp) == (samples, n)
+    assert np.shape(Hp) == (samples-npriors, n)
     return Hp
 
 def map_from_unit_cube(param_vec, param_limits):

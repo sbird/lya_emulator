@@ -86,7 +86,7 @@ class Emulator(object):
     def dump(self, dumpfile="emulator_params.json"):
         """Dump parameters to a textfile."""
         #Backup existing parameter file
-        if os.path.exists(dumpfile):
+        if os.path.exists(os.path.join(self.basedir,dumpfile)):
             backup = dumpfile + ".backup"
             r=1
             while os.path.exists(backup):

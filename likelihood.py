@@ -151,7 +151,7 @@ class LikelihoodClass(object):
         #We could rotate the parameters here,
         #but ideally we would do that before running the coarse grid anyway.
         #Get marginalised statistics.
-        stats = like.cur_result.posterior.getMargeStats()
+        stats = self.cur_result.posterior.getMargeStats()
         #Find confidence limit
         ii = np.where(stats.limits == confidence)
         assert np.size(ii) > 0
@@ -176,10 +176,10 @@ class LikelihoodClass(object):
         while True:
             midpt = np.mean(limits, axis=1)
             limits[:,0] = 1.4*(limits[:,0] - midpt) + midpt
-            limits[:,0] = np.max([limits[:,0], like.param_limits[:,0]],axis=0)
+            limits[:,0] = np.max([limits[:,0], self.param_limits[:,0]],axis=0)
             limits[:,1] = 1.4*(limits[:,1] - midpt) + midpt
-            limits[:,1] = np.min([limits[:,1], like.param_limits[:,1]],axis=0)
-            if np.all(limits == like.param_limits):
+            limits[:,1] = np.min([limits[:,1], self.param_limits[:,1]],axis=0)
+            if np.all(limits == self.param_limits):
                 break
             ue = self.likelihood(limits[:,0])[0]
             un = self.likelihood(limits[:,0],include_emu=False)[0]
@@ -195,6 +195,7 @@ class LikelihoodClass(object):
         """Do the refinement step."""
         new_limits = self.new_parameter_limits(confidence=confidence)
         new_samples = self.emulator.build_params(nsamples=nsamples,limits=new_limits, use_existing=True)
+        assert np.shape(new_samples)[0] == nsamples
         self.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
 
 if __name__ == "__main__":

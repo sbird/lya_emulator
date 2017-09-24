@@ -141,16 +141,16 @@ class Emulator(object):
 
     def gen_simulations(self, nsamples, npart=256.,box=40,samples=None):
         """Initialise the emulator by generating simulations for various parameters."""
-        if samples is not None:
-            self.sample_params = np.vstack([self.sample_params, samples])
-        else:
-            if len(self.sample_params) == 0:
-                self.sample_params = self.build_params(nsamples)
+        if len(self.sample_params) == 0:
+            self.sample_params = self.build_params(nsamples)
+        if samples is None:
             samples = self.sample_params
         self.dump()
         #Generate ICs for each set of parameter inputs
         for ev in samples:
             self._do_ic_generation(ev, npart, box)
+        if samples is not None:
+            self.sample_params = np.vstack([self.sample_params, samples])
         return
 
     def _do_ic_generation(self,ev,npart,box):

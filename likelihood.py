@@ -114,10 +114,9 @@ class LikelihoodClass(object):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
             covar_bin = self.sdss.get_covar(sdssz[bb])
             if include_emu:
-                icov_bin = np.linalg.inv(covar_bin + np.diag(std**2))
-            else:
-                icov_bin = np.linalg.inv(covar_bin)
-            chi2 += - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
+                covar_bin += np.diag(std**2)
+            icov_bin = np.linalg.inv(covar_bin)
+            chi2 += - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2. - 0.5*np.log(np.linalg.det(covar_bin))
         assert 0 > chi2 > -2**31
         assert not np.isnan(chi2)
         #PolyChord requires a second argument for derived parameters
@@ -200,6 +199,7 @@ class LikelihoodClass(object):
 
 if __name__ == "__main__":
     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots_refine"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))
+#     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))
     #Works very well!
     #     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots/AA0.96BB1.3CC1DD1.3heat_slope-5.6e-17heat_amp1.2hub0.66/output"))
     output = like.do_sampling()

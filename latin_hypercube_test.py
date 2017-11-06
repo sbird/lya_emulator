@@ -17,7 +17,7 @@ def test_remove_single_parameter():
     prior_points = np.random.permutation(np.linspace(0,1,7))
     center = np.linspace(0,1,18)
     center = (center[:17] + center[1:])/2
-    new_center = latin_hypercube.remove_single_parameter(center, prior_points)
+    new_center,not_taken = latin_hypercube.remove_single_parameter(center, prior_points)
     #The right size
     assert np.size(new_center) == np.size(center) - np.size(prior_points)
     #All points in the new set were also in the old set

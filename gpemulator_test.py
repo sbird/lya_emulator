@@ -21,9 +21,9 @@ def test_emu_multiple():
     with an amplitude depending linearly on one parameter."""
     kf = np.array([ 0.00141,  0.00178,  0.00224,  0.00282])
     params = np.reshape(np.linspace(0.25,1.75,10), (10,1))
-    powers = [Power(par) for par in params]
+    powers = np.array([Power(par).get_power(kf=kf) for par in params])
     plimits = np.array((0.25,1.75),ndmin=2)
-    gp = gpemulator.SkLearnGP(params = params, kf = kf, powers = powers, param_limits = plimits)
+    gp = gpemulator.MultiBinGP(params = params, kf = kf, powers = powers, param_limits = plimits)
     predict,_ = gp.predict(np.reshape(np.array([0.5]), (1,1)))
     assert np.sum(np.abs(predict - 0.5 * kf*100)/predict) < 1e-4
 
@@ -34,8 +34,8 @@ def test_emu_single():
     kf = np.array([ 0.00141])
     params = np.reshape(np.linspace(0.25,1.75,10),(10,1))
     plimits = np.array((0.25,1.75),ndmin=2)
-    powers = [Power(par) for par in params]
-    gp = gpemulator.SkLearnGP(params=params, kf=kf, powers = powers, param_limits = plimits)
+    powers = np.array([Power(par).get_power(kf=kf) for par in params])
+    gp = gpemulator.MultiBinGP(params=params, kf=kf, powers = powers, param_limits = plimits)
     predict, _ = gp.predict(np.reshape(np.array([0.5]), (1,1)))
     assert np.abs(predict/kf/100 - 0.5) < 1e-4
 
@@ -60,8 +60,8 @@ def test_emu_multi_param():
     p2 = np.tile(p2,10)
     p1 = np.repeat(p1,10)
     params = np.vstack([p1.T,p2.T]).T
-    powers = [MultiPower(par) for par in params]
+    powers = np.array([MultiPower(par).get_power(kf=kf) for par in params])
     plimits = np.array(((0.25,1.75),(0.1,1)))
-    gp = gpemulator.SkLearnGP(params=params, kf=kf, powers = powers, param_limits = plimits)
+    gp = gpemulator.MultiBinGP(params=params, kf=kf, powers = powers, param_limits = plimits)
     predict,_ = gp.predict(np.reshape(np.array([0.5,0.288]),(1,-1)))
     assert np.max(np.abs(predict - (0.5+0.288**2) * 100*kf)/predict) < 1e-4

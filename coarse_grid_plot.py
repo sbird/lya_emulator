@@ -53,9 +53,10 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
         name = params_test.build_dirname(pp, include_dense=True)
-        plt.title(name)
+#         plt.title(name)
         plt.xlim(xmax=0.05)
         plt.legend(loc=0)
+        plt.tight_layout()
         plt.show()
         if mean_flux:
             name = name+"mf0.95"

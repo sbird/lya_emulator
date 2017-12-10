@@ -11,40 +11,38 @@ class MultiBinGP(object):
     """A wrapper around the emulator that constructs a separate emulator for each bin.
     Each one has a separate mean flux parameter.
     The t0 parameter fed to the emulator should be constant factors."""
-    def __init__(self, *, params, kf, powers, param_limits, coreg=False):
+    def __init__(self, *, params, kf, powers, param_limits):
         #Build an emulator for each redshift separately. This means that the
         #mean flux for each bin can be separated.
         self.kf = kf
         self.nk = np.size(kf)
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = int(np.shape(powers)[1]/self.nk)
-        self.coreg = coreg
-        gp = lambda i: SkLearnGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits, coreg=coreg)
-        self.gps = [gp(i) for i in range(self.nz)]
+        gp = lambda i: SkLearnGP(params=params, powers=powers[:,i], param_limits = param_limits)
+        self.gps = [gp(i) for i in range(self.nk*self.nz)]
 
     def predict(self,params, tau0_factors=None):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
-        std = np.zeros([1 + self.coreg*(np.shape(params)[1]-1),self.nk*self.nz])
+        std = np.zeros([1,self.nk*self.nz])
         means = np.zeros([1,self.nk*self.nz])
         for i, gp in enumerate(self.gps):
             #Adjust the slope of the mean flux for this bin
             zparams = np.array(params)
             if tau0_factors is not None:
-                zparams[0][0] *= tau0_factors[i]
+                zparams[0][0] *= tau0_factors[i//self.nk]
             (m, s) = gp.predict(zparams)
-            means[0,i*self.nk:(i+1)*self.nk] = m
-            std[:,i*self.nk:(i+1)*self.nk] = s
+            means[0,i] = m
+            std[:,i] = s
         return means, std
 
 class SkLearnGP(object):
     """An emulator using the one in Scikit-learn"""
-    def __init__(self, *, params, powers,param_limits, coreg=False):
+    def __init__(self, *, params, powers,param_limits):
         self.params = params
         self.param_limits = param_limits
         self.intol = 3e-5
         #Should we test the built emulator?
         self._test_interp = False
-        self.coreg=coreg
         #Get the flux power and build an emulator
         self._get_interp(flux_vectors=powers)
         #In case we need it, we can rescale the errors using cross-validation.
@@ -64,8 +62,8 @@ class SkLearnGP(object):
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
-        medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
-        self.scalefactors = flux_vectors[medind,:]
+        medind = np.argsort(flux_vectors)[np.shape(flux_vectors)[0]//2]
+        self.scalefactors = flux_vectors[medind]
         self.paramzero = params_cube[medind,:]
         #Normalise by the median value
         normspectra = flux_vectors/self.scalefactors -1.
@@ -73,16 +71,12 @@ class SkLearnGP(object):
         #they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)
         kernel += GPy.kern.RBF(nparams)
-        noutput = np.shape(normspectra)[1]
-        if self.coreg and noutput > 1:
-            coreg = GPy.kern.Coregionalize(input_dim=nparams,output_dim=noutput)
-            kernel = kernel.prod(coreg,name='coreg.kern')
-        self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
+        self.gp = GPy.models.GPRegression(params_cube, normspectra.reshape(-1,1),kernel=kernel, noise_var=1e-10)
         self.gp.optimize(messages=False)
         #Check we reproduce the input
         if self._test_interp:
             test,_ = self.predict(self.params[0,:].reshape(1,-1))
-            worst = np.abs(test[0] / flux_vectors[0,:]-1)
+            worst = np.abs(test[0] / flux_vectors[0]-1)
             if np.max(worst) > self.intol:
                 print("Bad interpolation at:",np.where(worst > np.max(worst)*0.9), np.max(worst))
                 assert np.max(worst) < self.intol
@@ -95,6 +89,7 @@ class SkLearnGP(object):
         flux_predict, var = self.gp.predict(params_cube)
         mean = (flux_predict+1)*self.scalefactors
         std = np.sqrt(var) * self.scalefactors
+        assert np.size(mean) == 1
         return mean, std
 
     def get_predict_error(self, test_params, test_exact):

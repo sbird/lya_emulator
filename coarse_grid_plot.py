@@ -32,6 +32,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
     gp = params.get_emulator(max_z=max_z)
     kf = params.kf
     del params
+    errlist = np.array([])
     #Constant mean flux.
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
@@ -44,6 +45,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
         ratio = predicted[0]/exact
         upper = (predicted[0] + std[0])/exact
         lower = (predicted[0] - std[0])/exact
+        errlist = np.concatenate([errlist, (predicted[0] - exact)/std[0]])
         nred = len(myspec.zout)
         nk = len(kf)
         assert np.shape(ratio) == (nred*nk,)
@@ -64,6 +66,15 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
         #So we can use it in a latex document
         plt.savefig(os.path.join(savedir, name))
         print(name)
+        plt.clf()
+    #Plot the distribution of errors, compared to a Gaussian
+    if np.all(np.isfinite(errlist)):
+        plt.hist(errlist,bins=100, density=True)
+        xx = np.arange(-6, 6, 0.01)
+        plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
+        plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
+        plt.xlim(-6,6)
+        plt.savefig(os.path.join(savedir, "errhist.pdf"))
         plt.clf()
     return gp
 

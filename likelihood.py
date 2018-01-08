@@ -116,7 +116,10 @@ class LikelihoodClass(object):
             covar_bin = self.sdss.get_covar(sdssz[bb])
             assert np.shape(np.diag(std_bin**2)) == np.shape(covar_bin)
             if include_emu:
-                covar_bin += np.diag(std_bin**2)
+                #Assume each k bin is independent
+#                 covar_bin += np.diag(std_bin**2)
+                #Assume completely correlated emulator errors within this bin
+                covar_bin += std_bin**2*np.ones_like(covar_bin)
             icov_bin = np.linalg.inv(covar_bin)
             chi2 += - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2. - 0.5*np.log(np.linalg.det(covar_bin))
         assert 0 > chi2 > -2**31

@@ -3,15 +3,13 @@ import os
 import os.path
 import math
 import numpy as np
-import PyPolyChord
-from PyPolyChord.settings import PolyChordSettings
+import emcee
 import coarse_grid
 import flux_power
 import getdist.plots
 import getdist.mcsamples
 import lyman_data
 import mean_flux as mflux
-from latin_hypercube import map_from_unit_cube
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
@@ -82,17 +80,6 @@ class LikelihoodClass(object):
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
         self.gpemu = self.emulator.get_emulator(max_z=4.2)
-        #Make sure there is a save directory
-        try:
-            os.makedirs("chains/clusters")
-        except FileExistsError:
-            pass
-
-    def prior(self, hypercube):
-        """Maps the unit hypercube [0,1]^D to the units of the emulator."""
-        #Sample only from the inner 90% of the hypercube,
-        #to avoid edge effects from the emulator.
-        return list(map_from_unit_cube(np.array(hypercube), self.param_limits))
 
     def likelihood(self, params, include_emu=True):
         """A simple likelihood function for the Lyman-alpha forest.
@@ -124,30 +111,29 @@ class LikelihoodClass(object):
             (sign, cdet) = np.linalg.slogdet(covar_bin)
             dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
             chi2 += dcd -0.5* cdet
-            assert chi2 > -2**31
+            assert 0 > chi2 > -2**31
             assert not np.isnan(chi2)
-        #PolyChord requires a second argument for derived parameters
-        return (chi2,[])
+        return chi2
 
-    def do_sampling(self, resume=True):
-        """Initialise and run PolyChord."""
-        #Number of knots plus one cosmology plus one for mean flux.
-        settings = PolyChordSettings(self.ndim, 0)
-        settings.file_root = self.file_root
-        settings.do_clustering = False
-        settings.feedback = 3
-        settings.read_resume = resume
-        #Make output
-        result = PyPolyChord.run_polychord(self.likelihood, self.ndim, 0, settings, self.prior)
-        #Save parameter names
+    def do_sampling(self, nwalkers=100, burnin=500, nsamples=500000):
+        """Initialise and run emcee."""
+        #Limits: we need to hard-prior to the volume of our emulator.
+        pr = (self.param_limits[:,1]-self.param_limits[:,0])
+        #Priors are assumed to be in the middle.
+        cent = (self.param_limits[:,1]+self.param_limits[:,0])/2.
+        p0 = [cent+2*pr/16.*np.random.rand(self.ndim)-pr/16. for _ in range(nwalkers)]
+        assert np.all([np.isfinite(self.likelihood(pp)) for pp in p0])
+        emcee_sampler = emcee.EnsembleSampler(nwalkers, self.ndim, self.likelihood)
+        pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
+         #Check things are reasonable
+        assert np.all(emcee_sampler.acceptance_fraction > 0.01)
+        emcee_sampler.reset()
+        emcee_sampler.run_mcmc(pos, nsamples)
         pnames = self.emulator.print_pnames()
         if self.mf_slope:
             pnames = [('dtau0',r'd\tau_0'),]+pnames
-        result.make_paramnames_files(pnames)
-        #Save output
-        #Check things are reasonable
-        self.cur_result = result
-        return result
+        self.cur_results = emcee_sampler
+        return emcee_sampler
 
     def new_parameter_limits(self, confidence=0.99, include_dense=False):
         """Find a square region which includes coverage of the parameters in each direction, for refinement.
@@ -157,22 +143,17 @@ class LikelihoodClass(object):
         #We could rotate the parameters here,
         #but ideally we would do that before running the coarse grid anyway.
         #Get marginalised statistics.
-        stats = self.cur_result.posterior.getMargeStats()
-        #Find confidence limit
-        ii = np.where(stats.limits == confidence)
-        assert np.size(ii) > 0
-        #All parameters
-        parlist = stats.parsWithNames("*")
+        limits = np.percentile(self.cur_results.flatchain, [100-100*confidence, 100*confidence], axis=0)
         #Discard dense params
         ndense = len(self.emulator.mf.dense_param_names)
         if self.mf_slope:
             ndense+=1
         if include_dense:
             ndense = 0
-        upper = [pm.limits[ii[0][0]].upper for pm in parlist[ndense:]]
-        lower = [pm.limits[ii[0][0]].lower for pm in parlist[ndense:]]
+        lower = limits[ndense:,0]
+        upper = limits[ndense:, 1]
         assert np.all(lower < upper)
-        new_par = np.vstack([lower, upper]).T
+        new_par = limits[ndense:,:]
         return new_par
 
     def check_for_refinement(self, conf = 0.95, frac = 1.3):

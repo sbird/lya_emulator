@@ -6,23 +6,8 @@ import numpy as np
 import emcee
 import coarse_grid
 import flux_power
-import getdist.plots
-import getdist.mcsamples
 import lyman_data
 import mean_flux as mflux
-import matplotlib
-matplotlib.use('PDF')
-import matplotlib.pyplot as plt
-
-def load_chain(file_root):
-    """Load a chain using getdist"""
-    return getdist.mcsamples.loadMCSamples(file_root)
-
-def make_plot(chain):
-    """Make a plot of parameter posterior values"""
-    g = getdist.plots.getSubplotPlotter()
-    g.triangle_plot(chain)
-    plt.show()
 
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""
@@ -44,9 +29,22 @@ def SiIIIcorr(fSiIII, tau_eff, kf):
     aa = fSiIII/(1-np.exp(-tau_eff))
     return 1 + aa**2 + 2 * aa * _siIIIcorr(kf)
 
+def gelman_rubin(chain):
+    """Compute the Gelman-Rubin statistic for a chain"""
+    ssq = np.var(chain, axis=1, ddof=1)
+    W = np.mean(ssq, axis=0)
+    tb = np.mean(chain, axis=1)
+    tbb = np.mean(tb, axis=0)
+    m = chain.shape[0]
+    n = chain.shape[1]
+    B = n / (m - 1) * np.sum((tbb - tb)**2, axis=0)
+    var_t = (n - 1) / n * W + 1 / n * B
+    R = np.sqrt(var_t / W)
+    return R
+
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, datadir, file_root="lymanalpha", mean_flux='s'):
+    def __init__(self, basedir, datadir, mean_flux='s'):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
@@ -56,7 +54,6 @@ class LikelihoodClass(object):
         pps = myspec.get_snapshot_list(datadir)
         self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
         assert np.size(self.data_fluxpower) % np.size(self.sdss.get_kf) == 0
-        self.file_root = file_root
         #Get the emulator
         if mean_flux == 'c':
             mf = mflux.ConstMeanFlux(value = 0.95)
@@ -115,8 +112,12 @@ class LikelihoodClass(object):
             assert not np.isnan(chi2)
         return chi2
 
-    def do_sampling(self, nwalkers=100, burnin=500, nsamples=500000):
+    def do_sampling(self, savefile, nwalkers=100, burnin=500, nsamples=50000):
         """Initialise and run emcee."""
+        pnames = self.emulator.print_pnames()
+        if self.mf_slope:
+            pnames = [('dtau0',r'd\tau_0'),]+pnames
+        np.savetxt(savefile+"_names.txt",pnames)
         #Limits: we need to hard-prior to the volume of our emulator.
         pr = (self.param_limits[:,1]-self.param_limits[:,0])
         #Priors are assumed to be in the middle.
@@ -128,11 +129,11 @@ class LikelihoodClass(object):
          #Check things are reasonable
         assert np.all(emcee_sampler.acceptance_fraction > 0.01)
         emcee_sampler.reset()
-        emcee_sampler.run_mcmc(pos, nsamples)
-        pnames = self.emulator.print_pnames()
-        if self.mf_slope:
-            pnames = [('dtau0',r'd\tau_0'),]+pnames
         self.cur_results = emcee_sampler
+        emcee_sampler.run_mcmc(pos, nsamples)
+        while gelman_rubin(emcee_sampler.chain) > 1.05:
+            emcee_sampler.run_mcmc(pos, nsamples)
+            np.savetxt(savefile, self.cur_results.chain)
         return emcee_sampler
 
     def new_parameter_limits(self, confidence=0.99, include_dense=False):
@@ -190,4 +191,4 @@ if __name__ == "__main__":
     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))
     #Works very well!
     #     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots/AA0.96BB1.3CC1DD1.3heat_slope-5.6e-17heat_amp1.2hub0.66/output"))
-    output = like.do_sampling()
+    output = like.do_sampling(os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA0.97BB1.3_chain.txt"))

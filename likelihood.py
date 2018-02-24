@@ -117,9 +117,9 @@ class LikelihoodClass(object):
             assert np.shape(np.diag(std_bin**2)) == np.shape(covar_bin)
             if include_emu:
                 #Assume each k bin is independent
-#                 covar_bin += np.diag(std_bin**2)
+                covar_bin += np.diag(std_bin**2)
                 #Assume completely correlated emulator errors within this bin
-                covar_bin += np.matmul(np.diag(std_bin**2),np.ones_like(covar_bin))
+#                 covar_bin += np.matmul(np.diag(std_bin**2),np.ones_like(covar_bin))
             icov_bin = np.linalg.inv(covar_bin)
             (sign, cdet) = np.linalg.slogdet(covar_bin)
             dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.

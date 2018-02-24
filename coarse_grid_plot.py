@@ -46,6 +46,15 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
         upper = (predicted[0] + std[0])/exact
         lower = (predicted[0] - std[0])/exact
         errlist = np.concatenate([errlist, (predicted[0] - exact)/std[0]])
+        #REMOVE
+        plt.hist((predicted[0]-exact)/std[0],bins=100, density=True)
+        xx = np.arange(-6, 6, 0.01)
+        plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
+        plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
+        plt.xlim(-6,6)
+        plt.savefig(os.path.join(savedir, "errhist_"+str(np.size(errlist))+".pdf"))
+        plt.clf()
+        #DONE
         nred = len(myspec.zout)
         nk = len(kf)
         assert np.shape(ratio) == (nred*nk,)

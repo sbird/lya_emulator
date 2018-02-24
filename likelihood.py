@@ -85,6 +85,8 @@ class LikelihoodClass(object):
         if self.mf_slope:
             tau0_fac = mflux.mean_flux_slope_to_factor(self.zout, params[0])
             nparams = params[1:]
+        if np.any(params >= self.param_limits[:,1]) or np.any(params <= self.param_limits[:,0]):
+            return -np.inf
         #Set parameter limits as the hull of the original emulator.
         predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
         diff = predicted[0]-self.data_fluxpower

@@ -117,7 +117,9 @@ class LikelihoodClass(object):
         pnames = self.emulator.print_pnames()
         if self.mf_slope:
             pnames = [('dtau0',r'd\tau_0'),]+pnames
-        np.savetxt(savefile+"_names.txt",pnames)
+        with open(savefile+"_names.txt") as ff:
+            for pp in pnames:
+                ff.write("%s %s\n" % pp)
         #Limits: we need to hard-prior to the volume of our emulator.
         pr = (self.param_limits[:,1]-self.param_limits[:,0])
         #Priors are assumed to be in the middle.

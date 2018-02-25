@@ -114,7 +114,7 @@ class LikelihoodClass(object):
             assert not np.isnan(chi2)
         return chi2
 
-    def do_sampling(self, savefile, nwalkers=100, burnin=500, nsamples=5000):
+    def do_sampling(self, savefile, nwalkers=100, burnin=5000, nsamples=5000):
         """Initialise and run emcee."""
         pnames = self.emulator.print_pnames()
         if self.mf_slope:
@@ -135,11 +135,11 @@ class LikelihoodClass(object):
         emcee_sampler.reset()
         self.cur_results = emcee_sampler
         gr = 10.
-        while gr > 1.05:
+        while np.any(gr > 1.05):
             emcee_sampler.run_mcmc(pos, nsamples)
             gr = gelman_rubin(emcee_sampler.chain)
             print("Total samples:",nsamples," Gelman-Rubin: ",gr)
-            np.savetxt(savefile, emcee_sampler.chain)
+            np.savetxt(savefile, emcee_sampler.flatchain)
         return emcee_sampler
 
     def new_parameter_limits(self, confidence=0.99, include_dense=False):

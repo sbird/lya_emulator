@@ -47,7 +47,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
         lower = (predicted[0] - std[0])/exact
         errlist = np.concatenate([errlist, (predicted[0] - exact)/std[0]])
         #REMOVE
-        plt.hist((predicted[0]-exact)/std[0],bins=100, density=True)
+        plt.hist((predicted[0]-exact)/std[0],bins=100) #, density=True) #No 'density' property in Matplotlib v1
         xx = np.arange(-6, 6, 0.01)
         plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
         plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
@@ -78,7 +78,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
         plt.clf()
     #Plot the distribution of errors, compared to a Gaussian
     if np.all(np.isfinite(errlist)):
-        plt.hist(errlist,bins=100, density=True)
+        plt.hist(errlist,bins=100) #, density=True)
         xx = np.arange(-6, 6, 0.01)
         plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
         plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")

@@ -3,8 +3,8 @@ from __future__ import print_function
 import os.path
 import scipy.interpolate
 import numpy as np
-from fake_spectra import spectra
-from fake_spectra import abstractsnapshot as absn
+#from fake_spectra import spectra
+#from fake_spectra import abstractsnapshot as absn
 
 class FluxPower(object):
     """Class stores the flux power spectrum."""

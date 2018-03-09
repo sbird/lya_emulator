@@ -27,9 +27,13 @@ class SDSSData(object):
         #kbins vary first, so that we have 11 bins with z=2.2, then 11 with z=2.4,etc.
         self.covar = np.loadtxt(covarfile)
 
-    def get_kf(self):
+    def get_kf(self, kf_bin_nums=None):
         """Get the (unique) flux k values"""
-        return np.sort(np.array(list(set(self.kf))))
+        kf_array = np.sort(np.array(list(set(self.kf))))
+        if kf_bin_nums is None:
+            return kf_array
+        else:
+            return kf_array[kf_bin_nums]
 
     def get_redshifts(self):
         """Get the (unique) redshift bins, sorted in decreasing redshift"""

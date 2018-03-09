@@ -11,7 +11,7 @@ import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 
-def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=4.2, emuclass=None):
+def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=4.2, emuclass=None, kf_bin_nums=None):
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
@@ -22,12 +22,12 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
     mf = mflux.ConstMeanFlux(value=t0)
     if mean_flux == 2:
         mf = mflux.MeanFluxFactor()
-    params_test = coarse_grid.Emulator(testdir,mf=mf)
+    params_test = coarse_grid.Emulator(testdir,mf=mf, kf_bin_nums=kf_bin_nums)
     params_test.load()
     if emuclass is None:
-        params = coarse_grid.Emulator(emulatordir, mf=mf)
+        params = coarse_grid.Emulator(emulatordir, mf=mf, kf_bin_nums=kf_bin_nums)
     else:
-        params = emuclass(emulatordir, mf=mf)
+        params = emuclass(emulatordir, mf=mf, kf_bin_nums=kf_bin_nums)
     params.load()
     gp = params.get_emulator(max_z=max_z)
     kf = params.kf

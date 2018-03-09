@@ -78,13 +78,13 @@ def test_s8_plots():
     quad_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
     return (gp_emu, gp_quad, quad_quad)
 
-def test_knot_plots(mf=1, testdir = None, emudir = None):
+def test_knot_plots(mf=1, testdir = None, emudir = None, kf_bin_nums=None):
     """Plot emulator test-cases"""
     if testdir is None:
         testdir = path.expanduser("~/data/Lya_Boss/hires_knots_test")
     if emudir is None:
         emudir = path.expanduser("~/data/Lya_Boss/hires_knots")
-    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_knots_mf"+str(mf)),mean_flux=mf)
+    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_knots_mf"+str(mf)),mean_flux=mf,kf_bin_nums=kf_bin_nums)
     return gp_emu
 
 def sample_var_plot():

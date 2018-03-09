@@ -43,7 +43,7 @@ class SDSSData(object):
 
 class BOSSData(SDSSData):
     """A class to store the flux power and corresponding covariance matrix from BOSS."""
-    def __init__(self, datafile="data/boss_dr9_data/table4a.dat", covardir="data/boss_dr9_data"):
+    def __init__(self, datafile=os.path.expanduser("~/Software/lya_emulator/data/boss_dr9_data/table4a.dat"), covardir=os.path.expanduser("~/Software/lya_emulator/data/boss_dr9_data")):
         # Read SDSS best-fit data.
         # Contains the redshift wavenumber from SDSS
         # See Readme file.

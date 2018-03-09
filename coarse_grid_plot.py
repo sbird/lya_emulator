@@ -11,7 +11,7 @@ import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 
-def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=4.2, emuclass=None, kf_bin_nums=None):
+def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_flux=1, max_z=4.2, emuclass=None, kf_bin_nums=None):
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
@@ -52,7 +52,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
         plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
         plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
         plt.xlim(-6,6)
-        plt.savefig(os.path.join(savedir, "errhist_"+str(np.size(errlist))+".pdf"))
+        plt.savefig(os.path.join(savedir, "errhist_"+plotname+str(np.size(errlist))+".pdf"))
         plt.clf()
         #DONE
         nred = len(myspec.zout)
@@ -71,7 +71,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
         plt.show()
         if mean_flux:
             name = name+"mf0.95"
-        name = re.sub(r"\.","_",str(name))+".pdf"
+        name = re.sub(r"\.","_",str(name))+plotname+".pdf"
         #So we can use it in a latex document
         plt.savefig(os.path.join(savedir, name))
         print(name)
@@ -83,7 +83,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=
         plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
         plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
         plt.xlim(-6,6)
-        plt.savefig(os.path.join(savedir, "errhist.pdf"))
+        plt.savefig(os.path.join(savedir, "errhist"+plotname+".pdf"))
         plt.clf()
     return gp
 

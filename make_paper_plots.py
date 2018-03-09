@@ -13,8 +13,9 @@ import matplotlib.pyplot as plt
 from plot_latin_hypercube import plot_points_hypercube
 import coarse_grid_plot
 
-plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
+#plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
 #plotdir = '/home/keir/Plots/Emulator'
+plotdir = '/Users/kwame/Documents/emulator_paper_1/plots'
 def hypercube_plot():
     """Make a plot of some hypercubes"""
     limits = np.array([[0,1],[0,1]])

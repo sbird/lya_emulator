@@ -1,8 +1,15 @@
+import sys
+
 from make_paper_plots import *
+from coarse_grid_plot import *
 
 if __name__ == "__main__":
-    testdir = '/share/hypatia/sbird/Lya_Boss/hires_knots_test'
-    emudir = '/share/hypatia/sbird/Lya_Boss/hires_knots'
+    sim_rootdir = sys.argv[1]
+    savedir = sys.argv[2]
 
-    test_knot_plots(testdir=testdir, emudir=emudir, plotname="_LastTwo_kf", kf_bin_nums=[33,34])
-    #test_knot_plots(testdir='/Users/kwame/Simulations/Lya_Boss/hires_knots_test',emudir='/Users/kwame/Simulations/Lya_Boss/hires_knots')
+    testdir = sim_rootdir + '/Lya_Boss/hires_knots_test' #/share/hypatia/sbird
+    emudir = sim_rootdir + '/Lya_Boss/hires_knots'
+    #savedir = '/Users/kwame/Papers/emulator_paper_1/plots'
+
+    #test_knot_plots(testdir=testdir, emudir=emudir, plotname="_Two_kf2", kf_bin_nums=[0,1]) #[33,34])
+    plot_test_interpolate_kf_bin_loop(emudir, testdir, savedir=savedir, plotname="_Two_loop", kf_bin_nums=np.arange(2))

@@ -35,6 +35,67 @@ def plot_convexhull(emulatordir):
                 ax.plot(projected[simplex, 0], projected[simplex, 1], 'k-')
     return hull
 
+def plot_test_interpolate_kf_bin_loop(emulatordir, testdir, savedir=None, plotname="", kf_bin_nums=np.arange(1)):
+    """Plot the validation set vs the test points from the emulator for a specific k bin,
+       looping over all the validation points."""
+    if savedir is None:
+        savedir = emulatordir
+
+    all_power_array_all_kf = [None] * kf_bin_nums.size
+    for i in range(kf_bin_nums.size):
+        plotname_single_kf_bin = plotname + '_' + str(kf_bin_nums[i])
+        gp, all_power_array_all_kf[i], z_labs = plot_test_interpolate(emulatordir, testdir, savedir=savedir, plotname=plotname_single_kf_bin, kf_bin_nums=[kf_bin_nums[i],])
+
+    all_power_array_all_kf = np.array(all_power_array_all_kf)
+    for j in range(all_power_array_all_kf.shape[1]): #Loop over validation points in parameter space
+        print("Validation point", j+1, "/", all_power_array_all_kf.shape[1])
+        #Plot error histogram
+        power_difference = all_power_array_all_kf[:, j, 1, :] - all_power_array_all_kf[:, j, 3, :]
+        err_norm = power_difference / all_power_array_all_kf[:, j, 2, :]
+        _plot_error_histogram(savedir, "_validation_parameters_" + str(j) + plotname, err_norm.flatten())
+
+        #Plot predicted/exact
+        power_ratio = all_power_array_all_kf[:, j, 1, :] / all_power_array_all_kf[:, j, 3, :]
+        power_lower = (all_power_array_all_kf[:, j, 1, :] - all_power_array_all_kf[:, j, 2, :]) / all_power_array_all_kf[:, j, 3, :]
+        power_upper = (all_power_array_all_kf[:, j, 1, :] + all_power_array_all_kf[:, j, 2, :]) / all_power_array_all_kf[:, j, 3, :]
+        for k in range(all_power_array_all_kf.shape[3]): #Loop over redshift bins
+            kf = all_power_array_all_kf[:, j, 0, k]
+            plt.semilogx(kf, power_ratio[:, k], label=z_labs[k])
+            plt.fill_between(kf, power_lower[:, k], power_upper[:, k], alpha=0.3, color="grey")
+        plt.xlabel(r"$k_F$ (s/km)")
+        plt.ylabel(r"Predicted/Exact")
+        plt.xlim(xmax=0.05)
+        plt.legend(loc=0)
+        plt.tight_layout()
+        plt.show()
+        name = "validation_parameters_" + str(j) + plotname + ".pdf"
+        plt.savefig(os.path.join(savedir, name))
+        print(name)
+        plt.clf()
+
+    #Plot combined error histogram
+    power_difference = all_power_array_all_kf[:, :, 1, :] - all_power_array_all_kf[:, :, 3, :]
+    err_norm = power_difference / all_power_array_all_kf[:, :, 2, :]
+    _plot_error_histogram(savedir, plotname, err_norm.flatten())
+
+    #Save combined output
+    array_savename = os.path.join(savedir, "combined_output" + plotname + '.npy')
+    np.save(array_savename, all_power_array_all_kf)
+
+def _plot_error_histogram(savedir, plotname, err_norm):
+    """Plot a histogram of the errors from the emulator with the expected errors."""
+    plt.hist(err_norm, bins=100, density=True)
+    xx = np.arange(-6, 6, 0.01)
+    _plot_unit_Gaussians(xx)
+    plt.xlim(-6, 6)
+    plt.savefig(os.path.join(savedir, "errhist" + plotname + ".pdf"))
+    plt.clf()
+
+def _plot_unit_Gaussians(xx):
+    """Plot a unit gaussian and a 2-unit gaussian"""
+    plt.plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), ls="-", color="black")
+    plt.plot(xx, np.exp(-xx ** 2 / 2 / 2 ** 2) / np.sqrt(2 * np.pi * 2 ** 2), ls="--", color="grey")
+
 def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_flux=1, max_z=4.2, emuclass=None, kf_bin_nums=None):
     """Make a plot showing the interpolation error."""
     if savedir is None:
@@ -58,6 +119,14 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     del params
     errlist = np.array([])
     #Constant mean flux.
+
+    # Save output
+    nred = len(myspec.zout)
+    nkf = kf.size
+    #print("Number of validation points =", params_test.get_parameters().shape[0])
+    all_power_array = np.zeros((params_test.get_parameters().shape[0], 4, nkf*nred)) #kf, predicted, std, exact
+    validation_number = 0
+
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
         if mean_flux == 2:
@@ -79,7 +148,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.savefig(os.path.join(savedir, "errhist_"+str(np.size(errlist))+plotname+".pdf"))
         plt.clf()
         #DONE
-        nred = len(myspec.zout)
         nk = len(kf)
         assert np.shape(ratio) == (nred*nk,)
         for i in range(nred):
@@ -100,6 +168,13 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.savefig(os.path.join(savedir, name))
         print(name)
         plt.clf()
+
+        #Save output
+        all_power_array[validation_number] = np.vstack((np.tile(kf, nred), predicted[0], std[0], exact))
+        array_savename = os.path.join(savedir, name[:-4] + '.npy')
+        np.save(array_savename, all_power_array[validation_number])
+        validation_number+=1
+
     #Plot the distribution of errors, compared to a Gaussian
     if np.all(np.isfinite(errlist)):
         plt.hist(errlist,bins=100, density=True)
@@ -109,7 +184,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.xlim(-6,6)
         plt.savefig(os.path.join(savedir, "errhist"+plotname+".pdf"))
         plt.clf()
-    return gp
+    return gp, all_power_array, myspec.zout
 
 def plot_test_matter_interpolate(emulatordir,testdir, redshift=3.):
     """Make a plot showing the interpolation error for the matter power spectrum."""

@@ -76,7 +76,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
         plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
         plt.xlim(-6,6)
-        plt.savefig(os.path.join(savedir, "errhist_"+plotname+str(np.size(errlist))+".pdf"))
+        plt.savefig(os.path.join(savedir, "errhist_"+str(np.size(errlist))+plotname+".pdf"))
         plt.clf()
         #DONE
         nred = len(myspec.zout)

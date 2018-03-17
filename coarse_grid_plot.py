@@ -7,9 +7,33 @@ import coarse_grid
 import flux_power
 import matter_power
 import mean_flux as mflux
+import scipy.spatial
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
+
+def plot_convexhull(emulatordir):
+    """Plot the convex hull of the projection of the emulator parameters"""
+    params = coarse_grid.Emulator(emulatordir, mf=None)
+    params.load()
+    points = params.sample_params
+    hull = scipy.spatial.ConvexHull(points)
+    K = np.shape(points)[1]
+    fig, axes = plt.subplots(K, K)
+    for i in range(K):
+        for j in range(K):
+            ax = axes[i,j]
+            if j >= i:
+                ax.set_frame_on(False)
+                ax.set_xticks([])
+                ax.set_yticks([])
+                continue
+            ax.plot(points[:,i], points[:,j], 'o')
+            projected = np.vstack([points[:,i], points[:,j]]).T
+            hull = scipy.spatial.ConvexHull(projected)
+            for simplex in hull.simplices:
+                ax.plot(projected[simplex, 0], projected[simplex, 1], 'k-')
+    return hull
 
 def plot_test_interpolate(emulatordir,testdir, savedir=None, mean_flux=1, max_z=4.2, emuclass=None):
     """Make a plot showing the interpolation error."""

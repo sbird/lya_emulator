@@ -44,12 +44,12 @@ def gelman_rubin(chain):
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, datadir, mean_flux='s'):
+    def __init__(self, basedir, datadir, mean_flux='s', max_z = 4.2):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
         #'Data' now is a simulation
-        myspec = flux_power.MySpectra(max_z=4.2)
+        myspec = flux_power.MySpectra(max_z=max_z)
         self.zout = myspec.zout
         pps = myspec.get_snapshot_list(datadir)
         self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
@@ -76,7 +76,7 @@ class LikelihoodClass(object):
             self.mf_slope = True
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
-        self.gpemu = self.emulator.get_emulator(max_z=4.2)
+        self.gpemu = self.emulator.get_emulator(max_z=max_z)
 
     def likelihood(self, params, include_emu=True):
         """A simple likelihood function for the Lyman-alpha forest.

@@ -2,10 +2,12 @@
 from __future__ import print_function
 import os.path
 import re
+import math as mh
 import numpy as np
 import coarse_grid
 import flux_power
 import matter_power
+import lyman_data
 import mean_flux as mflux
 import matplotlib
 matplotlib.use('PDF')
@@ -47,6 +49,8 @@ def plot_test_interpolate_kf_bin_loop(emulatordir, testdir, savedir=None, plotna
         print(name)
         plt.clf()
 
+    _plot_by_redshift_bins(savedir, plotname, z_labs, all_power_array_all_kf)
+
     #Plot combined error histogram
     power_difference = all_power_array_all_kf[:, :, 1, :] - all_power_array_all_kf[:, :, 3, :]
     err_norm = power_difference / all_power_array_all_kf[:, :, 2, :]
@@ -56,19 +60,47 @@ def plot_test_interpolate_kf_bin_loop(emulatordir, testdir, savedir=None, plotna
     array_savename = os.path.join(savedir, "combined_output" + plotname + '.npy')
     np.save(array_savename, all_power_array_all_kf)
 
-def _plot_error_histogram(savedir, plotname, err_norm):
-    plt.hist(err_norm, bins=100, density=True)
-    xx = np.arange(-6, 6, 0.01)
-    _plot_unit_Gaussians(xx)
-    plt.xlim(-6, 6)
-    plt.savefig(os.path.join(savedir, "errhist" + plotname + ".pdf"))
+def _plot_by_redshift_bins(savedir, plotname, z_labs, all_power_array_all_kf):
+    ncols = 3
+    nrows = mh.ceil(len(z_labs) / ncols)
+    figure, axes = plt.subplots(nrows=nrows, ncols=ncols)
+    for z in range(all_power_array_all_kf.shape[3]): #Loop over redshift bins
+        power_difference = all_power_array_all_kf[:, :, 1, z] - all_power_array_all_kf[:, :, 3, z]
+        err_norm = power_difference / all_power_array_all_kf[:, :, 2, z]
+        _plot_error_histogram(savedir, 'z =' + z_labs[z], err_norm.flatten(), axis=axes.flatten()[z])
+    plt.tight_layout()
+    figure.subplots_adjust(hspace=0.)
+    plt.savefig(os.path.join(savedir, "errhist_z_bins" + plotname + ".pdf"))
     plt.clf()
 
-def _plot_unit_Gaussians(xx):
-    plt.plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), ls="-", color="black")
-    plt.plot(xx, np.exp(-xx ** 2 / 2 / 2 ** 2) / np.sqrt(2 * np.pi * 2 ** 2), ls="--", color="grey")
+def _plot_error_histogram(savedir, plotname, err_norm, axis=None, xlim=6., nbins=100, xlabel=r"(Predicted - Exact) / $1 \sigma$"):
+    if axis is None:
+        plt.hist(err_norm, bins=nbins, density=True)
+        xx = np.arange(-6, 6, 0.01)
+        _plot_unit_Gaussians(xx)
+        plt.xlabel(xlabel)
+        plt.xlim(-1. * xlim, xlim)
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(savedir, "errhist" + plotname + ".pdf"))
+        plt.clf()
+    else:
+        axis.hist(err_norm, bins=nbins, density=True, label=plotname)
+        xx = np.arange(-6, 6, 0.01)
+        _plot_unit_Gaussians(xx, axis=axis)
+        axis.set_xlabel(xlabel)
+        axis.set_xlim(-1. * xlim, xlim)
+        axis.legend(frameon=False, fontsize=5.)
 
-def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_flux=1, max_z=4.2, emuclass=None, kf_bin_nums=None):
+def _plot_unit_Gaussians(xx, axis=None):
+    if axis is None:
+        plt.plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), ls="-", color="black", label=r"Unit Gaussian")
+        plt.plot(xx, np.exp(-xx ** 2 / 2 / 2 ** 2) / np.sqrt(2 * np.pi * 2 ** 2), ls="--", color="grey")
+    else:
+        axis.plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), ls="-", color="black", label=r"Unit Gaussian")
+        axis.plot(xx, np.exp(-xx ** 2 / 2 / 2 ** 2) / np.sqrt(2 * np.pi * 2 ** 2), ls="--", color="grey")
+
+def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_flux=1, max_z=4.2, emuclass=None, kf_bin_nums=None,data_err=False):
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
@@ -99,6 +131,11 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     all_power_array = np.zeros((params_test.get_parameters().shape[0], 4, nkf*nred)) #kf, predicted, std, exact
     validation_number = 0
 
+    #Get BOSS flux power spectra measurement errors
+    if data_err is True:
+        BOSS_data_instance = lyman_data.BOSSData()
+        measurement_errors = np.sqrt(BOSS_data_instance.get_covar_diag()) #sqrt[(stat. 1 sigma)**2 + (sys. 1 sigma)**2]
+
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
         if mean_flux == 2:
@@ -110,7 +147,14 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         ratio = predicted[0]/exact
         upper = (predicted[0] + std[0])/exact
         lower = (predicted[0] - std[0])/exact
-        errlist = np.concatenate([errlist, (predicted[0] - exact)/std[0]])
+        if data_err is False:
+            errlist = np.concatenate([errlist, (predicted[0] - exact)/std[0]])
+        else:
+            measurement_errors_to_max_z = measurement_errors[:nred * nkf].reshape((nred, nkf))[::-1].flatten()
+            if kf_bin_nums is not None:
+                measurement_errors_to_max_z = measurement_errors_to_max_z.reshape((nred, nkf))[:,kf_bin_nums].flatten()
+            errlist = np.concatenate([errlist, (predicted[0] - exact) / measurement_errors_to_max_z])
+        print(measurement_errors_to_max_z)
         #REMOVE
         plt.hist((predicted[0]-exact)/std[0],bins=100 , density=True) #No 'density' property in Matplotlib v1
         xx = np.arange(-6, 6, 0.01)
@@ -148,14 +192,18 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         validation_number+=1
 
     #Plot the distribution of errors, compared to a Gaussian
+    if data_err is True:
+        plotname = plotname + "_data_err"
     if np.all(np.isfinite(errlist)):
-        plt.hist(errlist,bins=100, density=True)
+        '''plt.hist(errlist,bins=100, density=True)
         xx = np.arange(-6, 6, 0.01)
         plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
         plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
         plt.xlim(-6,6)
         plt.savefig(os.path.join(savedir, "errhist"+plotname+".pdf"))
-        plt.clf()
+        plt.clf()'''
+        _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=250, xlabel=r"(Predicted - Exact) / $1 \sigma$ [BOSS error]")
+
     return gp, all_power_array, myspec.zout
 
 def plot_test_matter_interpolate(emulatordir,testdir, redshift=3.):

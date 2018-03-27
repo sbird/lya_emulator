@@ -13,6 +13,7 @@ import scipy.spatial
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 def plot_convexhull(emulatordir):
     """Plot the convex hull of the projection of the emulator parameters"""
@@ -148,7 +149,9 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     else:
         params = emuclass(emulatordir, mf=mf, kf_bin_nums=kf_bin_nums)
     params.load()
+    print('Beginning to generate emulator at', str(datetime.now()))
     gp = params.get_emulator(max_z=max_z)
+    print('Finished generating emulator at', str(datetime.now()))
     kf = params.kf
     del params
     errlist = np.array([])

@@ -17,9 +17,10 @@ def make_plot(chainfile, savefile):
     corner.corner(samples, labels=pnames)
     plt.savefig(savefile)
 
-def run_and_plot_likelihood_samples(testdir, emudir, savefile, n_walkers=100, n_burn_in_steps=100, n_steps=400):
-    #chainfile = os.path.expanduser("~/Simulations/Lya_Boss/hires_knots_test/AA0.97BB1.3_chain.txt")
-    chainfile = testdir + '/AA0.97BB1.3_chain.txt'
+def run_and_plot_likelihood_samples(testdir, emudir, savefile, chain_savedir=None, n_walkers=100, n_burn_in_steps=100, n_steps=400):
+    if chain_savedir is None:
+        chain_savedir = testdir
+    chainfile = chain_savedir + '/AA0.97BB1.3_chain.txt'
     like = LikelihoodClass(basedir=emudir, datadir=testdir+"/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output")
     output = like.do_sampling(chainfile, nwalkers=n_walkers, burnin=n_burn_in_steps, nsamples=n_steps)
     make_plot(chainfile, savefile)

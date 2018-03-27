@@ -17,4 +17,4 @@ if __name__ == "__main__":
     #test_knot_plots(testdir=testdir, emudir=emudir, plotname="_All_kf", kf_bin_nums=None, data_err=True) #[33,34])
     #plot_test_interpolate_kf_bin_loop(emudir, testdir, savedir=savedir, plotname="_Two_loop", kf_bin_nums=np.arange(2))
 
-    run_and_plot_likelihood_samples(testdir, emudir, likelihood_samples_plot_savefile, chain_savedir=chain_savedir, n_burn_in_steps=5000, n_steps=5000)
+    run_and_plot_likelihood_samples(testdir, emudir, likelihood_samples_plot_savefile, plot=False, chain_savedir=chain_savedir, n_burn_in_steps=5000, n_steps=5000)

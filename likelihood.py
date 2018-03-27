@@ -8,6 +8,7 @@ import coarse_grid
 import flux_power
 import lyman_data
 import mean_flux as mflux
+from datetime import datetime
 
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""
@@ -76,7 +77,9 @@ class LikelihoodClass(object):
             self.mf_slope = True
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
+        print('Beginning to generate emulator at', str(datetime.now()))
         self.gpemu = self.emulator.get_emulator(max_z=4.2)
+        print('Finished generating emulator at', str(datetime.now()))
 
     def likelihood(self, params, include_emu=True):
         """A simple likelihood function for the Lyman-alpha forest.
@@ -85,6 +88,8 @@ class LikelihoodClass(object):
         if self.mf_slope:
             tau0_fac = mflux.mean_flux_slope_to_factor(self.zout, params[0])
             nparams = params[1:]
+        else: #Otherwise bug if choose mean_flux = 'c'
+            tau0_fac = None
         if np.any(params >= self.param_limits[:,1]) or np.any(params <= self.param_limits[:,0]):
             return -np.inf
         #Set parameter limits as the hull of the original emulator.
@@ -114,7 +119,7 @@ class LikelihoodClass(object):
             assert not np.isnan(chi2)
         return chi2
 
-    def do_sampling(self, savefile, nwalkers=100, burnin=5000, nsamples=5000):
+    def do_sampling(self, savefile, nwalkers=100, burnin=5000, nsamples=5000, while_loop=True):
         """Initialise and run emcee."""
         pnames = self.emulator.print_pnames()
         if self.mf_slope:
@@ -140,6 +145,8 @@ class LikelihoodClass(object):
             gr = gelman_rubin(emcee_sampler.chain)
             print("Total samples:",nsamples," Gelman-Rubin: ",gr)
             np.savetxt(savefile, emcee_sampler.flatchain)
+            if while_loop is False:
+                break
         return emcee_sampler
 
     def new_parameter_limits(self, confidence=0.99, include_dense=False):

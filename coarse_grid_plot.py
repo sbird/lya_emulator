@@ -12,6 +12,7 @@ import mean_flux as mflux
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 def plot_test_interpolate_kf_bin_loop(emulatordir, testdir, savedir=None, plotname="", kf_bin_nums=np.arange(1)):
     if savedir is None:
@@ -118,7 +119,9 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     else:
         params = emuclass(emulatordir, mf=mf, kf_bin_nums=kf_bin_nums)
     params.load()
+    print('Beginning to generate emulator at', str(datetime.now()))
     gp = params.get_emulator(max_z=max_z)
+    print('Finished generating emulator at', str(datetime.now()))
     kf = params.kf
     del params
     errlist = np.array([])

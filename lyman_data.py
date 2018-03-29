@@ -59,17 +59,17 @@ class BOSSData(SDSSData):
         self.covar_diag = data[:,5]**2 + data[:,8]**2
         #The covariance matrix, correlating each k and z bin with every other.
         #kbins vary first, so that we have 11 bins with z=2.2, then 11 with z=2.4,etc.
-        self.covar = np.zeros((len(self.redshifts),len(self.redshifts)))
+        self.covar = np.zeros((len(self.redshifts),len(self.redshifts))) #Full covariance matrix (35*12 x 35*12) for k,z
         for bb in range(12):
             dfile = os.path.join(covardir,"cct4b"+str(bb+1)+".dat")
-            dd = np.loadtxt(dfile)
-            self.covar[35*bb:35*(bb+1),35*bb:35*(bb+1)] = dd
+            dd = np.loadtxt(dfile) #k-bin covariance matrix (35 x 35) for single redshift
+            self.covar[35*bb:35*(bb+1),35*bb:35*(bb+1)] = dd #Filling in block matrices along diagonal
 
     def get_covar(self, zbin=None):
         """Get the covariance matrix"""
         if zbin is None:
             return self.covar * self.covar_diag
-        ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
+        ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01)) #Elements in full matrix for given z
         rr = (np.min(ii), np.max(ii)+1)
         return self.covar[rr[0]:rr[1],rr[0]:rr[1]] * self.covar_diag[rr[0]:rr[1]]
 

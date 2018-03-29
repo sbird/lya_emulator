@@ -50,7 +50,8 @@ class LikelihoodClass(object):
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
         #'Data' now is a simulation
-        myspec = flux_power.MySpectra(max_z=max_z)
+        self.max_z = max_z
+        myspec = flux_power.MySpectra(max_z=self.max_z)
         self.zout = myspec.zout
         pps = myspec.get_snapshot_list(datadir)
         self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
@@ -94,6 +95,11 @@ class LikelihoodClass(object):
             return -np.inf
         #Set parameter limits as the hull of the original emulator.
         predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
+
+        #Save emulated flux power specra for analysis
+        self.emulated_flux_power = predicted
+        self.emulated_flux_power_std = std
+
         diff = predicted[0]-self.data_fluxpower
         nkf = len(self.sdss.get_kf())
         nz = int(len(diff)/nkf)
@@ -101,6 +107,14 @@ class LikelihoodClass(object):
         chi2 = 0
         #Redshifts
         sdssz = self.sdss.get_redshifts()
+
+        #Fix maximum redshift bug
+        sdssz = sdssz[sdssz <= self.max_z]
+
+        #Important assertion
+        assert nz == sdssz.size
+        #print('SDSS redshifts are', sdssz)
+
         for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
             std_bin = std[0,nkf*bb:nkf*(bb+1)]

@@ -3,6 +3,7 @@ import os
 import os.path
 import math
 import numpy as np
+import numpy.testing as npt
 import emcee
 import coarse_grid
 import flux_power
@@ -113,6 +114,7 @@ class LikelihoodClass(object):
 
         #Important assertion
         assert nz == sdssz.size
+        npt.assert_array_equal(sdssz, self.zout)
         #print('SDSS redshifts are', sdssz)
 
         for bb in range(nz):

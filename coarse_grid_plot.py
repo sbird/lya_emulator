@@ -171,7 +171,14 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         assert np.shape(ratio) == (nred*nk,)
         for i in range(nred):
             plt.semilogx(kf,ratio[i*nk:(i+1)*nk],label=myspec.zout[i])
-            plt.fill_between(kf,lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk],alpha=0.3, color="grey")
+            if data_err is False:
+                lower_plot = lower
+                upper_plot = upper
+            elif data_err is True:
+                lower_plot = (predicted[0] - measurement_errors_to_max_z) / exact
+                upper_plot = (predicted[0] + measurement_errors_to_max_z) / exact
+                plt.ylim([0.9, 1.1])
+            plt.fill_between(kf,lower_plot[i*nk:(i+1)*nk], upper_plot[i*nk:(i+1)*nk],alpha=0.3, color="grey")
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
         name = params_test.build_dirname(pp, include_dense=True)
@@ -182,7 +189,11 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.show()
         if mean_flux:
             name = name+"mf0.95"
-        name = re.sub(r"\.","_",str(name))+plotname+".pdf"
+        if data_err is False:
+            name_ending = ".pdf"
+        elif data_err is True:
+            name_ending = '_data_err.pdf'
+        name = re.sub(r"\.","_",str(name))+plotname+name_ending
         #So we can use it in a latex document
         plt.savefig(os.path.join(savedir, name))
         print(name)

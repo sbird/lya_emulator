@@ -24,9 +24,13 @@ class SDSSData(object):
         #kbins vary first, so that we have 11 bins with z=2.2, then 11 with z=2.4,etc.
         self.covar = np.loadtxt(covarfile)
 
-    def get_kf(self):
+    def get_kf(self, kf_bin_nums=None):
         """Get the (unique) flux k values"""
-        return np.sort(np.array(list(set(self.kf))))
+        kf_array = np.sort(np.array(list(set(self.kf))))
+        if kf_bin_nums is None:
+            return kf_array
+        else:
+            return kf_array[kf_bin_nums]
 
     def get_redshifts(self):
         """Get the (unique) redshift bins, sorted in decreasing redshift"""
@@ -43,7 +47,7 @@ class SDSSData(object):
 
 class BOSSData(SDSSData):
     """A class to store the flux power and corresponding covariance matrix from BOSS."""
-    def __init__(self, datafile="data/boss_dr9_data/table4a.dat", covardir="data/boss_dr9_data"):
+    def __init__(self, datafile=os.path.expanduser("~/Software/lya_emulator/data/boss_dr9_data/table4a.dat"), covardir=os.path.expanduser("~/Software/lya_emulator/data/boss_dr9_data")):
         # Read SDSS best-fit data.
         # Contains the redshift wavenumber from SDSS
         # See Readme file.
@@ -55,17 +59,17 @@ class BOSSData(SDSSData):
         self.covar_diag = data[:,5]**2 + data[:,8]**2
         #The covariance matrix, correlating each k and z bin with every other.
         #kbins vary first, so that we have 11 bins with z=2.2, then 11 with z=2.4,etc.
-        self.covar = np.zeros((len(self.redshifts),len(self.redshifts)))
+        self.covar = np.zeros((len(self.redshifts),len(self.redshifts))) #Full covariance matrix (35*12 x 35*12) for k,z
         for bb in range(12):
             dfile = os.path.join(covardir,"cct4b"+str(bb+1)+".dat")
-            dd = np.loadtxt(dfile)
-            self.covar[35*bb:35*(bb+1),35*bb:35*(bb+1)] = dd
+            dd = np.loadtxt(dfile) #k-bin covariance matrix (35 x 35) for single redshift
+            self.covar[35*bb:35*(bb+1),35*bb:35*(bb+1)] = dd #Filling in block matrices along diagonal
 
     def get_covar(self, zbin=None):
         """Get the covariance matrix"""
         if zbin is None:
             return self.covar * self.covar_diag
-        ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
+        ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01)) #Elements in full matrix for given z
         rr = (np.min(ii), np.max(ii)+1)
         return self.covar[rr[0]:rr[1],rr[0]:rr[1]] * self.covar_diag[rr[0]:rr[1]]
 

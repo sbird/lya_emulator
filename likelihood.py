@@ -3,11 +3,13 @@ import os
 import os.path
 import math
 import numpy as np
+import numpy.testing as npt
 import emcee
 import coarse_grid
 import flux_power
 import lyman_data
 import mean_flux as mflux
+from datetime import datetime
 
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""
@@ -49,7 +51,8 @@ class LikelihoodClass(object):
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
         #'Data' now is a simulation
-        myspec = flux_power.MySpectra(max_z=4.2)
+        self.max_z = 4.2
+        myspec = flux_power.MySpectra(max_z=self.max_z)
         self.zout = myspec.zout
         pps = myspec.get_snapshot_list(datadir)
         self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
@@ -76,7 +79,9 @@ class LikelihoodClass(object):
             self.mf_slope = True
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
+        print('Beginning to generate emulator at', str(datetime.now()))
         self.gpemu = self.emulator.get_emulator(max_z=4.2)
+        print('Finished generating emulator at', str(datetime.now()))
 
     def likelihood(self, params, include_emu=True):
         """A simple likelihood function for the Lyman-alpha forest.
@@ -85,10 +90,17 @@ class LikelihoodClass(object):
         if self.mf_slope:
             tau0_fac = mflux.mean_flux_slope_to_factor(self.zout, params[0])
             nparams = params[1:]
+        else: #Otherwise bug if choose mean_flux = 'c'
+            tau0_fac = None
         if np.any(params >= self.param_limits[:,1]) or np.any(params <= self.param_limits[:,0]):
             return -np.inf
         #Set parameter limits as the hull of the original emulator.
         predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
+
+        #Save emulated flux power specra for analysis
+        self.emulated_flux_power = predicted
+        self.emulated_flux_power_std = std
+
         diff = predicted[0]-self.data_fluxpower
         nkf = len(self.sdss.get_kf())
         nz = int(len(diff)/nkf)
@@ -96,6 +108,15 @@ class LikelihoodClass(object):
         chi2 = 0
         #Redshifts
         sdssz = self.sdss.get_redshifts()
+
+        #Fix maximum redshift bug
+        sdssz = sdssz[sdssz <= self.max_z]
+
+        #Important assertion
+        assert nz == sdssz.size
+        npt.assert_allclose(sdssz, self.zout, atol=1.e-16)
+        #print('SDSS redshifts are', sdssz)
+
         for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
             std_bin = std[0,nkf*bb:nkf*(bb+1)]
@@ -114,7 +135,7 @@ class LikelihoodClass(object):
             assert not np.isnan(chi2)
         return chi2
 
-    def do_sampling(self, savefile, nwalkers=100, burnin=5000, nsamples=5000):
+    def do_sampling(self, savefile, nwalkers=100, burnin=5000, nsamples=5000, while_loop=True):
         """Initialise and run emcee."""
         pnames = self.emulator.print_pnames()
         if self.mf_slope:
@@ -140,6 +161,8 @@ class LikelihoodClass(object):
             gr = gelman_rubin(emcee_sampler.chain)
             print("Total samples:",nsamples," Gelman-Rubin: ",gr)
             np.savetxt(savefile, emcee_sampler.flatchain)
+            if while_loop is False:
+                break
         return emcee_sampler
 
     def new_parameter_limits(self, confidence=0.99, include_dense=False):
@@ -194,7 +217,7 @@ class LikelihoodClass(object):
 
 if __name__ == "__main__":
 #     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots_refine"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))
-    like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))
+    like = LikelihoodClass(basedir=os.path.expanduser("~/Simulations/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/Simulations/Lya_Boss/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))
     #Works very well!
     #     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots/AA0.96BB1.3CC1DD1.3heat_slope-5.6e-17heat_amp1.2hub0.66/output"))
-    output = like.do_sampling(os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA0.97BB1.3_chain.txt"))
+    output = like.do_sampling(os.path.expanduser("~/Simulations/Lya_Boss/hires_knots_test/AA0.97BB1.3_chain.txt"))

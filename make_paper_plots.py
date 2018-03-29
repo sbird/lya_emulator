@@ -13,7 +13,9 @@ import matplotlib.pyplot as plt
 from plot_latin_hypercube import plot_points_hypercube
 import coarse_grid_plot
 
-plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
+#plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
+#plotdir = '/home/keir/Plots/Emulator'
+plotdir = '/Users/kwame/Papers/emulator_paper_1/plots'
 def hypercube_plot():
     """Make a plot of some hypercubes"""
     limits = np.array([[0,1],[0,1]])
@@ -76,11 +78,13 @@ def test_s8_plots():
     quad_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
     return (gp_emu, gp_quad, quad_quad)
 
-def test_knot_plots(mf=1):
+def test_knot_plots(mf=1, testdir = None, emudir = None, plotname="", kf_bin_nums=None, data_err=False):
     """Plot emulator test-cases"""
-    testdir = path.expanduser("~/data/Lya_Boss/hires_knots_test")
-    emudir = path.expanduser("~/data/Lya_Boss/hires_knots")
-    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_knots_mf"+str(mf)),mean_flux=mf)
+    if testdir is None:
+        testdir = path.expanduser("~/data/Lya_Boss/hires_knots_test")
+    if emudir is None:
+        emudir = path.expanduser("~/data/Lya_Boss/hires_knots")
+    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_knots_mf"+str(mf)),plotname=plotname,mean_flux=mf,kf_bin_nums=kf_bin_nums,data_err=data_err)
     return gp_emu
 
 def sample_var_plot():

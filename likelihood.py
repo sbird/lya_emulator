@@ -114,7 +114,7 @@ class LikelihoodClass(object):
 
         #Important assertion
         assert nz == sdssz.size
-        npt.assert_array_equal(sdssz, self.zout)
+        npt.assert_allclose(sdssz, self.zout, atol=1.e-16)
         #print('SDSS redshifts are', sdssz)
 
         for bb in range(nz):

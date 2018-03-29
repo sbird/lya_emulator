@@ -19,6 +19,6 @@ if __name__ == "__main__":
     #test_knot_plots(testdir=testdir, emudir=emudir, plotname=plotname, kf_bin_nums=None, data_err=True) #"_All_kf2"
     #plot_test_interpolate_kf_bin_loop(emudir, testdir, savedir=savedir, plotname="_Two_loop", kf_bin_nums=np.arange(2))
 
-    output = run_and_plot_likelihood_samples(testdir, emudir, likelihood_samples_plot_savefile, plotname, plot=True, chain_savedir=chain_savedir, n_burn_in_steps=5000, n_steps=15000, while_loop=False, mean_flux_label='c', return_class_only=True)
+    output = run_and_plot_likelihood_samples(testdir, emudir, likelihood_samples_plot_savefile, plotname, plot=True, chain_savedir=chain_savedir, n_burn_in_steps=50, n_steps=200, while_loop=False, mean_flux_label='c', return_class_only=False)
     #make_plot(chain_savedir + '/AA0.97BB1.3_chain_20000_MeanFluxFactor.txt', likelihood_samples_plot_savefile)
     #make_plot_flux_power_spectra(testdir, emudir, flux_power_plot_savefile, mean_flux_label='c')

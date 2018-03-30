@@ -55,14 +55,15 @@ class LikelihoodClass(object):
         myspec = flux_power.MySpectra(max_z=self.max_z)
         self.zout = myspec.zout
         pps = myspec.get_snapshot_list(datadir)
-        self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
-        assert np.size(self.data_fluxpower) % np.size(self.sdss.get_kf) == 0
+        self.kf = self.sdss.get_kf()
+        self.data_fluxpower = pps.get_power(kf=self.kf,tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
+        assert np.size(self.data_fluxpower) % np.size(self.kf) == 0
         #Get the emulator
         if mean_flux == 'c':
             mf = mflux.ConstMeanFlux(value = 0.95)
         else:
             mf = mflux.MeanFluxFactor()
-        self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.sdss.get_kf(), mf=mf)
+        self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.kf, mf=mf)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
         #As each redshift bin is independent, for redshift-dependent mean flux models
@@ -102,7 +103,7 @@ class LikelihoodClass(object):
         self.emulated_flux_power_std = std
 
         diff = predicted[0]-self.data_fluxpower
-        nkf = len(self.sdss.get_kf())
+        nkf = len(self.kf)
         nz = int(len(diff)/nkf)
         #Likelihood using full covariance matrix
         chi2 = 0

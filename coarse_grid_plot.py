@@ -200,7 +200,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         nk = len(kf)
         assert np.shape(ratio) == (nred*nk,)
         for i in range(nred):
-            plt.semilogx(kf,ratio[i*nk:(i+1)*nk],label=myspec.zout[i])
+            plt.semilogx(kf,ratio[i*nk:(i+1)*nk],label=round(myspec.zout[i],1))
             if data_err is False:
                 lower_plot = lower
                 upper_plot = upper
@@ -214,7 +214,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         name = params_test.build_dirname(pp, include_dense=True)
 #         plt.title(name)
         plt.xlim(xmax=0.05)
-        plt.legend(loc=0)
+        plt.legend(loc='right')
         plt.tight_layout()
         plt.show()
         if mean_flux:

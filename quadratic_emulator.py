@@ -48,7 +48,7 @@ class QuadraticPoly(SkLearnGP):
         for pp,dp in enumerate(dpp):
             newq += self.tables[pp][:,0]*dp**2 +self.tables[pp][:,1]*dp
         mean = newq * self.bestfv
-        std = np.zeros_like(mean)
+        std = 0.001*np.ones_like(mean)
         return [mean,], std
 
     def _flux_deriv(self, PFdif, pdif):

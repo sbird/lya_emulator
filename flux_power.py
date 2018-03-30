@@ -53,8 +53,15 @@ class MySpectra(object):
        so that they are the same for each emulator point."""
     def __init__(self, numlos = 32000, max_z= 4.2):
         self.NumLos = numlos
-        #Use the right values for SDSS or BOSS.
-        self.spec_res = 200.
+        #Use the right values for SDSS or BOSS:
+        #this should be slightly redshift dependent,
+        #but since we divide it out we should be ok for now.
+        #It is 60 km/s at 5000 A and 80 km/s at 4300 A.
+        self.spec_res = 70.
+        #For BOSS the pixel resolution is actually 69 km/s.
+        #So we are slightly over-sampling here.
+        #This shouldn't be too important, but maybe change it later.
+        self.pix_res = 50.
         self.NumLos = numlos
         #Want output every 0.2 from z=max to z=2.2, matching SDSS.
         self.zout = np.arange(max_z,2.1,-0.2)
@@ -86,7 +93,7 @@ class MySpectra(object):
         #If savefile exists, reload. Otherwise do not.
         def mkspec(snap, base, cofm, axis, rf):
             """Helper function"""
-            return spectra.Spectra(snap, base, cofm, axis, res=self.spec_res/4., savefile=self.savefile,spec_res = self.spec_res, reload_file=rf,sf_neutral=False,quiet=True)
+            return spectra.Spectra(snap, base, cofm, axis, res=self.pix_res, savefile=self.savefile,spec_res = self.spec_res, reload_file=rf,sf_neutral=False,quiet=True)
         #First try to get data from the savefile, and if we can't, try the snapshot.
         try:
             ss = mkspec(snap, base, None, None, rf=False)

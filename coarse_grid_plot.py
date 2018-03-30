@@ -187,7 +187,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
             if kf_bin_nums is not None:
                 measurement_errors_to_max_z = measurement_errors_to_max_z.reshape((nred, nkf))[:,kf_bin_nums].flatten()
             errlist = np.concatenate([errlist, (predicted[0] - exact) / measurement_errors_to_max_z])
-        print(measurement_errors_to_max_z)
+            print(measurement_errors_to_max_z)
         #REMOVE
         plt.hist((predicted[0]-exact)/std[0],bins=100 , density=True) #No 'density' property in Matplotlib v1
         xx = np.arange(-6, 6, 0.01)

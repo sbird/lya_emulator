@@ -11,6 +11,7 @@ import distinct_colours_py3 as dc
 from likelihood import *
 
 def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='s'):
+    """Make a plot of the power spectra, with redshift, the BOSS power and the sigmas. Four plots stacked."""
     like, like_true = run_and_plot_likelihood_samples(testdir, emudir, None, '', mean_flux_label=mean_flux_label, return_class_only=True)
     k_los = like.gpemu.kf
     n_k_los = k_los.size
@@ -92,8 +93,8 @@ def make_plot(chainfile, savefile, true_parameter_values=None):
     plt.savefig(savefile)
 
 def generate_likelihood_class(testdir, emudir, mean_flux_label='s'):
-    #validation_point_name = "/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"
-    validation_point_name = '/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output'
+    validation_point_name = "/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"
+    #validation_point_name = '/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output'
     print('Beginning to initialise LikelihoodClass at', str(datetime.now()))
     return LikelihoodClass(basedir=emudir, datadir=testdir+validation_point_name, mean_flux=mean_flux_label)
 

@@ -6,13 +6,13 @@ from coarse_grid_plot import *
 from plot_likelihood import *
 
 if __name__ == "__main__":
-    sim_rootdir = sys.argv[1]
-    savedir = sys.argv[2]
-    plotname = sys.argv[3]
-    chain_savedir = sys.argv[4]
+    sim_rootdir = "simulations"
+    savedir = sys.argv[1]
+    plotname = sys.argv[2]
+    #chain_savedir = sys.argv[3]
 
-    testdir = sim_rootdir + '/Lya_Boss/hires_knots_test' #/share/hypatia/sbird
-    emudir = sim_rootdir + '/Lya_Boss/hires_knots'
+    testdir = sim_rootdir + '/hires_knots_test' #/share/hypatia/sbird
+    emudir = sim_rootdir + '/hires_knots'
 
     likelihood_samples_plot_savefile = savedir + '/likelihood_samples_' + plotname + '.pdf'
     flux_power_plot_savefile = savedir + '/flux_power' + plotname + '.pdf'

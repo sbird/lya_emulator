@@ -15,7 +15,7 @@ import coarse_grid_plot
 
 #plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
 #plotdir = '/home/keir/Plots/Emulator'
-plotdir = '/Users/kwame/Papers/emulator_paper_1/plots'
+plotdir = 'plots'
 def hypercube_plot():
     """Make a plot of some hypercubes"""
     limits = np.array([[0,1],[0,1]])
@@ -48,7 +48,7 @@ def hypercube_plot():
 
 def single_parameter_plot():
     """Plot change in each parameter of an emulator from direct simulations."""
-    emulatordir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")
+    emulatordir = path.expanduser("simulations/hires_s8_quadratic")
     mf = ConstMeanFlux(value=1.)
     emu = coarse_grid.Emulator(emulatordir, mf=mf)
     emu.load()
@@ -70,9 +70,9 @@ def single_parameter_plot():
 
 def test_s8_plots():
     """Plot emulator test-cases"""
-    testdir = path.expanduser("~/data/Lya_Boss/hires_s8_test")
-    quaddir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")
-    emudir = path.expanduser("~/data/Lya_Boss/hires_s8")
+    testdir = path.expanduser("simulations/hires_s8_test")
+    quaddir = path.expanduser("simulations/hires_s8_quadratic")
+    emudir = path.expanduser("simulations/hires_s8")
     gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_s8"))
     gp_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"))
     quad_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
@@ -81,9 +81,9 @@ def test_s8_plots():
 def test_knot_plots(mf=1, testdir = None, emudir = None, plotname="", kf_bin_nums=None, data_err=False):
     """Plot emulator test-cases"""
     if testdir is None:
-        testdir = path.expanduser("~/data/Lya_Boss/hires_knots_test")
+        testdir = path.expanduser("simulations/hires_knots_test")
     if emudir is None:
-        emudir = path.expanduser("~/data/Lya_Boss/hires_knots")
+        emudir = path.expanduser("simulations/hires_knots")
     gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_knots_mf"+str(mf)),plotname=plotname,mean_flux=mf,kf_bin_nums=kf_bin_nums,data_err=data_err)
     return gp_emu
 
@@ -92,9 +92,9 @@ def sample_var_plot():
     mys = flux_power.MySpectra()
     sd = lyman_data.SDSSData()
     kf = sd.get_kf()
-    fp0 = mys.get_snapshot_list("/home/spb/data/Lya_Boss/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7/output/")
-    fp1 = mys.get_snapshot_list("/home/spb/data/Lya_Boss/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed1/output/")
-    fp2 = mys.get_snapshot_list("/home/spb/data/Lya_Boss/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed2/output/")
+    fp0 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7/output/")
+    fp1 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed1/output/")
+    fp2 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed2/output/")
     pk0 = fp0.get_power(kf,tau0_factors=None)
     pk1 = fp1.get_power(kf,tau0_factors=None)
     pk2 = fp2.get_power(kf,tau0_factors=None)

@@ -1,4 +1,5 @@
 """Building a surrogate using a Gaussian Process."""
+# from datetime import datetime
 import numpy as np
 from latin_hypercube import map_to_unit_cube
 #Make sure that we don't accidentally
@@ -6,7 +7,6 @@ from latin_hypercube import map_to_unit_cube
 import matplotlib
 matplotlib.use('PDF')
 import GPy
-from datetime import datetime
 
 class MultiBinGP(object):
     """A wrapper around the emulator that constructs a separate emulator for each bin.
@@ -65,7 +65,7 @@ class SkLearnGP(object):
 #         test_exact = powers[exclude]
 #         return self.get_predict_error(self.params[exclude], test_exact)
 
-    def _get_interp(self, flux_vectors, exclude=None):
+    def _get_interp(self, flux_vectors):
         """Build the actual interpolator."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         nparams = np.shape(self.params)[1]
@@ -79,10 +79,10 @@ class SkLearnGP(object):
         normspectra = flux_vectors/self.scalefactors -1.
 
         #Extracting flux power vectors to disk
-        '''date_and_time = str(datetime.now())
-        savefile = "/Users/kwame/Simulations/emulator/training_flux_power_" + date_and_time + ".npz"
-        print("Extracting flux power vectors to disk at", date_and_time)
-        np.savez(savefile, flux_vectors, self.scalefactors, self.paramzero, medind)'''
+        #date_and_time = str(datetime.now())
+        #savefile = "/Users/kwame/Simulations/emulator/training_flux_power_" + date_and_time + ".npz"
+        #print("Extracting flux power vectors to disk at", date_and_time)
+        #np.savez(savefile, flux_vectors, self.scalefactors, self.paramzero, medind)
 
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.

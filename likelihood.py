@@ -2,6 +2,7 @@
 import os
 import os.path
 import math
+from datetime import datetime
 import numpy as np
 import numpy.testing as npt
 import emcee
@@ -9,7 +10,6 @@ import coarse_grid
 import flux_power
 import lyman_data
 import mean_flux as mflux
-from datetime import datetime
 
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""
@@ -128,7 +128,7 @@ class LikelihoodClass(object):
                 #Assume completely correlated emulator errors within this bin
 #                 covar_bin += np.matmul(np.diag(std_bin**2),np.ones_like(covar_bin))
             icov_bin = np.linalg.inv(covar_bin)
-            (sign, cdet) = np.linalg.slogdet(covar_bin)
+            (_, cdet) = np.linalg.slogdet(covar_bin)
             dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
             chi2 += dcd -0.5* cdet
             assert 0 > chi2 > -2**31

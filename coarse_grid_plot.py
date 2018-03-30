@@ -2,18 +2,18 @@
 from __future__ import print_function
 import os.path
 import re
-import math as mh
+import math
+from datetime import datetime
+import scipy.spatial
 import numpy as np
 import coarse_grid
 import flux_power
 import matter_power
 import lyman_data
 import mean_flux as mflux
-import scipy.spatial
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
-from datetime import datetime
 
 def plot_convexhull(emulatordir):
     """Plot the convex hull of the projection of the emulator parameters"""
@@ -22,7 +22,7 @@ def plot_convexhull(emulatordir):
     points = params.sample_params
     hull = scipy.spatial.ConvexHull(points)
     K = np.shape(points)[1]
-    fig, axes = plt.subplots(K, K)
+    _, axes = plt.subplots(K, K)
     for i in range(K):
         for j in range(K):
             ax = axes[i,j]
@@ -47,7 +47,7 @@ def plot_test_interpolate_kf_bin_loop(emulatordir, testdir, savedir=None, plotna
     all_power_array_all_kf = [None] * kf_bin_nums.size
     for i in range(kf_bin_nums.size):
         plotname_single_kf_bin = plotname + '_' + str(kf_bin_nums[i])
-        gp, all_power_array_all_kf[i], z_labs = plot_test_interpolate(emulatordir, testdir, savedir=savedir, plotname=plotname_single_kf_bin, kf_bin_nums=[kf_bin_nums[i],])
+        _, all_power_array_all_kf[i], z_labs = plot_test_interpolate(emulatordir, testdir, savedir=savedir, plotname=plotname_single_kf_bin, kf_bin_nums=[kf_bin_nums[i],])
 
     all_power_array_all_kf = np.array(all_power_array_all_kf)
     for j in range(all_power_array_all_kf.shape[1]): #Loop over validation points in parameter space
@@ -90,7 +90,7 @@ def plot_test_interpolate_kf_bin_loop(emulatordir, testdir, savedir=None, plotna
 def _plot_by_redshift_bins(savedir, plotname, z_labs, all_power_array_all_kf):
     """Plot the different redshift bins on different plots"""
     ncols = 3
-    nrows = mh.ceil(len(z_labs) / ncols)
+    nrows = math.ceil(len(z_labs) / ncols)
     figure, axes = plt.subplots(nrows=nrows, ncols=ncols)
     for z in range(all_power_array_all_kf.shape[3]): #Loop over redshift bins
         power_difference = all_power_array_all_kf[:, :, 1, z] - all_power_array_all_kf[:, :, 3, z]
@@ -239,13 +239,13 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     if data_err is True:
         plotname = plotname + "_data_err"
     if np.all(np.isfinite(errlist)):
-        '''plt.hist(errlist,bins=100, density=True)
-        xx = np.arange(-6, 6, 0.01)
-        plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
-        plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
-        plt.xlim(-6,6)
-        plt.savefig(os.path.join(savedir, "errhist"+plotname+".pdf"))
-        plt.clf()'''
+        #plt.hist(errlist,bins=100, density=True)
+        #xx = np.arange(-6, 6, 0.01)
+        #plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
+        #plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
+        #plt.xlim(-6,6)
+        #plt.savefig(os.path.join(savedir, "errhist"+plotname+".pdf"))
+        #plt.clf()
         _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=250, xlabel=r"(Predicted - Exact) / $1 \sigma$ [BOSS error]")
 
     return gp, all_power_array, myspec.zout

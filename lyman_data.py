@@ -20,6 +20,9 @@ class SDSSData(object):
         self.redshifts = data[:,0]
         self.kf = data[:,1]
         self.pf = data[:,1]
+        self.nz = np.size(self.get_redshifts())
+        self.nk = np.size(self.get_kf())
+        assert self.nz * self.nk == np.size(self.kf)
         #The covariance matrix, correlating each k and z bin with every other.
         #kbins vary first, so that we have 11 bins with z=2.2, then 11 with z=2.4,etc.
         self.covar = np.loadtxt(covarfile)
@@ -35,6 +38,13 @@ class SDSSData(object):
     def get_redshifts(self):
         """Get the (unique) redshift bins, sorted in decreasing redshift"""
         return np.sort(np.array(list(set(self.redshifts))))[::-1]
+
+    def get_pf(self, zbin=None):
+        """Get the power spectrum"""
+        if zbin is None:
+            return self.pf
+        ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
+        return self.pf[ii]
 
     def get_icovar(self):
         """Get the inverse covariance matrix"""
@@ -56,6 +66,9 @@ class BOSSData(SDSSData):
         self.redshifts = data[:,2]
         self.kf = data[:,3]
         self.pf = data[:,4]
+        self.nz = np.size(self.get_redshifts())
+        self.nk = np.size(self.get_kf())
+        assert self.nz * self.nk == np.size(self.kf)
         self.covar_diag = data[:,5]**2 + data[:,8]**2
         #The covariance matrix, correlating each k and z bin with every other.
         #kbins vary first, so that we have 11 bins with z=2.2, then 11 with z=2.4,etc.

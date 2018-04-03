@@ -2,7 +2,9 @@
 from __future__ import print_function
 import os.path
 import re
-import math as mh
+import math
+from datetime import datetime
+import scipy.spatial
 import numpy as np
 import coarse_grid
 import flux_power
@@ -14,14 +16,39 @@ matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 from datetime import datetime
 
+def plot_convexhull(emulatordir):
+    """Plot the convex hull of the projection of the emulator parameters"""
+    params = coarse_grid.Emulator(emulatordir, mf=None)
+    params.load()
+    points = params.sample_params
+    hull = scipy.spatial.ConvexHull(points)
+    K = np.shape(points)[1]
+    _, axes = plt.subplots(K, K)
+    for i in range(K):
+        for j in range(K):
+            ax = axes[i,j]
+            if j >= i:
+                ax.set_frame_on(False)
+                ax.set_xticks([])
+                ax.set_yticks([])
+                continue
+            ax.plot(points[:,i], points[:,j], 'o')
+            projected = np.vstack([points[:,i], points[:,j]]).T
+            hull = scipy.spatial.ConvexHull(projected)
+            for simplex in hull.simplices:
+                ax.plot(projected[simplex, 0], projected[simplex, 1], 'k-')
+    return hull
+
 def plot_test_interpolate_kf_bin_loop(emulatordir, testdir, savedir=None, plotname="", kf_bin_nums=np.arange(1)):
+    """Plot the validation set vs the test points from the emulator for a specific k bin,
+       looping over all the validation points."""
     if savedir is None:
         savedir = emulatordir
 
     all_power_array_all_kf = [None] * kf_bin_nums.size
     for i in range(kf_bin_nums.size):
         plotname_single_kf_bin = plotname + '_' + str(kf_bin_nums[i])
-        gp, all_power_array_all_kf[i], z_labs = plot_test_interpolate(emulatordir, testdir, savedir=savedir, plotname=plotname_single_kf_bin, kf_bin_nums=[kf_bin_nums[i],])
+        _, all_power_array_all_kf[i], z_labs = plot_test_interpolate(emulatordir, testdir, savedir=savedir, plotname=plotname_single_kf_bin, kf_bin_nums=[kf_bin_nums[i],])
 
     all_power_array_all_kf = np.array(all_power_array_all_kf)
     for j in range(all_power_array_all_kf.shape[1]): #Loop over validation points in parameter space
@@ -62,8 +89,9 @@ def plot_test_interpolate_kf_bin_loop(emulatordir, testdir, savedir=None, plotna
     np.save(array_savename, all_power_array_all_kf)
 
 def _plot_by_redshift_bins(savedir, plotname, z_labs, all_power_array_all_kf):
+    """Plot the different redshift bins on different plots"""
     ncols = 3
-    nrows = mh.ceil(len(z_labs) / ncols)
+    nrows = math.ceil(len(z_labs) / ncols)
     figure, axes = plt.subplots(nrows=nrows, ncols=ncols)
     for z in range(all_power_array_all_kf.shape[3]): #Loop over redshift bins
         power_difference = all_power_array_all_kf[:, :, 1, z] - all_power_array_all_kf[:, :, 3, z]
@@ -75,6 +103,8 @@ def _plot_by_redshift_bins(savedir, plotname, z_labs, all_power_array_all_kf):
     plt.clf()
 
 def _plot_error_histogram(savedir, plotname, err_norm, axis=None, xlim=6., nbins=100, xlabel=r"(Predicted - Exact) / $1 \sigma$"):
+    """Plot a histogram of the errors from the emulator with the expected errors.
+       The axis keyword controls which figure we plot on."""
     if axis is None:
         plt.hist(err_norm, bins=nbins, density=True)
         xx = np.arange(-6, 6, 0.01)
@@ -94,6 +124,7 @@ def _plot_error_histogram(savedir, plotname, err_norm, axis=None, xlim=6., nbins
         axis.legend(frameon=False, fontsize=5.)
 
 def _plot_unit_Gaussians(xx, axis=None):
+    """Plot a unit gaussian and a 2-unit gaussian"""
     if axis is None:
         plt.plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), ls="-", color="black", label=r"Unit Gaussian")
         plt.plot(xx, np.exp(-xx ** 2 / 2 / 2 ** 2) / np.sqrt(2 * np.pi * 2 ** 2), ls="--", color="grey")
@@ -157,7 +188,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
             if kf_bin_nums is not None:
                 measurement_errors_to_max_z = measurement_errors_to_max_z.reshape((nred, nkf))[:,kf_bin_nums].flatten()
             errlist = np.concatenate([errlist, (predicted[0] - exact) / measurement_errors_to_max_z])
-        print(measurement_errors_to_max_z)
+            print(measurement_errors_to_max_z)
         #REMOVE
         plt.hist((predicted[0]-exact)/std[0],bins=100 , density=True) #No 'density' property in Matplotlib v1
         xx = np.arange(-6, 6, 0.01)
@@ -170,7 +201,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         nk = len(kf)
         assert np.shape(ratio) == (nred*nk,)
         for i in range(nred):
-            plt.semilogx(kf,ratio[i*nk:(i+1)*nk],label=myspec.zout[i])
+            plt.semilogx(kf,ratio[i*nk:(i+1)*nk],label=round(myspec.zout[i],1))
             if data_err is False:
                 lower_plot = lower
                 upper_plot = upper
@@ -184,7 +215,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         name = params_test.build_dirname(pp, include_dense=True)
 #         plt.title(name)
         plt.xlim(xmax=0.05)
-        plt.legend(loc=0)
+        plt.legend(loc='right')
         plt.tight_layout()
         plt.show()
         if mean_flux:
@@ -209,13 +240,13 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     if data_err is True:
         plotname = plotname + "_data_err"
     if np.all(np.isfinite(errlist)):
-        '''plt.hist(errlist,bins=100, density=True)
-        xx = np.arange(-6, 6, 0.01)
-        plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
-        plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
-        plt.xlim(-6,6)
-        plt.savefig(os.path.join(savedir, "errhist"+plotname+".pdf"))
-        plt.clf()'''
+        #plt.hist(errlist,bins=100, density=True)
+        #xx = np.arange(-6, 6, 0.01)
+        #plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
+        #plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
+        #plt.xlim(-6,6)
+        #plt.savefig(os.path.join(savedir, "errhist"+plotname+".pdf"))
+        #plt.clf()
         _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=250, xlabel=r"(Predicted - Exact) / $1 \sigma$ [BOSS error]")
 
     return gp, all_power_array, myspec.zout

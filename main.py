@@ -1,3 +1,4 @@
+"""Make some plots"""
 import sys
 
 from make_paper_plots import *

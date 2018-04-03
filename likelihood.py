@@ -2,6 +2,7 @@
 import os
 import os.path
 import math
+from datetime import datetime
 import numpy as np
 import numpy.testing as npt
 import emcee
@@ -46,23 +47,24 @@ def gelman_rubin(chain):
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, datadir, mean_flux='s'):
+    def __init__(self, basedir, datadir, mean_flux='s', max_z = 4.2):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
         #'Data' now is a simulation
-        self.max_z = 4.2
+        self.max_z = max_z
         myspec = flux_power.MySpectra(max_z=self.max_z)
         self.zout = myspec.zout
         pps = myspec.get_snapshot_list(datadir)
-        self.data_fluxpower = pps.get_power(kf=self.sdss.get_kf(),tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
-        assert np.size(self.data_fluxpower) % np.size(self.sdss.get_kf) == 0
+        self.kf = self.sdss.get_kf()
+        self.data_fluxpower = pps.get_power(kf=self.kf,tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
+        assert np.size(self.data_fluxpower) % np.size(self.kf) == 0
         #Get the emulator
         if mean_flux == 'c':
             mf = mflux.ConstMeanFlux(value = 0.95)
         else:
             mf = mflux.MeanFluxFactor()
-        self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.sdss.get_kf(), mf=mf)
+        self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.kf, mf=mf)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
         #As each redshift bin is independent, for redshift-dependent mean flux models
@@ -80,7 +82,7 @@ class LikelihoodClass(object):
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
         print('Beginning to generate emulator at', str(datetime.now()))
-        self.gpemu = self.emulator.get_emulator(max_z=4.2)
+        self.gpemu = self.emulator.get_emulator(max_z=max_z)
         print('Finished generating emulator at', str(datetime.now()))
 
     def likelihood(self, params, include_emu=True):
@@ -102,7 +104,7 @@ class LikelihoodClass(object):
         self.emulated_flux_power_std = std
 
         diff = predicted[0]-self.data_fluxpower
-        nkf = len(self.sdss.get_kf())
+        nkf = len(self.kf)
         nz = int(len(diff)/nkf)
         #Likelihood using full covariance matrix
         chi2 = 0
@@ -128,7 +130,7 @@ class LikelihoodClass(object):
                 #Assume completely correlated emulator errors within this bin
 #                 covar_bin += np.matmul(np.diag(std_bin**2),np.ones_like(covar_bin))
             icov_bin = np.linalg.inv(covar_bin)
-            (sign, cdet) = np.linalg.slogdet(covar_bin)
+            (_, cdet) = np.linalg.slogdet(covar_bin)
             dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
             chi2 += dcd -0.5* cdet
             assert 0 > chi2 > -2**31

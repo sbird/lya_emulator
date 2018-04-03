@@ -247,7 +247,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         #plt.xlim(-6,6)
         #plt.savefig(os.path.join(savedir, "errhist"+plotname+".pdf"))
         #plt.clf()
-        _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=250, xlabel=r"(Predicted - Exact) / $1 \sigma$ [BOSS error]")
+        _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=250) #, xlabel=r"(Predicted - Exact) / $1 \sigma$ [BOSS error]")
 
     return gp, all_power_array, myspec.zout
 

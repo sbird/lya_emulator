@@ -6,7 +6,7 @@ def obs_mean_tau(redshift, amp=0, slope=0):
     """The mean flux from 0711.1862: is (0.0023±0.0007) (1+z)^(3.65±0.21)
     Note we constrain this much better from the SDSS data itself:
     this is a weak prior"""
-    return (2.3+amp)*1e-4*(1.0+redshift)**(3.65+slope)
+    return (2.3+amp)*1e-3*(1.0+redshift)**(3.65+slope)
 
 class ConstMeanFlux(object):
     """Object which implements different mean flux models. This model fixes the mean flux to a constant value.

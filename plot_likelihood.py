@@ -99,12 +99,13 @@ def generate_likelihood_class(testdir, emudir, mean_flux_label='s'):
     return LikelihoodClass(basedir=emudir, datadir=testdir+validation_point_name, mean_flux=mean_flux_label)
 
 def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=True, chain_savedir=None, n_walkers=100, n_burn_in_steps=100, n_steps=400, while_loop=True, mean_flux_label='s', return_class_only=False):
+    """Generate some likelihood samples"""
     # TODO: Add true values #Read from filenames
     #true_parameter_values = [None, None, 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
-    #true_parameter_values = [0., 1., 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
+    true_parameter_values = [0., 1., 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
     #true_parameter_values = [0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
-    true_parameter_values = [0.97, 2.2e-9, 0.083, 0.92, 0.69]
-    true_parameter_values = [None, None, 0.97, 2.2e-9, 0.083, 0.92, 0.69]
+    #true_parameter_values = [0.97, 2.2e-9, 0.083, 0.92, 0.69]
+    #true_parameter_values = [None, None, 0.97, 2.2e-9, 0.083, 0.92, 0.69]
 
     if chain_savedir is None:
         chain_savedir = testdir

@@ -35,7 +35,9 @@ class MeanFluxFactor(ConstMeanFlux):
         #Limits on factors to multiply the thermal history by.
         #Mean flux is known to about 10% from SDSS, so we don't need a big range.
         if dense_limits is None:
-            self.dense_param_limits = np.array([[0.75,1.2]])
+            slopehigh = np.max(mean_flux_slope_to_factor(np.linspace(2.2, 4.2, 11),0.25))
+            slopelow = np.min(mean_flux_slope_to_factor(np.linspace(2.2, 4.2, 11),-0.25))
+            self.dense_param_limits = np.array([[0.75,1.25]]) * np.array([slopelow, slopehigh])
         else:
             self.dense_param_limits = dense_limits
         self.dense_samples = dense_samples

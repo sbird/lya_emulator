@@ -58,26 +58,35 @@ class LikelihoodClass(object):
         self.kf = self.sdss.get_kf()
         self.data_fluxpower = pps.get_power(kf=self.kf, mean_fluxes=np.exp(-mflux.obs_mean_tau(self.zout, amp=0)))
         assert np.size(self.data_fluxpower) % np.size(self.kf) == 0
+        self.mf_slope = False
+        #Param limits on t0
+        t0_factor = np.array([0.75,1.25])
         #Get the emulator
         if mean_flux == 'c':
             mf = mflux.ConstMeanFlux(value = 0.95)
+        #As each redshift bin is independent, for redshift-dependent mean flux models
+        #we just need to convert the input parameters to a list of mean flux scalings
+        #in each redshift bin.
+        #This is an example which parametrises the mean flux as an amplitude and slope.
+        elif mean_flux == 's':
+            #Add a slope to the parameter limits
+            t0_slope =  np.array([-0.25, 0.25])
+            self.mf_slope = True
+            slopehigh = np.max(mflux.mean_flux_slope_to_factor(np.linspace(2.2, max_z, 11),0.25))
+            slopelow = np.min(mflux.mean_flux_slope_to_factor(np.linspace(2.2, max_z, 11),-0.25))
+            dense_limits = np.array([np.array(t0_factor) * np.array([slopelow, slopehigh])])
+            mf = mflux.MeanFluxFactor(dense_limits = dense_limits)
         else:
             mf = mflux.MeanFluxFactor()
         self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.kf, mf=mf)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
-        #As each redshift bin is independent, for redshift-dependent mean flux models
-        #we just need to convert the input parameters to a list of mean flux scalings
-        #in each redshift bin.
-        #This is an example which parametrises the mean flux as an amplitude and slope.
-        self.mf_slope = False
         if mean_flux == 's':
             #Add a slope to the parameter limits
-            self.param_limits = np.vstack([[-0.25, 0.25], self.param_limits])
+            self.param_limits = np.vstack([t0_slope, self.param_limits])
             #Shrink param limits t0 so that even with
             #a slope they are within the emulator range
-            self.param_limits[1,:] = [0.75,1.25]
-            self.mf_slope = True
+            self.param_limits[1,:] = t0_factor
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
         print('Beginning to generate emulator at', str(datetime.now()))

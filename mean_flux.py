@@ -35,14 +35,14 @@ class MeanFluxFactor(ConstMeanFlux):
         #Limits on factors to multiply the thermal history by.
         #Mean flux is known to about 10% from SDSS, so we don't need a big range.
         if dense_limits is None:
-            self.dense_param_limits = np.array([[0.45,1.8]])
+            self.dense_param_limits = np.array([[0.75,1.2]])
         else:
             self.dense_param_limits = dense_limits
         self.dense_samples = dense_samples
         self.dense_param_names = { 'tau0': 0, }
 
     def get_t0(self, zzs):
-        """Get the mean flux as a function of redshift for all parameters."""
+        """Get the mean optical depth as a function of redshift for all parameters."""
         return np.array([t0 * obs_mean_tau(zzs) for t0 in self.get_params()])
 
     def get_params(self):

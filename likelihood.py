@@ -56,7 +56,7 @@ class LikelihoodClass(object):
         self.zout = myspec.zout
         pps = myspec.get_snapshot_list(datadir)
         self.kf = self.sdss.get_kf()
-        self.data_fluxpower = pps.get_power(kf=self.kf,tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
+        self.data_fluxpower = pps.get_power(kf=self.kf, mean_fluxes=np.exp(-mflux.obs_mean_tau(self.zout, amp=0)))
         assert np.size(self.data_fluxpower) % np.size(self.kf) == 0
         #Get the emulator
         if mean_flux == 'c':

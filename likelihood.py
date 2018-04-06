@@ -63,7 +63,7 @@ class LikelihoodClass(object):
         t0_factor = np.array([0.75,1.25])
         #Get the emulator
         if mean_flux == 'c':
-            mf = mflux.ConstMeanFlux(value = 0.95)
+            mf = mflux.ConstMeanFlux(value = 1)
         #As each redshift bin is independent, for redshift-dependent mean flux models
         #we just need to convert the input parameters to a list of mean flux scalings
         #in each redshift bin.

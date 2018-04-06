@@ -35,11 +35,11 @@ class MultiBinGP(object):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         std = np.zeros([1 + self.coreg*(np.shape(params)[1]-1),self.nk*self.nz])
         means = np.zeros([1,self.nk*self.nz])
-        for i, gp in enumerate(self.gps):
+        for i, gp in enumerate(self.gps): #Looping over redshifts
             #Adjust the slope of the mean flux for this bin
             zparams = np.array(params)
             if tau0_factors is not None:
-                zparams[0][0] *= tau0_factors[i]
+                zparams[0][0] *= tau0_factors[i] #Multiplying t0[z] by "tau0_factors"[z]
             (m, s) = gp.predict(zparams)
             means[0,i*self.nk:(i+1)*self.nk] = m
             std[:,i*self.nk:(i+1)*self.nk] = s

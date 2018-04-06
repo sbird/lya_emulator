@@ -96,7 +96,7 @@ def generate_likelihood_class(testdir, emudir, mean_flux_label='s'):
     #validation_point_name = "/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"
     validation_point_name = '/AA1.1BB1.1CC1.4DD1.4heat_slope0.43heat_amp1hub0.71/output'
     #validation_point_name = '/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output'
-    validation_point_name = '/ns0.96As2.6e-09heat_slope-0.19heat_amp1hub0.74/output'
+    #validation_point_name = '/ns0.96As2.6e-09heat_slope-0.19heat_amp1hub0.74/output'
     print('Beginning to initialise LikelihoodClass at', str(datetime.now()))
     return LikelihoodClass(basedir=emudir, datadir=testdir+validation_point_name, mean_flux=mean_flux_label)
 
@@ -106,12 +106,12 @@ def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=Tr
     #true_parameter_values = [0., 1., 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
     #true_parameter_values = [0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
     #true_parameter_values = [0., 0.95, 1.1, 1.1, 1.4, 1.4, 0.43, 1., 0.71]
-    #true_parameter_values = [1.1, 1.1, 1.4, 1.4, 0.43, 1., 0.71]
+    true_parameter_values = [1.1357142857142857, 1.0928571428571427, 1.35, 1.35, 0.4285714285714285, 1.0476190476190474, 0.7142857142857143]
     #true_parameter_values = [0.97, 2.2e-9, 0.083, 0.92, 0.69]
     #true_parameter_values = [None, None, 0.97, 2.2e-9, 0.083, 0.92, 0.69]
     #true_parameter_values = [0., 1., 0.97, 2.2e-9, 0.083, 0.92, 0.69]
     #true_parameter_values = [0.96, 2.6e-9, -0.19, 1., 0.74]
-    true_parameter_values = [0., 0.95, 0.96, 2.6e-9, -0.19, 1., 0.74]
+    #true_parameter_values = [0., 0.95, 0.96, 2.6e-9, -0.19, 1., 0.74]
 
     if chain_savedir is None:
         chain_savedir = testdir

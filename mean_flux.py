@@ -66,6 +66,7 @@ class MeanFluxFactor(ConstMeanFlux):
 
 def mean_flux_slope_to_factor(zzs, slope):
     """Convert a mean flux slope into a list of mean flux amplitudes."""
-    taus = obs_mean_tau(zzs, amp=0, slope=slope)/obs_mean_tau(zzs, amp=0, slope=0)
-    ii = np.argmin(zzs)
-    return taus / taus[ii]
+    taus = obs_mean_tau(zzs, amp=0, slope=slope)/obs_mean_tau(zzs, amp=0, slope=0) #tau_0_i[z] @dtau_0 / tau_0_i[z] @[dtau_0 = 0]
+    #ii = np.argmin(zzs)
+    #return taus / taus[ii] #Divide by lowest redshift case
+    return taus

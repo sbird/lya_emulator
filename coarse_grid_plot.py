@@ -140,9 +140,9 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     t0 = None
     if mean_flux:
         t0 = 0.95
-    mf = mflux.ConstMeanFlux(value=t0)
+    mf = mflux.ConstMeanFlux(value=t0) #In 'ConstMeanFlux' case: multiply tau_0_i[z] by t0 = 0.95
     if mean_flux == 2:
-        mf = mflux.MeanFluxFactor()
+        mf = mflux.MeanFluxFactor() #In 'MeanFluxFactor' case: DON'T multiply tau_0_i[z] by t0 - because *emulate* t0[z]
     params_test = coarse_grid.Emulator(testdir,mf=mf, kf_bin_nums=kf_bin_nums)
     params_test.load()
     if emuclass is None:
@@ -173,10 +173,10 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
         if mean_flux == 2:
-            pp = np.concatenate([[t0,], pp])
-        predicted,std = gp.predict(pp.reshape(1,-1))
+            pp = np.concatenate([[t0,], pp]) #In 'MeanFluxFactor' case: choose t0 point for fair comparison
+        predicted,std = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: t0; cosmo.; thermal},]
         ps = myspec.get_snapshot_list(dd)
-        tfac = t0*mflux.obs_mean_tau(myspec.zout)
+        tfac = t0*mflux.obs_mean_tau(myspec.zout) #For mock data vector: multiply tau_0_i[z] by t0
         exact = ps.get_power(kf = kf, tau0_factors = tfac)
         ratio = predicted[0]/exact
         upper = (predicted[0] + std[0])/exact

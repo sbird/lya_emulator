@@ -49,6 +49,8 @@ class LikelihoodClass(object):
     """Class to contain likelihood computations."""
     def __init__(self, basedir, datadir, mean_flux='s', max_z = 4.2):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
+        t0_training_value = 0.95
+
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
         #'Data' now is a simulation
@@ -57,13 +59,19 @@ class LikelihoodClass(object):
         self.zout = myspec.zout
         pps = myspec.get_snapshot_list(datadir)
         self.kf = self.sdss.get_kf()
-        self.data_fluxpower = pps.get_power(kf=self.kf,tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
+
+        # For mock data vector: multiply tau_0_i[z] by t0 = 1 (+ small offset in amplitude)
+        # Probably mistake in understanding how amp works
+        # self.data_fluxpower = pps.get_power(kf=self.kf,tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
+        #Fix bug
+        self.data_fluxpower = pps.get_power(kf=self.kf, tau0_factors=mflux.obs_mean_tau(self.zout) * t0_training_value)
+
         assert np.size(self.data_fluxpower) % np.size(self.kf) == 0
         #Get the emulator
         if mean_flux == 'c':
-            mf = mflux.ConstMeanFlux(value = 0.95)
+            mf = mflux.ConstMeanFlux(value = t0_training_value) #In 'ConstMeanFlux' case: multiply tau_0_i[z] by t0 = 0.95
         else:
-            mf = mflux.MeanFluxFactor()
+            mf = mflux.MeanFluxFactor() #In 'MeanFluxFactor' case: DON'T multiply tau_0_i[z] by t0 - because *emulate* t0[z]
         self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.kf, mf=mf)
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
@@ -90,13 +98,20 @@ class LikelihoodClass(object):
         Assumes data is quadratic with a covariance matrix."""
         nparams = params
         if self.mf_slope:
+
+            # tau_0_i[z] @dtau_0 / tau_0_i[z] @[dtau_0 = 0]
+            # Divided by lowest redshift case
             tau0_fac = mflux.mean_flux_slope_to_factor(self.zout, params[0])
-            nparams = params[1:]
+
+            nparams = params[1:] #Keep only t0 sampling parameter (of mean flux parameters)
         else: #Otherwise bug if choose mean_flux = 'c'
             tau0_fac = None
         if np.any(params >= self.param_limits[:,1]) or np.any(params <= self.param_limits[:,0]):
             return -np.inf
         #Set parameter limits as the hull of the original emulator.
+
+        # .predict should take [{list of parameters: t0; cosmo.; thermal},]
+        # Here: emulating @ cosmo.; thermal; sampled t0 * [tau0_fac from above]
         predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
 
         #Save emulated flux power specra for analysis

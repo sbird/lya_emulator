@@ -99,7 +99,7 @@ def generate_likelihood_class(testdir, emudir, mean_flux_label='s'):
     print('Beginning to initialise LikelihoodClass at', str(datetime.now()))
     return LikelihoodClass(basedir=emudir, datadir=testdir+validation_point_name, mean_flux=mean_flux_label)
 
-def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=True, chain_savedir=None, n_walkers=100, n_burn_in_steps=100, n_steps=400, while_loop=True, mean_flux_label='s', return_class_only=False):
+def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=True, chain_savedir=None, n_walkers=100, n_burn_in_steps=100, n_steps=400, while_loop=True, mean_flux_label='s', return_class_only=False, include_emulator_error=True):
     # TODO: Add true values #Read from filenames
     #true_parameter_values = [None, None, 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
     #true_parameter_values = [0., 1., 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
@@ -118,11 +118,11 @@ def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=Tr
 
     if return_class_only is False:
         print('Beginning to sample likelihood at', str(datetime.now()))
-        output = like.do_sampling(chainfile, nwalkers=n_walkers, burnin=n_burn_in_steps, nsamples=n_steps, while_loop=while_loop)
+        output = like.do_sampling(chainfile, nwalkers=n_walkers, burnin=n_burn_in_steps, nsamples=n_steps, while_loop=while_loop, include_emulator_error=include_emulator_error)
         if plot is True:
             print('Beginning to make corner plot at', str(datetime.now()))
             make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
         return like
     else:
-        likelihood_at_true_values = like.likelihood(true_parameter_values)
+        likelihood_at_true_values = like.likelihood(true_parameter_values, include_emu=include_emulator_error)
         return like, likelihood_at_true_values

@@ -17,13 +17,6 @@ class MultiBinGP(object):
         #Build an emulator for each redshift separately. This means that the
         #mean flux for each bin can be separated.
         self.kf = kf
-
-        #Extracting kf bins to disk
-        '''date_and_time = str(datetime.now())
-        savefile = "/Users/kwame/Simulations/emulator/kf_bins_" + date_and_time + ".npy"
-        print("Extracting k_F bins to disk at", date_and_time)
-        np.save(savefile, self.kf)'''
-
         self.nk = np.size(kf)
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = int(np.shape(powers)[1]/self.nk)
@@ -31,7 +24,7 @@ class MultiBinGP(object):
         gp = lambda i: SkLearnGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits, coreg=coreg)
         self.gps = [gp(i) for i in range(self.nz)]
 
-    def predict(self,params, tau0_factors=None):
+    def predict(self,params, tau0_factors = None):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         std = np.zeros([1 + self.coreg*(np.shape(params)[1]-1),self.nk*self.nz])
         means = np.zeros([1,self.nk*self.nz])
@@ -46,7 +39,11 @@ class MultiBinGP(object):
         return means, std
 
 class SkLearnGP(object):
-    """An emulator using the one in Scikit-learn"""
+    """An emulator using the one in Scikit-learn.
+       Parameters: params is a list of parameter vectors.
+                   powers is a list of flux power spectra (same shape as params).
+                   param_limits is a list of parameter limits (shape 2,params).
+                   coreg is a flag to enable GPy's coregionalisation (not helpful)."""
     def __init__(self, *, params, powers,param_limits, coreg=False):
         self.params = params
         self.param_limits = param_limits

@@ -47,6 +47,19 @@ def hypercube_plot():
     plt.savefig(path.join(plotdir,"latin_hypercube_good.pdf"))
     plt.clf()
 
+
+def dlogPfdt(spec, t1, t2):
+    """Computes the change in flux power with optical depth"""
+    pf1 = spec.get_flux_power_1D("H",1,1215,mean_flux_desired=np.exp(-t1))
+    pf2 = spec.get_flux_power_1D("H",1,1215,mean_flux_desired=np.exp(-t2))
+    return (pf1[0], (np.log(pf1[1]) - np.log(pf2[1]))/(t1-t2))
+
+def show_t0_gradient(spec, tmin,tmax,steps=20):
+    """Find the mean gradient of the flux power with tau0"""
+    tt = np.linspace(tmin,tmax,steps)
+    df = [np.mean(dlogPfdlogF(spec, t,t-0.005)[1]) for t in tt]
+    return tt, df
+
 def single_parameter_plot():
     """Plot change in each parameter of an emulator from direct simulations."""
     emulatordir = path.expanduser("simulations/hires_s8_quadratic")
@@ -98,9 +111,9 @@ def sample_var_plot():
     fp0 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7/output/")
     fp1 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed1/output/")
     fp2 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed2/output/")
-    pk0 = fp0.get_power(kf,tau0_factors=None)
-    pk1 = fp1.get_power(kf,tau0_factors=None)
-    pk2 = fp2.get_power(kf,tau0_factors=None)
+    pk0 = fp0.get_power(kf,mean_fluxes=None)
+    pk1 = fp1.get_power(kf,mean_fluxes=None)
+    pk2 = fp2.get_power(kf,mean_fluxes=None)
     nred = len(mys.zout)
     nk = len(kf)
     assert np.shape(pk0) == (nred*nk,)

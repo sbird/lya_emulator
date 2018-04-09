@@ -21,13 +21,13 @@ class FluxPower(object):
         """Get the number of snapshots in the list"""
         return len(self.spectrae)
 
-    def get_power(self, kf, tau0_factors):
+    def get_power(self, kf, mean_fluxes):
         """Generate the flux power, with known optical depth, from a list of snapshots."""
         mf = None
         flux_arr = np.empty(shape=(self.len(),np.size(kf)))
         for (i,ss) in enumerate(self.spectrae):
-            if tau0_factors is not None:
-                mf = np.exp(-tau0_factors[i])
+            if mean_fluxes is not None:
+                mf = mean_fluxes[i]
             kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
             #Rebin flux power to have desired k bins
             rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)

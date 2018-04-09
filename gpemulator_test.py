@@ -9,11 +9,11 @@ class Power(object):
     def __init__(self,params):
         self.params = params
 
-    def get_power(self, *, kf, tau0_factor=None):
+    def get_power(self, *, kf, mean_fluxes=None):
         """Get the flux power spectrum."""
         flux_vector = kf*100.
-        if tau0_factor is not None:
-            flux_vector *= tau0_factor
+        if mean_fluxes is not None:
+            flux_vector *= mean_fluxes
         return flux_vector * self.params
 
 def test_emu_multiple():
@@ -44,11 +44,11 @@ class MultiPower(object):
     def __init__(self,params):
         self.params = params
 
-    def get_power(self, *, kf, tau0_factor=None):
+    def get_power(self, *, kf, mean_fluxes=None):
         """Get the flux power spectrum."""
         flux_vector = kf*100*(self.params[0] + self.params[1]**2)
-        if tau0_factor is not None:
-            flux_vector *= tau0_factor
+        if mean_fluxes is not None:
+            flux_vector *= mean_fluxes
         return flux_vector
 
 def test_emu_multi_param():

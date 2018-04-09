@@ -22,9 +22,9 @@ class Powers(object):
         self.pp = params
         self.zz = zz
 
-    def get_power(self, *, kf, tau0_factor):
+    def get_power(self, *, kf, mean_fluxes):
         """Get the power"""
-        return linear_theory.get_flux_power(bias_flux=np.exp(-tau0_factor), ns = self.pp[0], As=self.pp[1], kf=kf, zz=self.zz)
+        return linear_theory.get_flux_power(bias_flux=mean_fluxes, ns = self.pp[0], As=self.pp[1], kf=kf, zz=self.zz)
 
 def init_lnlike(nsamples, data=None):
     """Initialise the emulator for the likelihood function."""

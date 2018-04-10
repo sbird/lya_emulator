@@ -37,8 +37,8 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='s')
         axes[1].plot(k_los, data_flux_power[i]*scaling_factor, color=distinct_colours[i], lw=line_width)
         axes[1].errorbar(k_los, data_flux_power[i]*scaling_factor, yerr=data_flux_power_std_single_z*scaling_factor, ecolor=distinct_colours[i], ls='')
 
-        axes[2].plot(k_los, data_flux_power_std_single_z / emulated_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
-        axes[2].plot(k_los, emulated_flux_power_std[i] / emulated_flux_power[i], color=distinct_colours[i], ls='--',
+        axes[2].plot(k_los, data_flux_power_std_single_z / exact_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
+        axes[2].plot(k_los, emulated_flux_power_std[i] / exact_flux_power[i], color=distinct_colours[i], ls='--',
                      lw=line_width)
 
         axes[3].plot(k_los, data_flux_power_std_single_z / data_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
@@ -70,7 +70,7 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='s')
     axes[2].set_xlim(xlim)
     axes[2].set_yscale('log')
     axes[2].set_xlabel(xlabel)
-    axes[2].set_ylabel(r'sigma / emulated P(k)')
+    axes[2].set_ylabel(r'sigma / exact P(k)')
 
     axes[3].set_xlim(xlim)
     axes[3].set_yscale('log')
@@ -80,6 +80,11 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='s')
     figure.subplots_adjust(hspace=0)
     plt.savefig(savefile)
     plt.show()
+
+    print('Maximum fractional overestimation of flux power spectrum =', np.max((emulated_flux_power / exact_flux_power) - 1.))
+    print('Maximum fractional underestimation of flux power spectrum =', np.min((emulated_flux_power / exact_flux_power) - 1.))
+
+    return like
 
 def make_plot(chainfile, savefile, true_parameter_values=None):
     """Make a plot of parameter posterior values"""
@@ -94,9 +99,9 @@ def make_plot(chainfile, savefile, true_parameter_values=None):
 
 def generate_likelihood_class(testdir, emudir, mean_flux_label='s'):
     #validation_point_name = "/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"
-    validation_point_name = '/AA1.1BB1.1CC1.4DD1.4heat_slope0.43heat_amp1hub0.71/output'
+    #validation_point_name = '/AA1.1BB1.1CC1.4DD1.4heat_slope0.43heat_amp1hub0.71/output'
     #validation_point_name = '/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output'
-    #validation_point_name = '/ns0.96As2.6e-09heat_slope-0.19heat_amp1hub0.74/output'
+    validation_point_name = '/ns0.96As2.6e-09heat_slope-0.19heat_amp1hub0.74/output'
     print('Beginning to initialise LikelihoodClass at', str(datetime.now()))
     return LikelihoodClass(basedir=emudir, datadir=testdir+validation_point_name, mean_flux=mean_flux_label)
 
@@ -104,15 +109,17 @@ def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=Tr
     """Generate some likelihood samples"""
     # TODO: Add true values #Read from filenames
     #true_parameter_values = [None, None, 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
-    true_parameter_values = [0., 1., 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
+    #true_parameter_values = [0., 1., 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
     #true_parameter_values = [0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
     #true_parameter_values = [0., 0.95, 1.1, 1.1, 1.4, 1.4, 0.43, 1., 0.71]
-    true_parameter_values = [1.1357142857142857, 1.0928571428571427, 1.35, 1.35, 0.4285714285714285, 1.0476190476190474, 0.7142857142857143]
+    #true_parameter_values = [1.1357142857142857, 1.0928571428571427, 1.35, 1.35, 0.4285714285714285, 1.0476190476190474, 0.7142857142857143]
+    #true_parameter_values = [0., 1., 1.1357142857142857, 1.0928571428571427, 1.35, 1.35, 0.4285714285714285, 1.0476190476190474,
+    #                         0.7142857142857143]
     #true_parameter_values = [0.97, 2.2e-9, 0.083, 0.92, 0.69]
     #true_parameter_values = [None, None, 0.97, 2.2e-9, 0.083, 0.92, 0.69]
     #true_parameter_values = [0., 1., 0.97, 2.2e-9, 0.083, 0.92, 0.69]
-    #true_parameter_values = [0.96, 2.6e-9, -0.19, 1., 0.74]
-    #true_parameter_values = [0., 0.95, 0.96, 2.6e-9, -0.19, 1., 0.74]
+    true_parameter_values = [0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
+    #true_parameter_values = [0., 1., 0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
 
     if chain_savedir is None:
         chain_savedir = testdir

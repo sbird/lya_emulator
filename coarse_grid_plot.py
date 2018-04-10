@@ -210,6 +210,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
                 upper_plot = (predicted[0] + measurement_errors_to_max_z) / exact
                 plt.ylim([0.9, 1.1])
             plt.fill_between(kf,lower_plot[i*nk:(i+1)*nk], upper_plot[i*nk:(i+1)*nk],alpha=0.3, color="grey")
+        #plt.yscale('log')
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
         name = params_test.build_dirname(pp, include_dense=True)

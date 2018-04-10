@@ -11,7 +11,7 @@ if __name__ == "__main__":
     plotname = sys.argv[3]
     chain_savedir = sys.argv[4]
 
-    testdir = sim_rootdir + '/Lya_Boss/hires_s8' #_test' #/share/hypatia/sbird
+    testdir = sim_rootdir + '/Lya_Boss/hires_s8_test' #/share/hypatia/sbird
     emudir = sim_rootdir + '/Lya_Boss/hires_s8'
 
     likelihood_samples_plot_savefile = savedir + '/likelihood_samples_' + plotname + '.pdf'
@@ -20,6 +20,6 @@ if __name__ == "__main__":
     #test_knot_plots(testdir=testdir, emudir=emudir, plotdir=savedir, plotname=plotname, mf=1, kf_bin_nums=None, data_err=False)
     #plot_test_interpolate_kf_bin_loop(emudir, testdir, savedir=savedir, plotname="_Two_loop", kf_bin_nums=np.arange(2))
 
-    output = run_and_plot_likelihood_samples(testdir, emudir, likelihood_samples_plot_savefile, plotname, plot=True, chain_savedir=chain_savedir, n_burn_in_steps=50, n_steps=100, while_loop=False, mean_flux_label='c', return_class_only=False, include_emulator_error=True)
+    output = run_and_plot_likelihood_samples(testdir, emudir, likelihood_samples_plot_savefile, plotname, plot=True, chain_savedir=chain_savedir, n_burn_in_steps=5000, n_steps=15000, while_loop=False, mean_flux_label='s', return_class_only=False, include_emulator_error=True)
     #make_plot(chain_savedir + '/AA0.97BB1.3_chain_20000_MeanFluxFactor.txt', likelihood_samples_plot_savefile)
     #output = make_plot_flux_power_spectra(testdir, emudir, flux_power_plot_savefile, mean_flux_label='c')

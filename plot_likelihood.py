@@ -100,8 +100,8 @@ def make_plot(chainfile, savefile, true_parameter_values=None):
 def generate_likelihood_class(testdir, emudir, mean_flux_label='s'):
     #validation_point_name = "/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"
     #validation_point_name = '/AA1.1BB1.1CC1.4DD1.4heat_slope0.43heat_amp1hub0.71/output'
-    #validation_point_name = '/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output'
-    validation_point_name = '/ns0.96As2.6e-09heat_slope-0.19heat_amp1hub0.74/output'
+    validation_point_name = '/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output'
+    #validation_point_name = '/ns0.96As2.6e-09heat_slope-0.19heat_amp1hub0.74/output'
     print('Beginning to initialise LikelihoodClass at', str(datetime.now()))
     return LikelihoodClass(basedir=emudir, datadir=testdir+validation_point_name, mean_flux=mean_flux_label)
 
@@ -115,10 +115,10 @@ def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=Tr
     #true_parameter_values = [1.1357142857142857, 1.0928571428571427, 1.35, 1.35, 0.4285714285714285, 1.0476190476190474, 0.7142857142857143]
     #true_parameter_values = [0., 1., 1.1357142857142857, 1.0928571428571427, 1.35, 1.35, 0.4285714285714285, 1.0476190476190474,
     #                         0.7142857142857143]
-    #true_parameter_values = [0.97, 2.2e-9, 0.083, 0.92, 0.69]
+    #true_parameter_values = [0.975, 2.25e-09, 0.08333333333333326, 0.9166666666666666, 0.6916666666666667]
     #true_parameter_values = [None, None, 0.97, 2.2e-9, 0.083, 0.92, 0.69]
-    #true_parameter_values = [0., 1., 0.97, 2.2e-9, 0.083, 0.92, 0.69]
-    true_parameter_values = [0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
+    true_parameter_values = [0., 1., 0.975, 2.25e-09, 0.08333333333333326, 0.9166666666666666, 0.6916666666666667]
+    #true_parameter_values = [0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
     #true_parameter_values = [0., 1., 0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
 
     if chain_savedir is None:

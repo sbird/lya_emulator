@@ -252,8 +252,12 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
 
     return gp, all_power_array, myspec.zout
 
-def plot_test_matter_interpolate(emulatordir,testdir, redshift=3.):
+def plot_test_matter_interpolate(emulatordir,testdir, savedir=None, redshift=3.):
     """Make a plot showing the interpolation error for the matter power spectrum."""
+    if savedir is None:
+        savedir = testdir
+    savename = testdir+"/matter_power.pdf"
+
     params = coarse_grid.MatterPowerEmulator(emulatordir)
     params.load()
     gp = params.get_emulator()
@@ -271,7 +275,7 @@ def plot_test_matter_interpolate(emulatordir,testdir, redshift=3.):
     plt.title("Matter power")
     plt.legend(loc=0)
     plt.show()
-    plt.savefig(testdir+"matter_power.pdf")
-    print(testdir+"matter_power.pdf")
+    plt.savefig(savename)
+    print(savename)
     plt.clf()
     return gp

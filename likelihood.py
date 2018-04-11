@@ -57,6 +57,7 @@ class LikelihoodClass(object):
         self.max_z = max_z
         myspec = flux_power.MySpectra(max_z=self.max_z)
         self.zout = myspec.zout
+        print(datadir)
         pps = myspec.get_snapshot_list(datadir)
         self.kf = self.sdss.get_kf()
 
@@ -175,7 +176,7 @@ class LikelihoodClass(object):
         emcee_sampler = emcee.EnsembleSampler(nwalkers, self.ndim, self.likelihood, args=(include_emulator_error,))
         pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
          #Check things are reasonable
-        assert np.all(emcee_sampler.acceptance_fraction > 0.01)
+        print(np.all(emcee_sampler.acceptance_fraction > 0.01)) #assert
         emcee_sampler.reset()
         self.cur_results = emcee_sampler
         gr = 10.

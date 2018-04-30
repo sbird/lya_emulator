@@ -184,7 +184,7 @@ class LikelihoodClass(object):
         #We could rotate the parameters here,
         #but ideally we would do that before running the coarse grid anyway.
         #Get marginalised statistics.
-        limits = np.percentile(self.cur_results.flatchain, [100-100*confidence, 100*confidence], axis=0)
+        limits = np.percentile(self.cur_results.flatchain, [100-100*confidence, 100*confidence], axis=0).T
         #Discard dense params
         ndense = len(self.emulator.mf.dense_param_names)
         if self.mf_slope:

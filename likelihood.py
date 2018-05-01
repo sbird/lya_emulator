@@ -146,6 +146,10 @@ class LikelihoodClass(object):
             assert not np.isnan(chi2)
         return chi2
 
+    def load(self, savefile):
+        """Load the chain from a savefile"""
+        self.flatchain = np.loadtxt(savefile)
+
     def do_sampling(self, savefile, nwalkers=100, burnin=1000, nsamples=3000, while_loop=True):
         """Initialise and run emcee."""
         pnames = self.emulator.print_pnames()
@@ -174,6 +178,7 @@ class LikelihoodClass(object):
             np.savetxt(savefile, emcee_sampler.flatchain)
             if while_loop is False:
                 break
+        self.flatchain = emcee_sampler.flatchain
         return emcee_sampler
 
     def new_parameter_limits(self, confidence=0.99, include_dense=False):
@@ -184,7 +189,7 @@ class LikelihoodClass(object):
         #We could rotate the parameters here,
         #but ideally we would do that before running the coarse grid anyway.
         #Get marginalised statistics.
-        limits = np.percentile(self.cur_results.flatchain, [100-100*confidence, 100*confidence], axis=0).T
+        limits = np.percentile(self.flatchain, [100-100*confidence, 100*confidence], axis=0).T
         #Discard dense params
         ndense = len(self.emulator.mf.dense_param_names)
         if self.mf_slope:

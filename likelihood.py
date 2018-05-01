@@ -202,25 +202,63 @@ class LikelihoodClass(object):
         new_par = limits[ndense:,:]
         return new_par
 
-    def check_for_refinement(self, conf = 0.95, frac = 1.3):
+    def get_covar_det(self, params, include_emu):
+        """Get the determinant of the covariance matrix.for certain parameters"""
+        nparams = params
+        if self.mf_slope:
+            tau0_fac = mflux.mean_flux_slope_to_factor(self.zout, params[0])
+            nparams = params[1:]
+        else: #Otherwise bug if choose mean_flux = 'c'
+            tau0_fac = None
+        if np.any(params >= self.param_limits[:,1]) or np.any(params <= self.param_limits[:,0]):
+            return -np.inf
+        sdssz = self.sdss.get_redshifts()
+        #Fix maximum redshift bug
+        sdssz = sdssz[sdssz <= self.max_z]
+        nz = sdssz.size
+        nkf = len(self.kf)
+        if include_emu:
+            _, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
+        detc = 1
+        for bb in range(nz):
+            covar_bin = self.sdss.get_covar(sdssz[bb])
+            if include_emu:
+                std_bin = std[0,nkf*bb:nkf*(bb+1)]
+                #Assume completely correlated emulator errors within this bin
+                covar_emu = np.outer(std_bin, std_bin)
+                covar_bin += covar_emu
+            _, det_bin = np.linalg.slogdet(covar_bin)
+            #We have a block diagonal covariance
+            detc *= det_bin
+        return detc
+
+    def refine_metric(self, params):
+        """This evaluates the 'refinement metric':
+           the extent to which the emulator error dominates the covariance.
+           The idea is that when it is > 1, refinement is necessary"""
+        detnoemu = self.get_covar_det(params, False)
+        detemu = self.get_covar_det(params, True)
+        return detemu/detnoemu
+
+    def check_for_refinement(self, conf = 0.95, thresh = 1.05):
         """Crude check for refinement: check whether the likelihood is dominated by
            emulator error at the 1 sigma contours."""
         limits = self.new_parameter_limits(confidence=conf, include_dense = True)
         while True:
+            #Do the check
+            uref = self.refine_metric(limits[:,0])
+            lref = self.refine_metric(limits[:,1])
+            #This should be close to 1.
+            print("up =",uref," low=",lref)
+            if (uref < thresh) and (lref < thresh):
+                break
+            #Iterate by moving each limit 40% outwards.
             midpt = np.mean(limits, axis=1)
             limits[:,0] = 1.4*(limits[:,0] - midpt) + midpt
             limits[:,0] = np.max([limits[:,0], self.param_limits[:,0]],axis=0)
             limits[:,1] = 1.4*(limits[:,1] - midpt) + midpt
             limits[:,1] = np.min([limits[:,1], self.param_limits[:,1]],axis=0)
             if np.all(limits == self.param_limits):
-                break
-            ue = self.likelihood(limits[:,0])[0]
-            un = self.likelihood(limits[:,0],include_emu=False)[0]
-            le = self.likelihood(limits[:,1])[0]
-            ln = self.likelihood(limits[:,1],include_emu=False)[0]
-            #This should be close to 1.
-            print("up =",un/ue," low=",ln/le)
-            if (un/ue < frac) and (ln/le < frac):
                 break
         return limits
 

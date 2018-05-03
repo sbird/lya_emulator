@@ -92,7 +92,7 @@ def test_s8_plots():
     quad_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
     return (gp_emu, gp_quad, quad_quad)
 
-def test_knot_plots(mf=1, testdir = None, emudir = None, plotdir = None, plotname="", kf_bin_nums=None, data_err=False):
+def test_knot_plots(mf=1, testdir = None, emudir = None, plotdir = None, plotname="", kf_bin_nums=None, data_err=False, max_z=4.2):
     """Plot emulator test-cases"""
     if testdir is None:
         testdir = path.expanduser("~/data/Lya_Boss/hires_knots_test")
@@ -100,7 +100,7 @@ def test_knot_plots(mf=1, testdir = None, emudir = None, plotdir = None, plotnam
         emudir = path.expanduser("~/data/Lya_Boss/hires_knots")
     if plotdir is None:
         plotdir = path.expanduser('~/Papers/emulator_paper_1/plots/hires_knots_mf')
-    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=plotdir+str(mf),plotname=plotname,mean_flux=mf,kf_bin_nums=kf_bin_nums,data_err=data_err)
+    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=plotdir+str(mf),plotname=plotname,mean_flux=mf,max_z=max_z,kf_bin_nums=kf_bin_nums,data_err=data_err)
     return gp_emu
 
 def sample_var_plot():

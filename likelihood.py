@@ -269,6 +269,18 @@ class LikelihoodClass(object):
         assert np.shape(new_samples)[0] == nsamples
         self.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
 
+    def make_err_grid(self, i, j, samples = 30000):
+        """Make an error grid"""
+        ndim = np.size(self.param_limits[:,0])
+        rr = lambda x : np.random.rand(ndim)*(self.param_limits[:,1]-self.param_limits[:,0]) + self.param_limits[:,0]
+        rsamples = np.array([rr(i) for i in range(samples)])
+        randscores = [self.refine_metric(rr) for rr in rsamples]
+        grid_x, grid_y = np.mgrid[0:1:200j, 0:1:200j]
+        grid_x = grid_x * (self.param_limits[i,1] - self.param_limits[i,0]) + self.param_limits[i,0]
+        grid_y = grid_y * (self.param_limits[j,1] - self.param_limits[j,0]) + self.param_limits[j,0]
+        grid = scipy.interpolate.griddata(rsamples[:,(i,j)], randscores,(grid_x,grid_y),fill_value = 0)
+        return grid
+
 if __name__ == "__main__":
 #     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots_refine"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))
     like = LikelihoodClass(basedir=os.path.expanduser("simulations/hires_knots"), datadir=os.path.expanduser("simulations/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))

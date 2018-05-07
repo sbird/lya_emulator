@@ -17,7 +17,7 @@ if __name__ == "__main__":
     likelihood_samples_plot_savefile = savedir + '/likelihood_samples_' + plotname + '.pdf'
     flux_power_plot_savefile = savedir + '/flux_power_' + plotname + '.pdf'
 
-    test_knot_plots(testdir=testdir, emudir=emudir, plotdir=savedir, plotname=plotname, mf=1, kf_bin_nums=None, data_err=False, max_z=2.2)
+    test_knot_plots(testdir=testdir, emudir=emudir, plotdir=savedir, plotname=plotname, mf=1, kf_bin_nums=None, data_err=False, max_z=4.2)
     #plot_test_interpolate_kf_bin_loop(emudir, testdir, savedir=savedir, plotname="_Two_loop", kf_bin_nums=np.arange(2))
 
     #output = run_and_plot_likelihood_samples(testdir, emudir, likelihood_samples_plot_savefile, plotname, plot=True, chain_savedir=chain_savedir, n_burn_in_steps=5000, n_steps=15000, while_loop=False, mean_flux_label='s', return_class_only=False, include_emulator_error=True)

@@ -141,6 +141,7 @@ class MySpectra(object):
                 if ss is not None:
                     powerspectra.add_snapshot(snap,ss)
             except IOError:
+                print("Didn't find any spectra because of IOError")
                 continue
         #Make sure we have enough outputs
         if powerspectra.len() != np.size(self.zout):

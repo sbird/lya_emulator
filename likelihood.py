@@ -65,14 +65,14 @@ class LikelihoodClass(object):
         # Probably mistake in understanding how amp works
         # self.data_fluxpower = pps.get_power(kf=self.kf,tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
         #Fix bug
-        self.data_fluxpower = pps.get_power(kf=self.kf, mean_fluxes=np.exp(-mflux.obs_mean_tau(self.zout, amp=0)))
+        self.data_fluxpower = pps.get_power(kf=self.kf, mean_fluxes=np.exp(-mflux.obs_mean_tau(self.zout, amp=0) * t0_training_value))
         assert np.size(self.data_fluxpower) % np.size(self.kf) == 0
         self.mf_slope = False
         #Param limits on t0
         t0_factor = np.array([0.75,1.25])
         #Get the emulator
         if mean_flux == 'c':
-            mf = mflux.ConstMeanFlux(value = 1)
+            mf = mflux.ConstMeanFlux(value = t0_training_value)
         #As each redshift bin is independent, for redshift-dependent mean flux models
         #we just need to convert the input parameters to a list of mean flux scalings
         #in each redshift bin.

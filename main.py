@@ -11,8 +11,8 @@ if __name__ == "__main__":
     plotname = sys.argv[3]
     chain_savedir = sys.argv[4]
 
-    testdir = sim_rootdir + '/emulator/hot_cold_test' #'/Lya_Boss/cosmo-only-test' #hires_s8_test' #/share/hypatia/sbird
-    emudir = sim_rootdir + '/emulator/hot_cold' #'/Lya_Boss/cosmo-only-emulator' #hires_s8'
+    testdir = sim_rootdir + '/hot_cold_test' #Lya_Boss/hires_s8_test' #/share/hypatia/sbird
+    emudir = sim_rootdir + '/hot_cold' #Lya_Boss/hires_s8'
 
     likelihood_samples_plot_savefile = savedir + '/likelihood_samples_' + plotname + '.pdf'
     flux_power_plot_savefile = savedir + '/flux_power_' + plotname + '.pdf'

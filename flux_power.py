@@ -131,11 +131,13 @@ class MySpectra(object):
                     snapdir = os.path.join(base, "snap_"+str(snap).rjust(3,'0'))
                     if not os.path.exists(snapdir):
                         continue
+            print('Looking for spectra in', snapdir)
             #We have all we need
             if powerspectra.len() == np.size(self.zout):
                 break
             try:
                 ss = self._get_spectra_snap(snap, base)
+                print('Found spectra in', ss)
                 if ss is not None:
                     powerspectra.add_snapshot(snap,ss)
             except IOError:

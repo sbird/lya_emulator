@@ -39,10 +39,10 @@ def make_plot_compare_two_simulations(simdir1, simdir2, simname1, simname2, save
     axes[0].legend(frameon=False, fontsize=fontsize)
     axes[0].set_xlim(xlim)
     axes[0].set_yscale('log')
-    axes[0].set_xlabel(xlabel)
     axes[0].set_ylabel(ylabel)
 
     axes[1].set_xlim(xlim)
+    axes[1].set_xlabel(xlabel)
     axes[1].set_ylabel(simname2 + '-' + simname1 + '/' + simname1)
 
     figure.subplots_adjust(hspace=0)
@@ -115,6 +115,7 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='s')
     axes[2].set_xlabel(xlabel)
     axes[2].set_ylabel(r'sigma / exact P(k)')
 
+    axes[3].axhline(y=1., color='black', ls=':', lw=line_width)
     axes[3].set_xlim(xlim)
     #axes[3].set_ylim([1.0011, 0.9989])
     #axes[3].set_yscale('log')

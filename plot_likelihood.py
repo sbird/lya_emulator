@@ -10,6 +10,32 @@ import distinct_colours_py3 as dc
 
 from likelihood import *
 
+def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_label='c'):
+    likelihood_instance = generate_likelihood_class(emulator_training_directory, emulator_training_directory, mean_flux_label=mean_flux_label)
+    k_los, z, n_k_los, n_z = get_k_z(likelihood_instance)
+
+    parameter_value_samples = np.linspace(0.8, 1.2, num=200) #HeliumHeatAmp
+    emulator_error_plot = np.zeros((parameter_value_samples.shape[0], n_z))
+    for i in range(parameter_value_samples.shape[0]):
+        param_val = parameter_value_samples[i]
+        emulated_flux_power, emulator_error = likelihood_instance.gpemu.predict(np.array([param_val,]).reshape(1, -1), tau0_factors=None)
+        fractional_emulator_error = (emulator_error[0] / emulated_flux_power[0]).reshape(n_z, n_k_los)
+        emulator_error_plot[i] = np.mean(fractional_emulator_error, axis=-1)
+        print('Standard deviation of fractional emulator error with scale =', np.std(fractional_emulator_error, axis=-1))
+
+    figure, axis = plt.subplots(nrows=1, ncols=1, figsize=(6.4 * 1., 10.))
+    distinct_colours = dc.get_distinct(n_z)
+    line_width = 0.5
+    fontsize = 7.
+    for i in range(n_z):
+        axis.plot(parameter_value_samples, emulator_error_plot[:,i], color=distinct_colours[i], lw=line_width, label=r'$z = %.1f$' % z[i])
+    axis.legend(frameon=False, fontsize=fontsize)
+    axis.set_yscale('log')
+    axis.set_xlabel(r'HeliumHeatAmp')
+    axis.set_ylabel(r'(emulated sigma / emulated P(k)) [averaged over scale]')
+
+    plt.savefig(savefile)
+
 def make_plot_compare_two_simulations(simdir1, simdir2, simname1, simname2, savefile, mean_flux_label1='c', mean_flux_label2='c'):
     likelihood_instance1 = generate_likelihood_class(simdir1, simdir1, simulation_sub_directory=simname1, mean_flux_label=mean_flux_label1)
     likelihood_instance2 = generate_likelihood_class(simdir2, simdir2, simulation_sub_directory=simname2,
@@ -148,7 +174,7 @@ def generate_likelihood_class(testdir, emudir, simulation_sub_directory=None, me
         #simulation_sub_directory = '/AA1.1BB1.1CC1.4DD1.4heat_slope0.43heat_amp1hub0.71/output'
         #simulation_sub_directory = '/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output'
         #simulation_sub_directory = '/ns0.96As2.6e-09heat_slope-0.19heat_amp1hub0.74/output'
-        simulation_sub_directory = '/HeliumHeatAmp1/output'
+        simulation_sub_directory = '/HeliumHeatAmp0.9/output'
     print('Beginning to initialise LikelihoodClass at', str(datetime.now()))
     return LikelihoodClass(basedir=emudir, datadir=testdir+simulation_sub_directory, mean_flux=mean_flux_label)
 

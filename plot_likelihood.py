@@ -10,8 +10,9 @@ import distinct_colours_py3 as dc
 
 from likelihood import *
 
-def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_label='c'):
-    likelihood_instance = generate_likelihood_class(emulator_training_directory, emulator_training_directory, mean_flux_label=mean_flux_label)
+def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_label='c', likelihood_instance=None):
+    if likelihood_instance is None:
+        likelihood_instance = generate_likelihood_class(emulator_training_directory, emulator_training_directory, mean_flux_label=mean_flux_label)
     k_los, z, n_k_los, n_z = get_k_z(likelihood_instance)
 
     parameter_value_samples = np.linspace(0.8, 1.2, num=200) #HeliumHeatAmp
@@ -163,6 +164,8 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c')
 
     print('Maximum fractional overestimation of flux power spectrum =', np.max((emulated_flux_power / exact_flux_power) - 1.))
     print('Maximum fractional underestimation of flux power spectrum =', np.min((emulated_flux_power / exact_flux_power) - 1.))
+
+    make_plot_emulator_error(emudir, '/home/keir/Plots/Emulator/emulator_error_hot_cold.pdf', likelihood_instance=like)
 
     return like
 

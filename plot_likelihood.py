@@ -16,24 +16,33 @@ def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_la
 
     parameter_value_samples = np.linspace(0.8, 1.2, num=200) #HeliumHeatAmp
     emulator_error_plot = np.zeros((parameter_value_samples.shape[0], n_z))
+
+    emulated_flux_power = [None] * parameter_value_samples.shape[0]
+    emulator_error = [None] * parameter_value_samples.shape[0]
+    fractional_emulator_error = [None] * parameter_value_samples.shape[0]
+
     for i in range(parameter_value_samples.shape[0]):
         param_val = parameter_value_samples[i]
-        emulated_flux_power, emulator_error = likelihood_instance.gpemu.predict(np.array([param_val,]).reshape(1, -1), tau0_factors=None)
-        fractional_emulator_error = (emulator_error[0] / emulated_flux_power[0]).reshape(n_z, n_k_los)
-        emulator_error_plot[i] = np.mean(fractional_emulator_error, axis=-1)
-        print('Standard deviation of fractional emulator error with scale =', np.std(fractional_emulator_error, axis=-1))
+        emulated_flux_power[i], emulator_error[i] = likelihood_instance.gpemu.predict(np.array([param_val,]).reshape(1, -1), tau0_factors=None)
+        fractional_emulator_error[i] = (emulator_error[i][0] / emulated_flux_power[i][0]).reshape(n_z, n_k_los)
+        emulator_error_plot[i] = np.nanmean(fractional_emulator_error[i], axis=-1)
+        print('Standard deviation of fractional emulator error with scale =', np.std(fractional_emulator_error[i], axis=-1))
 
-    figure, axis = plt.subplots(nrows=1, ncols=1, figsize=(6.4 * 1., 10.))
+    figure, axis = plt.subplots(nrows=1, ncols=1, figsize=(6.4 * 2., 10.))
     distinct_colours = dc.get_distinct(n_z)
     line_width = 0.5
     fontsize = 7.
     for i in range(n_z):
         axis.plot(parameter_value_samples, emulator_error_plot[:,i], color=distinct_colours[i], lw=line_width, label=r'$z = %.1f$' % z[i])
+    axis.axvline(x=0.9, color='black', ls=':', lw=line_width)
+    axis.axvline(x=1., color='black', ls=':', lw=line_width)
+    axis.axvline(x=1.1, color='black', ls=':', lw=line_width)
     axis.legend(frameon=False, fontsize=fontsize)
     axis.set_yscale('log')
     axis.set_xlabel(r'HeliumHeatAmp')
     axis.set_ylabel(r'(emulated sigma / emulated P(k)) [averaged over scale]')
 
+    np.savez('/home/keir/Data/emulator/emulator_error.npz', parameter_value_samples, emulator_error_plot, np.array(fractional_emulator_error), np.array(emulator_error), np.array(emulated_flux_power), k_los)
     plt.savefig(savefile)
 
 def make_plot_compare_two_simulations(simdir1, simdir2, simname1, simname2, savefile, mean_flux_label1='c', mean_flux_label2='c'):
@@ -157,7 +166,7 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c')
 
     return like
 
-def make_plot(chainfile, savefile, true_parameter_values=None):
+def make_plot(chainfile, savefile, teerue_parameter_values=None):
     """Make a plot of parameter posterior values"""
     import corner
     with open(chainfile+"_names.txt") as ff:

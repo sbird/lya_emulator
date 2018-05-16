@@ -34,8 +34,8 @@ def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_la
     line_width = 0.5
     fontsize = 7.
     for i in range(n_z):
-        #axis.plot(parameter_value_samples, emulator_error_plot[:,i], color=distinct_colours[i], lw=line_width, label=r'$z = %.1f$' % z[i])
-        axis.scatter(parameter_value_samples, emulator_error_plot[:,i], c=distinct_colours[i], label=r'$z = %.1f$' % z[i])
+        axis.plot(parameter_value_samples, emulator_error_plot[:,i], color=distinct_colours[i], lw=line_width, label=r'$z = %.1f$' % z[i])
+        #axis.scatter(parameter_value_samples, emulator_error_plot[:,i], c=distinct_colours[i], label=r'$z = %.1f$' % z[i])
     axis.axvline(x=0.9, color='black', ls=':', lw=line_width)
     axis.axvline(x=1., color='black', ls=':', lw=line_width)
     axis.axvline(x=1.1, color='black', ls=':', lw=line_width)
@@ -44,7 +44,7 @@ def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_la
     axis.set_xlabel(r'HeliumHeatAmp')
     axis.set_ylabel(r'(emulated sigma / emulated P(k)) [averaged over scale]')
 
-    np.savez('/home/keir/Data/emulator/emulator_error.npz', parameter_value_samples, emulator_error_plot, np.array(fractional_emulator_error), np.array(emulator_error), np.array(emulated_flux_power), k_los)
+    #np.savez('/home/keir/Data/emulator/emulator_error.npz', parameter_value_samples, emulator_error_plot, np.array(fractional_emulator_error), np.array(emulator_error), np.array(emulated_flux_power), k_los)
     plt.savefig(savefile)
 
 def make_plot_compare_two_simulations(simdir1, simdir2, simname1, simname2, savefile, mean_flux_label1='c', mean_flux_label2='c'):
@@ -101,14 +101,14 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c')
     emulated_flux_power_std = like.emulated_flux_power_std[0].reshape(n_z, n_k_los)
     data_flux_power = like.sdss.pf.reshape(-1, n_k_los)[:n_z][::-1]
 
-    emulated_flux_power_direct = [None] * 200
+    '''emulated_flux_power_direct = [None] * 200
     emulator_error_direct = [None] * 200
     j=0
     np.savez('/home/keir/Data/emulator/emulator_error_test.npz', np.array(like.gpemu.predict(np.array([np.linspace(0.8, 1.2, num=200)[50],]).reshape(1, -1), tau0_factors=None)), np.array(np.linspace(0.8, 1.2, num=200)[50]))
     for i in np.linspace(0.8, 1.2, num=200):
         emulated_flux_power_direct[j], emulator_error_direct[j] = like.gpemu.predict(np.array([i,]).reshape(1, -1), tau0_factors=None)
         j+=1
-    np.savez('/home/keir/Data/emulator/emulator_error_direct.npz', np.array(emulated_flux_power_direct), np.array(emulator_error_direct), k_los)
+    np.savez('/home/keir/Data/emulator/emulator_error_direct.npz', np.array(emulated_flux_power_direct), np.array(emulator_error_direct), k_los)'''
 
     figure, axes = plt.subplots(nrows=4, ncols=1, figsize=(6.4*2., 10.))
     distinct_colours = dc.get_distinct(n_z)
@@ -175,7 +175,7 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c')
     print('Maximum fractional overestimation of flux power spectrum =', np.max((emulated_flux_power / exact_flux_power) - 1.))
     print('Maximum fractional underestimation of flux power spectrum =', np.min((emulated_flux_power / exact_flux_power) - 1.))
 
-    make_plot_emulator_error(emudir, '/home/keir/Plots/Emulator/emulator_error_hot_cold.pdf', likelihood_instance=like)
+    #make_plot_emulator_error(emudir, '/home/keir/Plots/Emulator/emulator_error_hot_cold.pdf', likelihood_instance=like)
 
     return like
 

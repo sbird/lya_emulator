@@ -11,7 +11,7 @@ if __name__ == "__main__":
     plotname = sys.argv[3]
     chain_savedir = sys.argv[4]
 
-    testdir = sim_rootdir + '/hot_cold' #Lya_Boss/hires_s8_test' #/share/hypatia/sbird
+    testdir = sim_rootdir + '/hot_cold_test' #Lya_Boss/hires_s8_test' #/share/hypatia/sbird
     emudir = sim_rootdir + '/hot_cold' #Lya_Boss/hires_s8'
 
     simulation_sub_directory1 = '/HeliumHeatAmp0.9/output'
@@ -27,6 +27,6 @@ if __name__ == "__main__":
 
     #output = run_and_plot_likelihood_samples(testdir, emudir, likelihood_samples_plot_savefile, plotname, plot=True, chain_savedir=chain_savedir, n_burn_in_steps=50, n_steps=150, while_loop=False, mean_flux_label='s', return_class_only=False, include_emulator_error=True)
     #make_plot(chain_savedir + '/AA0.97BB1.3_chain_20000_MeanFluxFactor.txt', likelihood_samples_plot_savefile)
-    output = make_plot_flux_power_spectra(testdir, emudir, flux_power_plot_savefile, mean_flux_label='c')
+    #output = make_plot_flux_power_spectra(testdir, emudir, flux_power_plot_savefile, mean_flux_label='c')
     #make_plot_compare_two_simulations(emudir, emudir, simulation_sub_directory1, simulation_sub_directory2, compare_plot_savefile)
-    #make_plot_emulator_error(emudir, emulator_error_plot_savefile)
+    make_plot_emulator_error(emudir, emulator_error_plot_savefile)

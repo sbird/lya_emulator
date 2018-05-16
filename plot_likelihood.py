@@ -34,7 +34,8 @@ def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_la
     line_width = 0.5
     fontsize = 7.
     for i in range(n_z):
-        axis.plot(parameter_value_samples, emulator_error_plot[:,i], color=distinct_colours[i], lw=line_width, label=r'$z = %.1f$' % z[i])
+        #axis.plot(parameter_value_samples, emulator_error_plot[:,i], color=distinct_colours[i], lw=line_width, label=r'$z = %.1f$' % z[i])
+        axis.scatter(parameter_value_samples, emulator_error_plot[:,i], c=distinct_colours[i], label=r'$z = %.1f$' % z[i])
     axis.axvline(x=0.9, color='black', ls=':', lw=line_width)
     axis.axvline(x=1., color='black', ls=':', lw=line_width)
     axis.axvline(x=1.1, color='black', ls=':', lw=line_width)
@@ -99,6 +100,15 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c')
     emulated_flux_power = like.emulated_flux_power[0].reshape(n_z, n_k_los)
     emulated_flux_power_std = like.emulated_flux_power_std[0].reshape(n_z, n_k_los)
     data_flux_power = like.sdss.pf.reshape(-1, n_k_los)[:n_z][::-1]
+
+    emulated_flux_power_direct = [None] * 200
+    emulator_error_direct = [None] * 200
+    j=0
+    np.savez('/home/keir/Data/emulator/emulator_error_test.npz', np.array(like.gpemu.predict(np.array([np.linspace(0.8, 1.2, num=200)[50],]).reshape(1, -1), tau0_factors=None)), np.array(np.linspace(0.8, 1.2, num=200)[50]))
+    for i in np.linspace(0.8, 1.2, num=200):
+        emulated_flux_power_direct[j], emulator_error_direct[j] = like.gpemu.predict(np.array([i,]).reshape(1, -1), tau0_factors=None)
+        j+=1
+    np.savez('/home/keir/Data/emulator/emulator_error_direct.npz', np.array(emulated_flux_power_direct), np.array(emulator_error_direct), k_los)
 
     figure, axes = plt.subplots(nrows=4, ncols=1, figsize=(6.4*2., 10.))
     distinct_colours = dc.get_distinct(n_z)
@@ -205,7 +215,8 @@ def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=Tr
     #true_parameter_values = [0., 1., 0.975, 2.25e-09, 0.08333333333333326, 0.9166666666666666, 0.6916666666666667]
     #true_parameter_values = [0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
     #true_parameter_values = [0., 1., 0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
-    true_parameter_values = [0.95, 0., 1.,]
+    #true_parameter_values = [0.95, 0., 1.,]
+    true_parameter_values = [0.9,]
 
     if chain_savedir is None:
         chain_savedir = testdir

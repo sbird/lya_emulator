@@ -119,6 +119,7 @@ class LikelihoodClass(object):
 
         # .predict should take [{list of parameters: t0; cosmo.; thermal},]
         # Here: emulating @ cosmo.; thermal; sampled t0 * [tau0_fac from above]
+        print('Parameter array =', nparams)
         predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
 
         #Save emulated flux power specra for analysis

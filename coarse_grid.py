@@ -59,10 +59,14 @@ class Emulator(object):
         parts = ['',]*(len(self.param_names) + ndense)
         #Transform the dictionary into a list of string parts,
         #sorted in the same way as the parameter array.
+        if self.param_names == {'HeliumHeatAmp': 0}:
+            string_formatting_type = '%.3g'
+        else:
+            string_formatting_type = '%.2g'
         for nn,val in self.mf.dense_param_names.items():
-            parts[val] = nn+'%.2g' % params[val]
+            parts[val] = nn+string_formatting_type % params[val]
         for nn,val in self.param_names.items():
-            parts[ndense+val] = nn+'%.2g' % params[ndense+val]
+            parts[ndense+val] = nn+string_formatting_type % params[ndense+val]
         name = ''.join(str(elem) for elem in parts)
         return name
 

@@ -37,10 +37,10 @@ def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_la
         axis.plot(parameter_value_samples, emulator_error_plot[:,i], color=distinct_colours[i], lw=line_width, label=r'$z = %.1f$' % z[i])
         #axis.scatter(parameter_value_samples, emulator_error_plot[:,i], c=distinct_colours[i], label=r'$z = %.1f$' % z[i])
     axis.axvline(x=0.9, color='black', ls=':', lw=line_width)
-    axis.axvline(x=0.92, color='black', ls=':', lw=line_width)
+    #axis.axvline(x=0.92, color='black', ls=':', lw=line_width)
     #axis.axvline(x=1., color='black', ls=':', lw=line_width)
     #axis.axvline(x=1.05, color='black', ls=':', lw=line_width)
-    #axis.axvline(x=1.1, color='black', ls=':', lw=line_width)
+    axis.axvline(x=1.1, color='black', ls=':', lw=line_width)
     axis.legend(frameon=False, fontsize=fontsize)
     axis.set_yscale('log')
     axis.set_xlabel(r'HeliumHeatAmp')
@@ -181,7 +181,7 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c')
 
     return like
 
-def make_plot(chainfile, savefile, teerue_parameter_values=None):
+def make_plot(chainfile, savefile, true_parameter_values=None):
     """Make a plot of parameter posterior values"""
     import corner
     with open(chainfile+"_names.txt") as ff:

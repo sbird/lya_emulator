@@ -85,13 +85,27 @@ class SkLearnGP(object):
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)
+        print(kernel)
         kernel += GPy.kern.RBF(nparams)
+        print(kernel)
         noutput = np.shape(normspectra)[1]
         if self.coreg and noutput > 1:
             coreg = GPy.kern.Coregionalize(input_dim=nparams,output_dim=noutput)
             kernel = kernel.prod(coreg,name='coreg.kern')
+        print(kernel)
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
-        self.gp.optimize(messages=False)
+        print(self.gp)
+        print('Gradients of model hyperparameters [before optimisation] =', self.gp.gradient)
+
+        #Let's see if there's any output
+        self.gp.optimize(messages=True) #False
+        print(self.gp)
+        print('Gradients of model hyperparameters [after optimisation] =', self.gp.gradient)
+        #Let's check that hyperparameter optimisation is converged
+        self.gp.optimize_restarts(num_restarts=10)
+        print(self.gp)
+        print('Gradients of model hyperparameters [after second optimisation (x 10)] =', self.gp.gradient)
+
         #Check we reproduce the input
         if self._test_interp:
             test,_ = self.predict(self.params[0,:].reshape(1,-1))

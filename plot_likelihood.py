@@ -198,7 +198,7 @@ def generate_likelihood_class(testdir, emudir, simulation_sub_directory=None, me
         #simulation_sub_directory = '/AA1.1BB1.1CC1.4DD1.4heat_slope0.43heat_amp1hub0.71/output'
         #simulation_sub_directory = '/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output'
         #simulation_sub_directory = '/ns0.96As2.6e-09heat_slope-0.19heat_amp1hub0.74/output'
-        simulation_sub_directory = '/HeliumHeatAmp0.9/output'
+        simulation_sub_directory = '/HeliumHeatAmp0.91/output'
     print('Beginning to initialise LikelihoodClass at', str(datetime.now()))
     return LikelihoodClass(basedir=emudir, datadir=testdir+simulation_sub_directory, mean_flux=mean_flux_label)
 
@@ -218,7 +218,7 @@ def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=Tr
     #true_parameter_values = [0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
     #true_parameter_values = [0., 1., 0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
     #true_parameter_values = [0.95, 0., 1.,]
-    true_parameter_values = [0.9,]
+    true_parameter_values = [0.91,]
 
     if chain_savedir is None:
         chain_savedir = testdir

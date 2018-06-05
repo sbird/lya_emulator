@@ -25,8 +25,8 @@ if __name__ == "__main__":
     #test_knot_plots(testdir=testdir, emudir=emudir, plotdir=savedir, plotname=plotname, mf=2, kf_bin_nums=None, data_err=False, max_z=4.2)
     #plot_test_interpolate_kf_bin_loop(emudir, testdir, savedir=savedir, plotname="_Two_loop", kf_bin_nums=np.arange(2))
 
-    #output = run_and_plot_likelihood_samples(testdir, emudir, likelihood_samples_plot_savefile, plotname, plot=True, chain_savedir=chain_savedir, n_burn_in_steps=50, n_steps=150, while_loop=False, mean_flux_label='c', return_class_only=False, include_emulator_error=True)
+    output = run_and_plot_likelihood_samples(testdir, emudir, likelihood_samples_plot_savefile, plotname, plot=True, chain_savedir=chain_savedir, n_burn_in_steps=50, n_steps=150, while_loop=False, mean_flux_label='c', return_class_only=False, include_emulator_error=True)
     #make_plot(chain_savedir + '/AA0.97BB1.3_chain_20000_MeanFluxFactor.txt', likelihood_samples_plot_savefile)
     #output = make_plot_flux_power_spectra(testdir, emudir, flux_power_plot_savefile, mean_flux_label='c')
     #make_plot_compare_two_simulations(emudir, emudir, simulation_sub_directory1, simulation_sub_directory2, compare_plot_savefile)
-    make_plot_emulator_error(emudir, emulator_error_plot_savefile)
+    #make_plot_emulator_error(emudir, emulator_error_plot_savefile)

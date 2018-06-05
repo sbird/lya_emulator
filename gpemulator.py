@@ -88,10 +88,10 @@ class SkLearnGP(object):
         #they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)
         print(kernel)
-        #kernel += GPy.kern.RBF(nparams)
+        kernel += GPy.kern.RBF(nparams)
 
         #Try rational quadratic kernel
-        kernel += GPy.kern.RatQuad(nparams)
+        #kernel += GPy.kern.RatQuad(nparams)
 
         print(kernel)
         noutput = np.shape(normspectra)[1]
@@ -108,7 +108,7 @@ class SkLearnGP(object):
         print(self.gp)
         print('Gradients of model hyperparameters [after optimisation] =', self.gp.gradient)
         #Let's check that hyperparameter optimisation is converged
-        self.gp.optimize_restarts(num_restarts=10)
+        #self.gp.optimize_restarts(num_restarts=10)
         print(self.gp)
         print('Gradients of model hyperparameters [after second optimisation (x 10)] =', self.gp.gradient)
 

@@ -22,6 +22,7 @@ class MultiBinGP(object):
         self.nz = int(np.shape(powers)[1]/self.nk)
         self.coreg = coreg
         gp = lambda i: SkLearnGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits, coreg=coreg)
+        print('Number of redshifts for emulator generation =', self.nz)
         self.gps = [gp(i) for i in range(self.nz)]
 
     def predict(self,params, tau0_factors = None):
@@ -68,6 +69,7 @@ class SkLearnGP(object):
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         nparams = np.shape(self.params)[1]
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
+        print('Normalised parameter values =', params_cube)
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
@@ -86,7 +88,11 @@ class SkLearnGP(object):
         #they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)
         print(kernel)
-        kernel += GPy.kern.RBF(nparams)
+        #kernel += GPy.kern.RBF(nparams)
+
+        #Try rational quadratic kernel
+        kernel += GPy.kern.RatQuad(nparams)
+
         print(kernel)
         noutput = np.shape(normspectra)[1]
         if self.coreg and noutput > 1:

@@ -99,6 +99,10 @@ class SkLearnGP(object):
             coreg = GPy.kern.Coregionalize(input_dim=nparams,output_dim=noutput)
             kernel = kernel.prod(coreg,name='coreg.kern')
         print(kernel)
+
+        #Set priors on hyperparameters
+        kernel.rbf.lengthscale.constrain_bounded(1.e-2, np.inf)
+
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
         print(self.gp)
         print('Gradients of model hyperparameters [before optimisation] =', self.gp.gradient)

@@ -29,4 +29,4 @@ if __name__ == "__main__":
     #make_plot(chain_savedir + '/AA0.97BB1.3_chain_20000_MeanFluxFactor.txt', likelihood_samples_plot_savefile)
     #output = make_plot_flux_power_spectra(testdir, emudir, flux_power_plot_savefile, mean_flux_label='c')
     #make_plot_compare_two_simulations(emudir, emudir, simulation_sub_directory1, simulation_sub_directory2, compare_plot_savefile)
-    make_plot_emulator_error(emudir, emulator_error_plot_savefile)
+    make_plot_emulator_error(emudir, emulator_error_plot_savefile, max_z=2.2)

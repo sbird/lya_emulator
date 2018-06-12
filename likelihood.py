@@ -45,6 +45,16 @@ def gelman_rubin(chain):
     R = np.sqrt(var_t / W)
     return R
 
+def load_data(datadir, *, kf, max_z=4.2):
+    """Load and initialise a "fake data" flux power spectrum"""
+    #Load the data directory
+    myspec = flux_power.MySpectra(max_z=max_z)
+    pps = myspec.get_snapshot_list(datadir)
+    #self.data_fluxpower is used in likelihood.
+    data_fluxpower = pps.get_power(kf=kf, mean_fluxes=np.exp(-mflux.obs_mean_tau(myspec.zout, amp=0)))
+    assert np.size(data_fluxpower) % np.size(kf) == 0
+    return data_fluxpower
+
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
     def __init__(self, basedir, mean_flux='s', max_z = 4.2):
@@ -53,6 +63,8 @@ class LikelihoodClass(object):
         self.sdss = lyman_data.BOSSData()
         #'Data' now is a simulation
         self.max_z = max_z
+        myspec = flux_power.MySpectra(max_z=max_z)
+        self.zout = myspec.zout
         self.kf = self.sdss.get_kf()
         self.mf_slope = False
         #Param limits on t0
@@ -89,10 +101,12 @@ class LikelihoodClass(object):
         self.gpemu = self.emulator.get_emulator(max_z=max_z)
         print('Finished generating emulator at', str(datetime.now()))
 
-    def likelihood(self, params, include_emu=True):
+    def likelihood(self, params, include_emu=True, data_power=None):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix."""
         nparams = params
+        if data_power is None:
+            data_power = self.data_fluxpower
         if self.mf_slope:
             tau0_fac = mflux.mean_flux_slope_to_factor(self.zout, params[0])
             nparams = params[1:]
@@ -107,7 +121,7 @@ class LikelihoodClass(object):
         self.emulated_flux_power = predicted
         self.emulated_flux_power_std = std
 
-        diff = predicted[0]-self.data_fluxpower
+        diff = predicted[0]-data_power
         nkf = len(self.kf)
         nz = int(len(diff)/nkf)
         #Likelihood using full covariance matrix
@@ -146,21 +160,11 @@ class LikelihoodClass(object):
         """Load the chain from a savefile"""
         self.flatchain = np.loadtxt(savefile)
 
-    def load_data(self, datadir):
-        """Load and initialise a "fake data" flux power spectrum"""
-        #Load the data directory
-        myspec = flux_power.MySpectra(max_z=self.max_z)
-        self.zout = myspec.zout
-        pps = myspec.get_snapshot_list(datadir)
-        #self.data_fluxpower is used in likelihood.
-        self.data_fluxpower = pps.get_power(kf=self.kf, mean_fluxes=np.exp(-mflux.obs_mean_tau(self.zout, amp=0)))
-        assert np.size(self.data_fluxpower) % np.size(self.kf) == 0
-
     def do_sampling(self, savefile, datadir, nwalkers=100, burnin=1000, nsamples=3000, while_loop=True):
         """Initialise and run emcee."""
         pnames = self.emulator.print_pnames()
         #Load the data directory
-        self.load_data(datadir)
+        self.data_fluxpower = load_data(datadir, kf=self.kf)
         #Set up mean flux
         if self.mf_slope:
             pnames = [('dtau0',r'd\tau_0'),]+pnames
@@ -175,7 +179,7 @@ class LikelihoodClass(object):
         assert np.all([np.isfinite(self.likelihood(pp)) for pp in p0])
         emcee_sampler = emcee.EnsembleSampler(nwalkers, self.ndim, self.likelihood)
         pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
-         #Check things are reasonable
+        #Check things are reasonable
         assert np.all(emcee_sampler.acceptance_fraction > 0.01)
         emcee_sampler.reset()
         self.cur_results = emcee_sampler

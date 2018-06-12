@@ -9,6 +9,7 @@ from datetime import datetime
 import distinct_colours_py3 as dc
 
 from likelihood import *
+from mean_flux import *
 
 def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_label='c', likelihood_instance=None, max_z=4.2):
     if likelihood_instance is None:
@@ -16,6 +17,7 @@ def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_la
     k_los, z, n_k_los, n_z = get_k_z(likelihood_instance)
 
     parameter_value_samples = np.linspace(0.8, 1.2, num=200) #HeliumHeatAmp
+    mean_flux_sample = np.array([0., 0.95]) #dtau0, tau0
     emulator_error_plot = np.zeros((parameter_value_samples.shape[0], n_z))
 
     emulated_flux_power = [None] * parameter_value_samples.shape[0]
@@ -23,8 +25,12 @@ def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_la
     fractional_emulator_error = [None] * parameter_value_samples.shape[0]
 
     for i in range(parameter_value_samples.shape[0]):
-        param_val = parameter_value_samples[i]
-        emulated_flux_power[i], emulator_error[i] = likelihood_instance.gpemu.predict(np.array([param_val,]).reshape(1, -1), tau0_factors=None)
+        param_val = np.array([parameter_value_samples[i],])
+        tau0_factors = None
+        if mean_flux_label == 's':
+            param_val = np.concatenate(([mean_flux_sample[1],], param_val))
+            tau0_factors = mean_flux_slope_to_factor(z, mean_flux_sample[0])
+        emulated_flux_power[i], emulator_error[i] = likelihood_instance.gpemu.predict(param_val.reshape(1, -1), tau0_factors=tau0_factors)
         fractional_emulator_error[i] = (emulator_error[i][0] / emulated_flux_power[i][0]).reshape(n_z, n_k_los)
         emulator_error_plot[i] = np.nanmean(fractional_emulator_error[i], axis=-1)
         print('Standard deviation of fractional emulator error with scale =', np.std(fractional_emulator_error[i], axis=-1))
@@ -198,7 +204,7 @@ def generate_likelihood_class(testdir, emudir, simulation_sub_directory=None, me
         #simulation_sub_directory = '/AA1.1BB1.1CC1.4DD1.4heat_slope0.43heat_amp1hub0.71/output'
         #simulation_sub_directory = '/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output'
         #simulation_sub_directory = '/ns0.96As2.6e-09heat_slope-0.19heat_amp1hub0.74/output'
-        simulation_sub_directory = '/HeliumHeatAmp0.92/output'
+        simulation_sub_directory = '/HeliumHeatAmp0.95/output'
     print('Beginning to initialise LikelihoodClass at', str(datetime.now()))
     return LikelihoodClass(basedir=emudir, datadir=testdir+simulation_sub_directory, mean_flux=mean_flux_label, max_z=max_z)
 
@@ -217,7 +223,7 @@ def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=Tr
     #true_parameter_values = [0., 1., 0.975, 2.25e-09, 0.08333333333333326, 0.9166666666666666, 0.6916666666666667]
     #true_parameter_values = [0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
     #true_parameter_values = [0., 1., 0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
-    true_parameter_values = [0., 0.95, 0.92]
+    true_parameter_values = [0., 0.95, 0.95]
     #true_parameter_values = [0.92,]
 
     if chain_savedir is None:

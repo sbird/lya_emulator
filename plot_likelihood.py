@@ -40,7 +40,13 @@ def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_la
     line_width = 0.5
     fontsize = 7.
     for i in range(n_z):
+        data_error = np.sqrt(likelihood_instance.sdss.get_covar(z[i]).diagonal()) #n_k_los
+        fractional_data_error = data_error[np.newaxis, :] / np.array(emulated_flux_power)[:, 0].reshape(-1, n_z, n_k_los)[:, i]
+        data_error_plot = np.nanmean(fractional_data_error, axis=-1)
+        #n_samples, n_k_los
+
         axis.plot(parameter_value_samples, emulator_error_plot[:,i], color=distinct_colours[i], lw=line_width, label=r'$z = %.1f$' % z[i])
+        axis.plot(parameter_value_samples, data_error_plot, color=distinct_colours[i], lw=line_width, ls='--')
         #axis.scatter(parameter_value_samples, emulator_error_plot[:,i], c=distinct_colours[i], label=r'$z = %.1f$' % z[i])
     axis.axvline(x=0.9, color='black', ls=':', lw=line_width)
     #axis.axvline(x=0.95, color='black', ls=':', lw=line_width)
@@ -50,7 +56,10 @@ def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_la
     axis.legend(frameon=False, fontsize=fontsize)
     axis.set_yscale('log')
     axis.set_xlabel(r'HeliumHeatAmp')
-    axis.set_ylabel(r'(emulated sigma / emulated P(k)) [averaged over scale]')
+    axis.set_ylabel(r'(sigma / emulated P(k)) [averaged over scale]')
+
+    axis.plot([], color='gray', ls='-', label=r'emulated sigma')
+    axis.plot([], color='gray', ls='--', label=r'BOSS sigma')
 
     #np.savez('/home/keir/Data/emulator/emulator_error.npz', parameter_value_samples, emulator_error_plot, np.array(fractional_emulator_error), np.array(emulator_error), np.array(emulated_flux_power), k_los)
     plt.savefig(savefile)

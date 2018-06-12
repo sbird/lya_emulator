@@ -1,18 +1,19 @@
 """Module for plotting generated likelihood chains"""
+import json
+import os
 import math as mh
+from datetime import datetime
 import numpy as np
+import likelihood as likeh
+import distinct_colours_py3 as dc
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
-#import corner
-from datetime import datetime
-import distinct_colours_py3 as dc
 
-from likelihood import *
 
-def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='s'):
+def make_plot_flux_power_spectra(emudir, savefile, mean_flux_label='s'):
     """Make a plot of the power spectra, with redshift, the BOSS power and the sigmas. Four plots stacked."""
-    like, like_true = run_and_plot_likelihood_samples(testdir, emudir, None, '', mean_flux_label=mean_flux_label, return_class_only=True)
+    like = likeh.LikelihoodClass(basedir=emudir, mean_flux=mean_flux_label)
     k_los = like.gpemu.kf
     n_k_los = k_los.size
     z = like.zout #Highest redshift first
@@ -92,34 +93,37 @@ def make_plot(chainfile, savefile, true_parameter_values=None):
     corner.corner(samples, labels=pnames, truths=true_parameter_values)
     plt.savefig(savefile)
 
-def generate_likelihood_class(testdir, emudir, mean_flux_label='s'):
-    validation_point_name = "/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"
-    #validation_point_name = '/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output'
-    print('Beginning to initialise LikelihoodClass at', str(datetime.now()))
-    return LikelihoodClass(basedir=emudir, datadir=testdir+validation_point_name, mean_flux=mean_flux_label)
+def get_simulation_parameters_knots(base):
+    """Get the parameters of a knot-based simulation from the SimulationICs JSON file."""
+    jsin = open(os.path.join(base, "../SimulationICs.json"), 'r')
+    pp = json.load(jsin)
+    knv = pp["knot_val"]
+    #This will fail!
+    assert pp["code_args"]["rescale_gamma"] is True
+    parvec = [0., 1., *knv, pp["code_args"]["rescale_slope"], pp["code_args"]["rescale_amp"], pp["hubble"]]
+    return parvec
 
-def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=True, chain_savedir=None, n_walkers=100, n_burn_in_steps=100, n_steps=400, while_loop=True, mean_flux_label='s', return_class_only=False):
+def get_simulation_parameters_s8(base):
+    """Get the parameters of a sigma8-ns-based simulation from the SimulationICs JSON file."""
+    jsin = open(os.path.join(base, "../SimulationICs.json"), 'r')
+    pp = json.load(jsin)
+    assert pp["code_args"]["rescale_gamma"] is True
+    parvec = [0., 1., pp['ns'], pp['scalar_amp'], pp["code_args"]["rescale_slope"], pp["code_args"]["rescale_amp"], pp["hubble"]]
+    return parvec
+
+def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=True, chain_savedir=None, n_walkers=100, n_burn_in_steps=100, n_steps=400, while_loop=True, mean_flux_label='s'):
     """Generate some likelihood samples"""
-    # TODO: Add true values #Read from filenames
-    #true_parameter_values = [None, None, 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
-    true_parameter_values = [0., 1., 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
-    #true_parameter_values = [0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
-    #true_parameter_values = [0.97, 2.2e-9, 0.083, 0.92, 0.69]
-    #true_parameter_values = [None, None, 0.97, 2.2e-9, 0.083, 0.92, 0.69]
-
     if chain_savedir is None:
         chain_savedir = testdir
+
+    like = likeh.LikelihoodClass(basedir=emudir, mean_flux=mean_flux_label)
+
+    true_parameter_values = get_simulation_parameters_s8(testdir)
+
     chainfile = chain_savedir + '/AA0.97BB1.3_chain_' + plotname + '.txt'
-
-    like = generate_likelihood_class(testdir, emudir, mean_flux_label=mean_flux_label)
-
-    if return_class_only is False:
-        print('Beginning to sample likelihood at', str(datetime.now()))
-        output = like.do_sampling(chainfile, nwalkers=n_walkers, burnin=n_burn_in_steps, nsamples=n_steps, while_loop=while_loop)
-        if plot is True:
-            print('Beginning to make corner plot at', str(datetime.now()))
-            make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
-        return like
-    else:
-        likelihood_at_true_values = like.likelihood(true_parameter_values)
-        return like, likelihood_at_true_values
+    print('Beginning to sample likelihood at', str(datetime.now()))
+    output = like.do_sampling(chainfile, testdir, nwalkers=n_walkers, burnin=n_burn_in_steps, nsamples=n_steps, while_loop=while_loop)
+    if plot is True:
+        print('Beginning to make corner plot at', str(datetime.now()))
+        make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
+    return like, output

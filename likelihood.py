@@ -156,7 +156,9 @@ class LikelihoodClass(object):
             (_, cdet) = np.linalg.slogdet(covar_bin)
             dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
             chi2 += dcd -0.5* cdet
-            assert 0 > chi2 > -2**31
+            print(dcd, cdet)
+            print('chi-squared =', chi2)
+            #assert 0 > chi2 > -2**31
             assert not np.isnan(chi2)
         return chi2
 

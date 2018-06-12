@@ -37,8 +37,8 @@ def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_la
         axis.plot(parameter_value_samples, emulator_error_plot[:,i], color=distinct_colours[i], lw=line_width, label=r'$z = %.1f$' % z[i])
         #axis.scatter(parameter_value_samples, emulator_error_plot[:,i], c=distinct_colours[i], label=r'$z = %.1f$' % z[i])
     axis.axvline(x=0.9, color='black', ls=':', lw=line_width)
-    #axis.axvline(x=0.92, color='black', ls=':', lw=line_width)
-    #axis.axvline(x=1., color='black', ls=':', lw=line_width)
+    #axis.axvline(x=0.95, color='black', ls=':', lw=line_width)
+    axis.axvline(x=1., color='black', ls=':', lw=line_width)
     #axis.axvline(x=1.05, color='black', ls=':', lw=line_width)
     axis.axvline(x=1.1, color='black', ls=':', lw=line_width)
     axis.legend(frameon=False, fontsize=fontsize)
@@ -202,7 +202,7 @@ def generate_likelihood_class(testdir, emudir, simulation_sub_directory=None, me
     print('Beginning to initialise LikelihoodClass at', str(datetime.now()))
     return LikelihoodClass(basedir=emudir, datadir=testdir+simulation_sub_directory, mean_flux=mean_flux_label, max_z=max_z)
 
-def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=True, chain_savedir=None, n_walkers=100, n_burn_in_steps=100, n_steps=400, while_loop=True, mean_flux_label='s', return_class_only=False, include_emulator_error=True):
+def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=True, chain_savedir=None, n_walkers=100, n_burn_in_steps=100, n_steps=400, while_loop=True, mean_flux_label='s', return_class_only=False, include_emulator_error=True, max_z=4.2):
     """Generate some likelihood samples"""
     # TODO: Add true values #Read from filenames
     #true_parameter_values = [None, None, 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
@@ -217,14 +217,14 @@ def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=Tr
     #true_parameter_values = [0., 1., 0.975, 2.25e-09, 0.08333333333333326, 0.9166666666666666, 0.6916666666666667]
     #true_parameter_values = [0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
     #true_parameter_values = [0., 1., 0.9642857142857143, 2.614285714285714e-09, -0.19047619047619047, 1.0476190476190474, 0.7428571428571429]
-    #true_parameter_values = [0.95, 0., 1.,]
-    true_parameter_values = [0.92,]
+    true_parameter_values = [0., 0.95, 0.92]
+    #true_parameter_values = [0.92,]
 
     if chain_savedir is None:
         chain_savedir = testdir
     chainfile = chain_savedir + '/AA0.97BB1.3_chain_' + plotname + '.txt'
 
-    like = generate_likelihood_class(testdir, emudir, mean_flux_label=mean_flux_label)
+    like = generate_likelihood_class(testdir, emudir, mean_flux_label=mean_flux_label, max_z=max_z)
 
     if return_class_only is False:
         print('Beginning to sample likelihood at', str(datetime.now()))

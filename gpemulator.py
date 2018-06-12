@@ -101,9 +101,11 @@ class SkLearnGP(object):
         print(kernel)
 
         #Set priors on hyperparameters
-        kernel.rbf.lengthscale.constrain_bounded(1.e-2, np.inf)
+        #kernel.rbf.lengthscale.constrain_bounded(1.e-2, np.inf)
+        #kernel.Gaussian_noise.variance.constrain_bounded(0., 1.e-9)
 
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
+        #self.gp.Gaussian_noise.variance.constrain_bounded(0., 1.e-9)
         print(self.gp)
         print('Gradients of model hyperparameters [before optimisation] =', self.gp.gradient)
 

@@ -1,6 +1,7 @@
 """Module for plotting generated likelihood chains"""
 import json
 import os
+import glob
 import math as mh
 from datetime import datetime
 import numpy as np
@@ -11,9 +12,8 @@ matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 
 
-def make_plot_flux_power_spectra(emudir, savefile, mean_flux_label='s'):
+def make_plot_flux_power_spectra(like, savefile):
     """Make a plot of the power spectra, with redshift, the BOSS power and the sigmas. Four plots stacked."""
-    like = likeh.LikelihoodClass(basedir=emudir, mean_flux=mean_flux_label)
     k_los = like.gpemu.kf
     n_k_los = k_los.size
     z = like.zout #Highest redshift first
@@ -111,19 +111,30 @@ def get_simulation_parameters_s8(base):
     parvec = [0., 1., pp['ns'], pp['scalar_amp'], pp["code_args"]["rescale_slope"], pp["code_args"]["rescale_amp"], pp["hubble"]]
     return parvec
 
-def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=True, chain_savedir=None, n_walkers=100, n_burn_in_steps=100, n_steps=400, while_loop=True, mean_flux_label='s'):
+def run_likelihood_test(testdir, emudir, plot=True, mean_flux_label='s'):
     """Generate some likelihood samples"""
-    if chain_savedir is None:
-        chain_savedir = testdir
-
     like = likeh.LikelihoodClass(basedir=emudir, mean_flux=mean_flux_label)
 
-    true_parameter_values = get_simulation_parameters_s8(testdir)
+    #Find all subdirectories
+    subdirs = glob.glob(testdir + "/*/")
 
-    chainfile = chain_savedir + '/AA0.97BB1.3_chain_' + plotname + '.txt'
-    print('Beginning to sample likelihood at', str(datetime.now()))
-    output = like.do_sampling(chainfile, testdir, nwalkers=n_walkers, burnin=n_burn_in_steps, nsamples=n_steps, while_loop=while_loop)
-    if plot is True:
-        print('Beginning to make corner plot at', str(datetime.now()))
-        make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
-    return like, output
+    for sdir in subdirs:
+        sname = os.path.basename(os.path.abspath(sdir))
+        chainfile = os.path.join(emudir, 'chain_' + sname + '.txt')
+        print('Beginning to sample likelihood at', str(datetime.now()))
+        output = like.do_sampling(chainfile, datadir=sdir)
+        if plot is True:
+            true_parameter_values = get_simulation_parameters_s8(sdir)
+            print('Beginning to make corner plot at', str(datetime.now()))
+            savefile = os.path.join(emudir, 'corner_'+sname + ".pdf")
+            make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
+            fp_savefile = os.path.join(emudir, 'flux_power_'+sname + ".pdf")
+            make_plot_flux_power_spectra(like, fp_savefile)
+        return like, output
+
+if __name__ == "__main__":
+    sim_rootdir = "simulations"
+    emud = sim_rootdir + '/hires_s8'
+    testdirs = sim_rootdir + '/hires_s8_test'
+
+    run_likelihood_test(testdirs, emud)

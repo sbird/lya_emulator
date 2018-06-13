@@ -27,8 +27,8 @@ def make_plot_flux_power_spectra(like, savefile):
     distinct_colours = dc.get_distinct(n_z)
     scaling_factor = k_los / mh.pi
     for i in range(n_z):
-        data_flux_power_std_single_z = np.sqrt(like.sdss.get_covar(z[i]).diagonal())
-        print('Diagonal elements of BOSS covariance matrix at single redshift:', data_flux_power_std_single_z)
+#         data_flux_power_std_single_z = np.sqrt(like.sdss.get_covar(z[i]).diagonal())
+#         print('Diagonal elements of BOSS covariance matrix at single redshift:', data_flux_power_std_single_z)
 
         line_width = 0.5
         axes[0].plot(k_los, exact_flux_power[i]*scaling_factor, color=distinct_colours[i], ls='-', lw=line_width, label=r'$z = %.1f$'%z[i])
@@ -113,11 +113,12 @@ def get_simulation_parameters_s8(base):
 
 def run_likelihood_test(testdir, emudir, plot=True, mean_flux_label='s'):
     """Generate some likelihood samples"""
-    like = likeh.LikelihoodClass(basedir=emudir, mean_flux=mean_flux_label)
 
     #Find all subdirectories
     subdirs = glob.glob(testdir + "/*/")
+    assert len(subdirs) > 1
 
+    like = likeh.LikelihoodClass(basedir=emudir, mean_flux=mean_flux_label)
     for sdir in subdirs:
         sname = os.path.basename(os.path.abspath(sdir))
         chainfile = os.path.join(emudir, 'chain_' + sname + '.txt')
@@ -130,11 +131,11 @@ def run_likelihood_test(testdir, emudir, plot=True, mean_flux_label='s'):
             make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
             fp_savefile = os.path.join(emudir, 'flux_power_'+sname + ".pdf")
             make_plot_flux_power_spectra(like, fp_savefile)
-        return like, output
+    return like, output
 
 if __name__ == "__main__":
     sim_rootdir = "simulations"
-    emud = sim_rootdir + '/hires_s8'
-    testdirs = sim_rootdir + '/hires_s8_test'
+    emud = os.path.join(sim_rootdir,'hires_s8')
+    testdirs = os.path.join(sim_rootdir,'hires_s8_test')
 
     run_likelihood_test(testdirs, emud)

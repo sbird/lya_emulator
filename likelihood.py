@@ -47,8 +47,9 @@ def gelman_rubin(chain):
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, datadir, mean_flux='s', max_z = 4.2):
+    def __init__(self, basedir, datadir, mean_flux='s', max_z = 4.2, rescale_data_error=False):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
+        self.rescale_data_error = rescale_data_error
         t0_training_value = 0.95
 
         #Use the BOSS covariance matrix
@@ -60,6 +61,9 @@ class LikelihoodClass(object):
         print(datadir)
         pps = myspec.get_snapshot_list(datadir)
         self.kf = self.sdss.get_kf()
+
+        #Load BOSS data vector
+        self.BOSS_flux_power = self.sdss.pf.reshape(-1, self.kf.shape[0])[:self.zout.shape[0]][::-1] #km / s; n_z * n_k
 
         # For mock data vector: multiply tau_0_i[z] by t0 = 1 (+ small offset in amplitude)
         # Probably mistake in understanding how amp works
@@ -146,6 +150,10 @@ class LikelihoodClass(object):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
             std_bin = std[0,nkf*bb:nkf*(bb+1)]
             covar_bin = self.sdss.get_covar(sdssz[bb])
+
+            if self.rescale_data_error:
+                covar_bin *= (self.data_fluxpower[nkf*bb:nkf*(bb+1)] / self.BOSS_flux_power[bb])**2 #(km / s)**2
+
             assert np.shape(np.diag(std_bin**2)) == np.shape(covar_bin)
             if include_emu:
                 #Assume each k bin is independent

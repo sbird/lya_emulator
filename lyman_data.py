@@ -1,6 +1,7 @@
 """Module to load the covariance matrix (from BOSS DR9 or SDSS DR5 data) from tables."""
 import os.path
 import numpy as np
+import numpy.testing as npt
 
 class SDSSData(object):
     """A class to store the flux power and corresponding covariance matrix from SDSS. A little tricky because of the redshift binning."""
@@ -87,7 +88,9 @@ class BOSSData(SDSSData):
         #return self.covar[rr[0]:rr[1],rr[0]:rr[1]] * self.covar_diag[rr[0]:rr[1]]
         #Bug fix
         std_diag_single_z = np.sqrt(self.covar_diag[rr[0]:rr[1]])
-        return self.covar[rr[0]:rr[1], rr[0]:rr[1]] * np.outer(std_diag_single_z, std_diag_single_z)
+        covar_matrix = self.covar[rr[0]:rr[1], rr[0]:rr[1]] * np.outer(std_diag_single_z, std_diag_single_z)
+        npt.assert_allclose(np.diag(covar_matrix), self.covar_diag[rr[0]:rr[1]], atol=1.e-16)
+        return covar_matrix
 
     def get_covar_diag(self):
         """Get the covariance matrix"""

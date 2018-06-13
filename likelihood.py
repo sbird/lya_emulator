@@ -152,7 +152,8 @@ class LikelihoodClass(object):
             covar_bin = self.sdss.get_covar(sdssz[bb])
 
             if self.rescale_data_error:
-                covar_bin *= (self.data_fluxpower[nkf*bb:nkf*(bb+1)] / self.BOSS_flux_power[bb])**2 #(km / s)**2
+                rescaling_factor = self.data_fluxpower[nkf*bb:nkf*(bb+1)] / self.BOSS_flux_power[bb] #Rescale 1 sigma
+                covar_bin *= np.outer(rescaling_factor, rescaling_factor) #(km / s)**2
 
             assert np.shape(np.diag(std_bin**2)) == np.shape(covar_bin)
             if include_emu:

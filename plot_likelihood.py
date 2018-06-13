@@ -41,6 +41,8 @@ def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_la
     fontsize = 7.
     for i in range(n_z):
         data_error = np.sqrt(likelihood_instance.sdss.get_covar(z[i]).diagonal()) #n_k_los
+        data_error_rescaling_factor = likelihood_instance.data_fluxpower[n_k_los*i:n_k_los*(i+1)] / likelihood_instance.BOSS_flux_power[i]
+        data_error *= data_error_rescaling_factor
         fractional_data_error = data_error[np.newaxis, :] / np.array(emulated_flux_power)[:, 0].reshape(-1, n_z, n_k_los)[:, i]
         data_error_plot = np.nanmean(fractional_data_error, axis=-1)
         #n_samples, n_k_los

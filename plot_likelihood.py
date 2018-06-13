@@ -95,7 +95,7 @@ def make_plot(chainfile, savefile, true_parameter_values=None):
 
 def get_simulation_parameters_knots(base):
     """Get the parameters of a knot-based simulation from the SimulationICs JSON file."""
-    jsin = open(os.path.join(base, "../SimulationICs.json"), 'r')
+    jsin = open(os.path.join(base, "SimulationICs.json"), 'r')
     pp = json.load(jsin)
     knv = pp["knot_val"]
     #This will fail!
@@ -105,7 +105,7 @@ def get_simulation_parameters_knots(base):
 
 def get_simulation_parameters_s8(base):
     """Get the parameters of a sigma8-ns-based simulation from the SimulationICs JSON file."""
-    jsin = open(os.path.join(base, "../SimulationICs.json"), 'r')
+    jsin = open(os.path.join(base, "SimulationICs.json"), 'r')
     pp = json.load(jsin)
     assert pp["code_args"]["rescale_gamma"] is True
     parvec = [0., 1., pp['ns'], pp['scalar_amp'], pp["code_args"]["rescale_slope"], pp["code_args"]["rescale_amp"], pp["hubble"]]
@@ -122,7 +122,7 @@ def run_likelihood_test(testdir, emudir, plot=True, mean_flux_label='s'):
         sname = os.path.basename(os.path.abspath(sdir))
         chainfile = os.path.join(emudir, 'chain_' + sname + '.txt')
         print('Beginning to sample likelihood at', str(datetime.now()))
-        output = like.do_sampling(chainfile, datadir=sdir)
+        output = like.do_sampling(chainfile, datadir=os.path.join(sdir,"output"))
         if plot is True:
             true_parameter_values = get_simulation_parameters_s8(sdir)
             print('Beginning to make corner plot at', str(datetime.now()))

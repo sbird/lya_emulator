@@ -11,6 +11,7 @@ import coarse_grid
 import flux_power
 import lyman_data
 import mean_flux as mflux
+from quadratic_emulator import QuadraticEmulator
 
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""
@@ -57,7 +58,7 @@ def load_data(datadir, *, kf, max_z=4.2):
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z = 4.2):
+    def __init__(self, basedir, mean_flux='s', max_z = 4.2, emulator_class="standard"):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
@@ -86,7 +87,14 @@ class LikelihoodClass(object):
             mf = mflux.MeanFluxFactor(dense_limits = dense_limits)
         else:
             mf = mflux.MeanFluxFactor()
-        self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.kf, mf=mf)
+        if emulator_class == "standard":
+            self.emulator = coarse_grid.Emulator(basedir, kf=self.kf, mf=mf)
+        elif emulator_class == "knot":
+            self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.kf, mf=mf)
+        elif emulator_class == "quadratic":
+            self.emulator = QuadraticEmulator(basedir, kf=self.kf, mf=mf)
+        else:
+            raise ValueError("Emulator class not recognised")
         self.emulator.load()
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
         if mean_flux == 's':

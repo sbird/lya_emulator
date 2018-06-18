@@ -27,7 +27,7 @@ def make_plot_flux_power_spectra(like, savefile):
     distinct_colours = dc.get_distinct(n_z)
     scaling_factor = k_los / mh.pi
     for i in range(n_z):
-#         data_flux_power_std_single_z = np.sqrt(like.sdss.get_covar(z[i]).diagonal())
+        data_flux_power_std_single_z = np.sqrt(like.sdss.get_covar(z[i]).diagonal())
 #         print('Diagonal elements of BOSS covariance matrix at single redshift:', data_flux_power_std_single_z)
 
         line_width = 0.5
@@ -123,7 +123,7 @@ def run_likelihood_test(testdir, emudir, plot=True, mean_flux_label='s'):
         sname = os.path.basename(os.path.abspath(sdir))
         chainfile = os.path.join(emudir, 'chain_' + sname + '.txt')
         print('Beginning to sample likelihood at', str(datetime.now()))
-        output = like.do_sampling(chainfile, datadir=os.path.join(sdir,"output"))
+        like.do_sampling(chainfile, datadir=os.path.join(sdir,"output"))
         if plot is True:
             true_parameter_values = get_simulation_parameters_s8(sdir)
             print('Beginning to make corner plot at', str(datetime.now()))
@@ -131,11 +131,11 @@ def run_likelihood_test(testdir, emudir, plot=True, mean_flux_label='s'):
             make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
             fp_savefile = os.path.join(emudir, 'flux_power_'+sname + ".pdf")
             make_plot_flux_power_spectra(like, fp_savefile)
-    return like, output
+    return like
 
 if __name__ == "__main__":
     sim_rootdir = "simulations"
     emud = os.path.join(sim_rootdir,'hires_s8')
     testdirs = os.path.join(sim_rootdir,'hires_s8_test')
 
-    run_likelihood_test(testdirs, emud)
+    like = run_likelihood_test(testdirs, emud, plot=False)

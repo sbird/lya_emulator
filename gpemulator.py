@@ -54,7 +54,7 @@ class SkLearnGP(object):
         self.sdscale = 1
         if cv:
             npowers = np.shape(powers)[0]
-            self.sdscale = np.mean([self._get_cv_one(ex, params=params, powers=powers) for ex in range(npowers)])
+            self.sdscale = np.median([self._get_cv_one(ex, params=params, powers=powers) for ex in range(npowers)])
         print(self.sdscale)
         #Build the full emulator
         self._get_interp(params = self.params, flux_vectors=powers)

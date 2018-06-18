@@ -111,9 +111,11 @@ def get_simulation_parameters_s8(base):
     parvec = [0., 1., pp['ns'], pp['scalar_amp'], pp["code_args"]["rescale_slope"], pp["code_args"]["rescale_amp"], pp["hubble"]]
     return parvec
 
-def run_likelihood_test(testdir, emudir, plot=True, mean_flux_label='s'):
+def run_likelihood_test(testdir, emudir, savedir=None, plot=True, mean_flux_label='s'):
     """Generate some likelihood samples"""
 
+    if savedir is None:
+        savedir=emudir
     #Find all subdirectories
     subdirs = glob.glob(testdir + "/*/")
     assert len(subdirs) > 1
@@ -121,21 +123,23 @@ def run_likelihood_test(testdir, emudir, plot=True, mean_flux_label='s'):
     like = likeh.LikelihoodClass(basedir=emudir, mean_flux=mean_flux_label)
     for sdir in subdirs:
         sname = os.path.basename(os.path.abspath(sdir))
-        chainfile = os.path.join(emudir, 'chain_' + sname + '.txt')
+        chainfile = os.path.join(savedir, 'chain_' + sname + '.txt')
         print('Beginning to sample likelihood at', str(datetime.now()))
         like.do_sampling(chainfile, datadir=os.path.join(sdir,"output"))
         if plot is True:
             true_parameter_values = get_simulation_parameters_s8(sdir)
             print('Beginning to make corner plot at', str(datetime.now()))
-            savefile = os.path.join(emudir, 'corner_'+sname + ".pdf")
+            savefile = os.path.join(savedir, 'corner_'+sname + ".pdf")
             make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
-            fp_savefile = os.path.join(emudir, 'flux_power_'+sname + ".pdf")
+            fp_savefile = os.path.join(savedir, 'flux_power_'+sname + ".pdf")
             make_plot_flux_power_spectra(like, fp_savefile)
     return like
 
 if __name__ == "__main__":
     sim_rootdir = "simulations"
+    plotdir = 'plots'
+    savedir=os.path.join(plotdir,"hires_s8")
     emud = os.path.join(sim_rootdir,'hires_s8')
     testdirs = os.path.join(sim_rootdir,'hires_s8_test')
 
-    like = run_likelihood_test(testdirs, emud, plot=False)
+    like = run_likelihood_test(testdirs, emud, savedir=savedir, plot=True)

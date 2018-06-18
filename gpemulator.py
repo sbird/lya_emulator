@@ -43,30 +43,42 @@ class SkLearnGP(object):
                    powers is a list of flux power spectra (same shape as params).
                    param_limits is a list of parameter limits (shape 2,params).
                    coreg is a flag to enable GPy's coregionalisation (not helpful)."""
-    def __init__(self, *, params, powers,param_limits, coreg=False):
+    def __init__(self, *, params, powers,param_limits, coreg=False, cv=True):
         self.params = params
         self.param_limits = param_limits
         self.intol = 3e-5
         #Should we test the built emulator?
         self._test_interp = False
         self.coreg=coreg
-        #Get the flux power and build an emulator
-        self._get_interp(flux_vectors=powers)
-        #In case we need it, we can rescale the errors using cross-validation.
-        #self.sdscale = np.mean([self._get_cv_one(powers, exclude) for exclude in range(len(self.powers))])
+        #Use leave-one-out CV to rescale the emulator error
+        self.sdscale = 1
+        if cv:
+            npowers = np.shape(powers)[0]
+            self.sdscale = np.mean([self._get_cv_one(ex, params=params, powers=powers) for ex in range(npowers)])
+        print(self.sdscale)
+        #Build the full emulator
+        self._get_interp(params = self.params, flux_vectors=powers)
 
-#     def _get_cv_one(self, powers, exclude):
-#         """Get the prediction error for one point when
-#         excluding that point from the emulator."""
-#         self._get_interp(flux_vectors=powers, exclude=exclude)
-#         test_exact = powers[exclude]
-#         return self.get_predict_error(self.params[exclude], test_exact)
+    def _get_cv_one(self, exclude, params, powers):
+        """Get the prediction error for one point when
+        excluding that point from the emulator."""
+        #Build an emulator with one point excluded
+        npowers = np.shape(powers)[0]
+        mask = np.arange(npowers) != exclude
+        expowers = powers[mask]
+        exparams = params[mask]
+        self._get_interp(params = exparams, flux_vectors=expowers)
+        #Get the error on the excluded point
+        test_exact = powers[exclude]
+        err = self.get_predict_error(params[exclude].reshape(1,-1), test_exact)
+        #Err has shape (nbins): if this is working we return 1.
+        return 1/np.abs(err)
 
-    def _get_interp(self, flux_vectors):
+    def _get_interp(self, params, flux_vectors):
         """Build the actual interpolator."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
-        nparams = np.shape(self.params)[1]
-        params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
+        nparams = np.shape(params)[1]
+        params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
@@ -93,7 +105,7 @@ class SkLearnGP(object):
         self.gp.optimize(messages=False)
         #Check we reproduce the input
         if self._test_interp:
-            test,_ = self.predict(self.params[0,:].reshape(1,-1))
+            test,_ = self.predict(params[0,:].reshape(1,-1))
             worst = np.abs(test[0] / flux_vectors[0,:]-1)
             if np.max(worst) > self.intol:
                 print("Bad interpolation at:",np.where(worst > np.max(worst)*0.9), np.max(worst))
@@ -106,7 +118,7 @@ class SkLearnGP(object):
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
         flux_predict, var = self.gp.predict(params_cube)
         mean = (flux_predict+1)*self.scalefactors
-        std = np.sqrt(var) * self.scalefactors
+        std = self.sdscale * np.sqrt(var) * self.scalefactors
         return mean, std
 
     def get_predict_error(self, test_params, test_exact):
@@ -116,4 +128,4 @@ class SkLearnGP(object):
         test_exact = test_exact.reshape(np.shape(test_params)[0],-1)
         predict, sigma = self.predict(test_params)
         #The transposes are because of numpy broadcasting rules only doing the last axis
-        return ((test_exact - predict).T/np.sqrt(sigma)).T
+        return ((test_exact - predict).T/sigma).T

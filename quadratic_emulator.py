@@ -26,17 +26,17 @@ class QuadraticPoly(SkLearnGP):
                      The best fit used in each knot to compute the different coefficients need not be this simulation!
     """
     def __init__(self, kf, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs, cv=False)
         self.kf = kf
         self.intol = 1e-2
 
-    def _get_interp(self, flux_vectors, bfnum=0):
+    def _get_interp(self, params, flux_vectors, bfnum=0):
         """Do the actual interpolation. Called in parent's __init__"""
         self.tables = {}
         self.bestfv = flux_vectors[bfnum]
         self.bestpar = self.params[bfnum,:]
-        for pp in range(np.shape(self.params)[1]):
-            self.tables[pp] = self._calc_coeffs(flux_vectors,self.params[:,pp], pp)
+        for pp in range(np.shape(params)[1]):
+            self.tables[pp] = self._calc_coeffs(flux_vectors,params[:,pp], pp)
 
     def predict(self, params):
         """Get the interpolated quantity by evaluating the quadratic fit"""

@@ -55,7 +55,8 @@ class SkLearnGP(object):
         if cv:
             npowers = np.shape(powers)[0]
             self.sdscale = np.median([self._get_cv_one(ex, params=params, powers=powers) for ex in range(npowers)])
-        print(self.sdscale)
+        if self.sdscale > 2 or self.sdscale < 0.5:
+            print("Rescaling errors by: ",self.sdscale)
         #Build the full emulator
         self._get_interp(params = self.params, flux_vectors=powers)
 

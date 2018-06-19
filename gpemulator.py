@@ -53,12 +53,17 @@ class SkLearnGP(object):
         #Use leave-one-out CV to rescale the emulator error
         self.sdscale = 1
         if cv:
-            npowers = np.shape(powers)[0]
-            self.sdscale = np.median([self._get_cv_one(ex, params=params, powers=powers) for ex in range(npowers)])
+            self.sdscale = self.cv_rescale(params=params, powers=powers)
         if self.sdscale > 2 or self.sdscale < 0.5:
             print("Rescaling errors by: ",self.sdscale)
         #Build the full emulator
         self._get_interp(params = self.params, flux_vectors=powers)
+
+    def cv_rescale(self, params, powers):
+        """Compute a variance rescaling factor using cross-validation."""
+        npowers = np.shape(powers)[0]
+        scales = [self._get_cv_one(ex, params=params, powers=powers) for ex in range(npowers)]
+        return np.median(scales)
 
     def _get_cv_one(self, exclude, params, powers):
         """Get the prediction error for one point when

@@ -72,8 +72,16 @@ class SkLearnGP(object):
             to the cumulative distribution of the errors"""
             gauss = 0.5 *  (1 + scipy.special.erf(scales/np.sqrt(2)/sigma))
             return np.sum((gauss - cumsum)**2)
+        def cauchy(gamma):
+            """Likelihood function for fitting a Cauchy distribution
+            to the cumulative distribution of the errors"""
+            cauchy = 1/np.pi * np.arctan(scales/gamma) + 0.5
+            return np.sum((cauchy - cumsum)**2)
+
+        rescauchy = scipy.optimize.minimize(cauchy, 1)
         #Fit a gaussian to the error distribution.
         res = scipy.optimize.minimize(normal, 1)
+        print("Normal: ", res.x, "Cauchy: ", rescauchy.x)
         if not res.success:
             print(res.message)
         return res.x

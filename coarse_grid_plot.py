@@ -108,6 +108,7 @@ def _plot_error_histogram(savedir, plotname, err_norm, axis=None, xlim=6., nbins
         plt.hist(err_norm, bins=nbins, density=True)
         xx = np.arange(-6, 6, 0.01)
         _plot_unit_Gaussians(xx)
+        _plot_cauchy(xx)
         plt.xlabel(xlabel)
         plt.xlim(-1. * xlim, xlim)
         plt.legend()
@@ -121,6 +122,11 @@ def _plot_error_histogram(savedir, plotname, err_norm, axis=None, xlim=6., nbins
         axis.set_xlabel(xlabel)
         axis.set_xlim(-1. * xlim, xlim)
         axis.legend(frameon=False, fontsize=5.)
+
+def _plot_cauchy(xx):
+    """Plot a unit Cauchy and a and a 2-unit Cauchy"""
+    plt.plot(xx, 1/np.pi / (xx**2 + 1), ls="--", color="red", label=r"Unit Cauchy")
+    plt.plot(xx, 2/np.pi / (xx**2 + 4), ls="--", color="orange", label=r"2xUnit Cauchy")
 
 def _plot_unit_Gaussians(xx, axis=None):
     """Plot a unit gaussian and a 2-unit gaussian"""

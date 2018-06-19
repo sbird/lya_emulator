@@ -76,8 +76,8 @@ class SkLearnGP(object):
         self._get_interp(params = exparams, flux_vectors=expowers)
         #Get the error on the excluded point
         test_exact = powers[exclude]
-        err = self.get_predict_error(params[exclude].reshape(1,-1), test_exact)
-        #Err has shape (nbins): if this is working we return 1.
+        err = self.get_predict_error(params[exclude].reshape(1,-1), test_exact)[0]
+        #Err has shape (nbins): ideally we return 1.
         return 1/np.abs(err)
 
     def _get_interp(self, params, flux_vectors):
@@ -134,4 +134,4 @@ class SkLearnGP(object):
         test_exact = test_exact.reshape(np.shape(test_params)[0],-1)
         predict, sigma = self.predict(test_params)
         #The transposes are because of numpy broadcasting rules only doing the last axis
-        return ((test_exact - predict).T/sigma).T
+        return ((test_exact - predict)/sigma)

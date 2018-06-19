@@ -2,6 +2,7 @@
 # from datetime import datetime
 import numpy as np
 from latin_hypercube import map_to_unit_cube
+from scipy.optimize import curve_fit
 #Make sure that we don't accidentally
 #get another backend when we import GPy.
 import matplotlib
@@ -63,7 +64,14 @@ class SkLearnGP(object):
         """Compute a variance rescaling factor using cross-validation."""
         npowers = np.shape(powers)[0]
         scales = [self._get_cv_one(ex, params=params, powers=powers) for ex in range(npowers)]
-        return np.median(scales)
+        hist, edges = np.histogram(scales, bins=100, density=True)
+        cent = (edges[:-1]+edges[1:])/2.
+        def normal(x, sigma):
+            """Gaussian normal"""
+            return np.exp(-x**2/2/sigma**2)/np.sqrt(2*np.pi*sigma**2)
+        #Fit a gaussian to the error distribution.
+        sigma, _ = curve_fit(normal, cent, hist, 1.)
+        return sigma
 
     def _get_cv_one(self, exclude, params, powers):
         """Get the prediction error for one point when
@@ -134,4 +142,4 @@ class SkLearnGP(object):
         test_exact = test_exact.reshape(np.shape(test_params)[0],-1)
         predict, sigma = self.predict(test_params)
         #The transposes are because of numpy broadcasting rules only doing the last axis
-        return ((test_exact - predict)/sigma)
+        return (test_exact - predict)/sigma

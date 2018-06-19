@@ -86,8 +86,8 @@ def test_s8_plots():
     testdir = path.expanduser("simulations/hires_s8_test")
     quaddir = path.expanduser("simulations/hires_s8_quadratic")
     emudir = path.expanduser("simulations/hires_s8")
-    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_s8"))
-    gp_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"))
+    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_s8"),mean_flux=2)
+    gp_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"),mean_flux=2)
     quad_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
     return (gp_emu, gp_quad, quad_quad)
 

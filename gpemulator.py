@@ -2,7 +2,8 @@
 # from datetime import datetime
 import numpy as np
 from latin_hypercube import map_to_unit_cube
-from scipy.optimize import curve_fit
+import scipy.special
+import scipy.optimize
 #Make sure that we don't accidentally
 #get another backend when we import GPy.
 import matplotlib
@@ -55,8 +56,8 @@ class SkLearnGP(object):
         self.sdscale = 1
         if cv:
             self.sdscale = self.cv_rescale(params=params, powers=powers)
-        if self.sdscale > 2 or self.sdscale < 0.5:
-            print("Rescaling errors by: ",self.sdscale)
+#         if self.sdscale > 2 or self.sdscale < 0.5:
+        print("Rescaling errors by: ",self.sdscale)
         #Build the full emulator
         self._get_interp(params = self.params, flux_vectors=powers)
 
@@ -64,14 +65,18 @@ class SkLearnGP(object):
         """Compute a variance rescaling factor using cross-validation."""
         npowers = np.shape(powers)[0]
         scales = [self._get_cv_one(ex, params=params, powers=powers) for ex in range(npowers)]
-        hist, edges = np.histogram(scales, bins=100, density=True)
-        cent = (edges[:-1]+edges[1:])/2.
-        def normal(x, sigma):
-            """Gaussian normal"""
-            return np.exp(-x**2/2/sigma**2)/np.sqrt(2*np.pi*sigma**2)
+        scales = np.sort(np.ravel(scales))
+        cumsum = np.arange(np.size(scales))/np.size(scales)
+        def normal(sigma):
+            """Likelihood function for fitting a Gaussian
+            to the cumulative distribution of the errors"""
+            gauss = 0.5 *  (1 + scipy.special.erf(scales/np.sqrt(2)/sigma))
+            return np.sum((gauss - cumsum)**2)
         #Fit a gaussian to the error distribution.
-        sigma, _ = curve_fit(normal, cent, hist, 1.)
-        return sigma
+        res = scipy.optimize.minimize(normal, 1)
+        if not res.success:
+            print(res.message)
+        return res.x
 
     def _get_cv_one(self, exclude, params, powers):
         """Get the prediction error for one point when
@@ -86,7 +91,7 @@ class SkLearnGP(object):
         test_exact = powers[exclude]
         err = self.get_predict_error(params[exclude].reshape(1,-1), test_exact)[0]
         #Err has shape (nbins): ideally we return 1.
-        return 1/np.abs(err)
+        return err
 
     def _get_interp(self, params, flux_vectors):
         """Build the actual interpolator."""

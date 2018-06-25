@@ -56,9 +56,6 @@ class SkLearnGP(object):
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         nparams = np.shape(self.params)[1]
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
-        #Normalise the flux vectors by the median power spectrum.
-        #This ensures that the GP prior (a zero-mean input) is close to true.
-        medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
 
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.

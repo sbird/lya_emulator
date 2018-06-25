@@ -52,15 +52,6 @@ class SkLearnGP(object):
         self.coreg=coreg
         #Get the flux power and build an emulator
         self._get_interp(flux_vectors=powers)
-        #In case we need it, we can rescale the errors using cross-validation.
-        #self.sdscale = np.mean([self._get_cv_one(powers, exclude) for exclude in range(len(self.powers))])
-
-#     def _get_cv_one(self, powers, exclude):
-#         """Get the prediction error for one point when
-#         excluding that point from the emulator."""
-#         self._get_interp(flux_vectors=powers, exclude=exclude)
-#         test_exact = powers[exclude]
-#         return self.get_predict_error(self.params[exclude], test_exact)
 
     def _get_interp(self, flux_vectors):
         """Build the actual interpolator."""

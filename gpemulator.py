@@ -20,8 +20,8 @@ class MultiBinGP(object):
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = int(np.shape(powers)[1]/self.nk)
         self.coreg = coreg
-        gp = lambda i: SkLearnGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits, coreg=coreg)
-        self.gps = [gp(i) for i in range(self.nz)]
+        gp = lambda i: SkLearnGP(params=params, powers=powers[:,i].reshape(-1, 1), param_limits = param_limits, coreg=coreg)
+        self.gps = [gp(i) for i in range(self.nz * self.nk)]
 
     def predict(self,params, tau0_factors = None):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
@@ -31,10 +31,11 @@ class MultiBinGP(object):
             #Adjust the slope of the mean flux for this bin
             zparams = np.array(params)
             if tau0_factors is not None:
-                zparams[0][0] *= tau0_factors[i]
+                #Make sure we use optical depth from the right bin: we want integer division.
+                zparams[0][0] *= tau0_factors[i//self.nk]
             (m, s) = gp.predict(zparams)
-            means[0,i*self.nk:(i+1)*self.nk] = m
-            std[:,i*self.nk:(i+1)*self.nk] = s
+            means[0,i] = m
+            std[:,i] = s
         return means, std
 
 class SkLearnGP(object):
@@ -61,22 +62,12 @@ class SkLearnGP(object):
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
-        self.scalefactors = flux_vectors[medind,:]
-        self.paramzero = params_cube[medind,:]
-        #Normalise by the median value
-        normspectra = flux_vectors/self.scalefactors -1.
-
-        #Extracting flux power vectors to disk
-        #date_and_time = str(datetime.now())
-        #savefile = "/Users/kwame/Simulations/emulator/training_flux_power_" + date_and_time + ".npz"
-        #print("Extracting flux power vectors to disk at", date_and_time)
-        #np.savez(savefile, flux_vectors, self.scalefactors, self.paramzero, medind)
 
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)
         kernel += GPy.kern.RBF(nparams)
-        noutput = np.shape(normspectra)[1]
+        noutput = np.shape(flux_vectors)[1]
         if self.coreg and noutput > 1:
             coreg = GPy.kern.Coregionalize(input_dim=nparams,output_dim=noutput)
             kernel = kernel.prod(coreg,name='coreg.kern')
@@ -96,8 +87,8 @@ class SkLearnGP(object):
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
         flux_predict, var = self.gp.predict(params_cube)
-        mean = (flux_predict+1)*self.scalefactors
-        std = np.sqrt(var) * self.scalefactors
+        mean = flux_predict
+        std = np.sqrt(var)
         return mean, std
 
     def get_predict_error(self, test_params, test_exact):

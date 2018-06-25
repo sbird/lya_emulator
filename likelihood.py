@@ -111,7 +111,10 @@ class LikelihoodClass(object):
 
     def likelihood(self, params, include_emu=True, data_power=None):
         """A simple likelihood function for the Lyman-alpha forest.
-        Assumes data is quadratic with a covariance matrix."""
+        Assumes data is quadratic with a covariance matrix.
+        The covariance for the emulator points is assumed to be
+        completely correlated with each z bin, as the emulator
+        parameters are estimated once per z bin."""
         nparams = params
         if data_power is None:
             data_power = self.data_fluxpower

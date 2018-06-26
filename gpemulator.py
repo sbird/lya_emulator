@@ -47,9 +47,16 @@ class GPyGP(object):
         self.param_limits = param_limits
         self.intol = 3e-5
         #Should we test the built emulator?
-        self._test_interp = True
+        self._test_interp = False
+        #Normalise the flux vectors by the median power spectrum.
+        #This ensures that the GP prior (a zero-mean input) is close to true.
+        medind = np.argsort(np.mean(powers, axis=1))[np.shape(powers)[0]//2]
+        #Normalize by the median vector.
+        self.scalefactors = powers[medind,:]
+        self.paramzero = params[medind,:]
+        normspectra = powers/self.scalefactors -1.
         #Get the flux power and build an emulator
-        self._get_interp(flux_vectors=powers)
+        self._get_interp(flux_vectors=normspectra)
         if self._test_interp:
             self._check_interp(powers)
             self._test_interp = False
@@ -80,8 +87,8 @@ class GPyGP(object):
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
         flux_predict, var = self.gp.predict(params_cube)
-        mean = flux_predict
-        std = np.sqrt(var)
+        mean = (flux_predict + 1) * self.scalefactors
+        std = np.sqrt(var) * self.scalefactors
         return mean, std
 
     def get_predict_error(self, test_params, test_exact):

@@ -88,5 +88,4 @@ class SkLearnGP(object):
         #Note: this is not used anywhere
         test_exact = test_exact.reshape(np.shape(test_params)[0],-1)
         predict, sigma = self.predict(test_params)
-        #The transposes are because of numpy broadcasting rules only doing the last axis
-        return (test_exact - predict)/np.sqrt(sigma)
+        return (test_exact - predict)/sigma

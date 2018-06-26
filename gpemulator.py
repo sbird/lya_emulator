@@ -7,6 +7,7 @@ from latin_hypercube import map_to_unit_cube
 import matplotlib
 matplotlib.use('PDF')
 import GPy
+import sklearn.gaussian_process as SKGP
 
 class MultiBinGP(object):
     """A wrapper around the emulator that constructs a separate emulator for each bin.
@@ -20,6 +21,7 @@ class MultiBinGP(object):
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = int(np.shape(powers)[1]/self.nk)
         gp = lambda i: GPyGP(params=params, powers=powers[:,i].reshape(-1, 1), param_limits = param_limits)
+        skgp = lambda i: SkLearnGP(params=params, powers=powers[:,i].reshape(-1, 1), param_limits = param_limits)
         self.gps = [gp(i) for i in range(self.nz * self.nk)]
 
     def predict(self,params, tau0_factors = None):
@@ -73,6 +75,7 @@ class GPyGP(object):
         noutput = np.shape(flux_vectors)[1]
         self.gp = GPy.models.GPRegression(params_cube, flux_vectors,kernel=kernel, noise_var=1e-10)
         self.gp.optimize(messages=False)
+        #print(kernel)
 
     def _check_interp(self, flux_vectors):
         """Check we reproduce the input"""
@@ -98,3 +101,32 @@ class GPyGP(object):
         test_exact = test_exact.reshape(np.shape(test_params)[0],-1)
         predict, sigma = self.predict(test_params)
         return (test_exact - predict)/sigma
+
+class SkLearnGP(GPyGP):
+    """Optimize the emulator with scikit-learn instead"""
+    def _get_interp(self, flux_vectors):
+        """Build the actual interpolator."""
+        #Map the parameters onto a unit cube so that all the variations are similar in magnitude
+        nparams = np.shape(self.params)[1]
+        params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
+        #Standard squared-exponential kernel with a different length scale for each parameter, as
+        #they may have very different physical properties.
+        kernel = (SKGP.kernels.DotProduct(sigma_0_bounds=(0.1,100)) + 1**2 * SKGP.kernels.RBF(length_scale_bounds=(0.1, 1000.0)))
+        #kernel *= 1**2
+        #kernel += SKGP.kernels.WhiteKernel(1e-8,  noise_level_bounds = (1e-10, 1e-5))
+        noutput = np.shape(flux_vectors)[1]
+        self.gp = SKGP.GaussianProcessRegressor(kernel=kernel, alpha=0, normalize_y=False, copy_X_train=False, n_restarts_optimizer=100)
+        self.gp.fit(params_cube, flux_vectors)
+        print(self.gp.kernel_)
+
+    def predict(self, params):
+        """Get the predicted flux at a parameter value (or list of parameter values)."""
+        #Map the parameters onto a unit cube so that all the variations are similar in magnitude
+        params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
+        #There is a return_std option, which gives a different answer.
+        flux_predict, var = self.gp.predict(params_cube, return_cov=True)
+        std = np.sqrt(var)
+        if std[0] < 1e-2:
+            std[0] = 1e-2
+        return (flux_predict[0] + 1) * self.scalefactors, std * self.scalefactors
+

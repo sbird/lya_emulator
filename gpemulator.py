@@ -47,9 +47,12 @@ class GPyGP(object):
         self.param_limits = param_limits
         self.intol = 3e-5
         #Should we test the built emulator?
-        self._test_interp = False
+        self._test_interp = True
         #Get the flux power and build an emulator
         self._get_interp(flux_vectors=powers)
+        if self._test_interp:
+            self._check_interp(powers)
+            self._test_interp = False
 
     def _get_interp(self, flux_vectors):
         """Build the actual interpolator."""
@@ -63,14 +66,14 @@ class GPyGP(object):
         noutput = np.shape(flux_vectors)[1]
         self.gp = GPy.models.GPRegression(params_cube, flux_vectors,kernel=kernel, noise_var=1e-10)
         self.gp.optimize(messages=False)
-        #Check we reproduce the input
-        if self._test_interp:
-            test,_ = self.predict(self.params[0,:].reshape(1,-1))
-            worst = np.abs(test[0] / flux_vectors[0,:]-1)
-            if np.max(worst) > self.intol:
-                print("Bad interpolation at:",np.where(worst > np.max(worst)*0.9), np.max(worst))
-                assert np.max(worst) < self.intol
-            self._test_interp = False
+
+    def _check_interp(self, flux_vectors):
+        """Check we reproduce the input"""
+        means, std = zip(*[self.predict(pp.reshape(1,-1)) for pp in self.params])
+        worst = np.abs(np.array(means)/flux_vectors[:,0] - 1)
+        if np.max(worst) > self.intol:
+            print("Bad interpolation at:", np.where(worst > np.max(worst)*0.9), np.max(worst))
+            assert np.max(worst) < self.intol
 
     def predict(self, params):
         """Get the predicted flux at a parameter value (or list of parameter values)."""

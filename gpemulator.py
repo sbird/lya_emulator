@@ -19,7 +19,7 @@ class MultiBinGP(object):
         self.nk = np.size(kf)
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = int(np.shape(powers)[1]/self.nk)
-        gp = lambda i: SkLearnGP(params=params, powers=powers[:,i].reshape(-1, 1), param_limits = param_limits)
+        gp = lambda i: GPyGP(params=params, powers=powers[:,i].reshape(-1, 1), param_limits = param_limits)
         self.gps = [gp(i) for i in range(self.nz * self.nk)]
 
     def predict(self,params, tau0_factors = None):
@@ -37,12 +37,12 @@ class MultiBinGP(object):
             std[:,i] = s
         return means, std
 
-class SkLearnGP(object):
-    """An emulator using the one in Scikit-learn.
+class GPyGP(object):
+    """An emulator using the one in GPy.
        Parameters: params is a list of parameter vectors.
                    powers is a list of flux power spectra (same shape as params).
                    param_limits is a list of parameter limits (shape 2,params)."""
-    def __init__(self, *, params, powers,param_limits):
+    def __init__(self, *, params, powers, param_limits):
         self.params = params
         self.param_limits = param_limits
         self.intol = 3e-5
@@ -56,7 +56,6 @@ class SkLearnGP(object):
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         nparams = np.shape(self.params)[1]
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
-
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)

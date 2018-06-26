@@ -7,6 +7,7 @@ from datetime import datetime
 import scipy.spatial
 import numpy as np
 import coarse_grid
+import gpemulator
 import flux_power
 import matter_power
 import lyman_data
@@ -124,13 +125,15 @@ def _plot_error_histogram(savedir, plotname, err_norm, axis=None, xlim=6., nbins
         axis.legend(frameon=False, fontsize=5.)
 
 def _plot_unit_Gaussians(xx, axis=None):
-    """Plot a unit gaussian and a 2-unit gaussian"""
+    """Plot a unit Gaussian and a 2-unit Gaussian"""
     if axis is None:
         plt.plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), ls="-", color="black", label=r"Unit Gaussian")
         plt.plot(xx, np.exp(-xx ** 2 / 2 / 2 ** 2) / np.sqrt(2 * np.pi * 2 ** 2), ls="--", color="grey")
     else:
         axis.plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), ls="-", color="black", label=r"Unit Gaussian")
         axis.plot(xx, np.exp(-xx ** 2 / 2 / 2 ** 2) / np.sqrt(2 * np.pi * 2 ** 2), ls="--", color="grey")
+
+import h5py
 
 def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_flux=1, max_z=4.2, emuclass=None, kf_bin_nums=None,data_err=False):
     """Make a plot showing the interpolation error."""
@@ -150,8 +153,24 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     else:
         params = emuclass(emulatordir, mf=mf, kf_bin_nums=kf_bin_nums)
     params.load()
+    #Save data to disc for future analysis.
+    #
+    #import h5py
+    #aparams, flux_vectors = params.get_flux_vectors(max_z=max_z)
+    #plimits = params.get_param_limits(include_dense=True)
+    #data = h5py.File(os.path.join(savedir, "flux_vectors.hdf5"))
+    #data["params"] = aparams
+    #data["flux_vectors"] = flux_vectors
+    #data["plimits"] = plimits
+    #data["kf"] = params.kf
+    #data.close()
+    #Done
     print('Beginning to generate emulator at', str(datetime.now()))
-    gp = params.get_emulator(max_z=max_z)
+    try:
+        h55 = h5py.File(os.path.join(savedir, "flux_vectors.hdf5"),'r')
+        gp = gpemulator.MultiBinGP(params=h55["params"][:], kf=h55["kf"][:], powers = h55["flux_vectors"][:], param_limits = h55["plimits"][:])
+    except OSError:
+        gp = params.get_emulator(max_z=max_z)
     print('Finished generating emulator at', str(datetime.now()))
     kf = params.kf
     del params

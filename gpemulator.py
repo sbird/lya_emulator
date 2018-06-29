@@ -163,10 +163,10 @@ class GeorgeGP(GPyGP):
         #Specify the 'data errors' on the input flux power spectrum.
         #This models the part of the variation the GP
         #should not attempt to model, because it comes from numerical noise in the simulation.
-        #Use a constant 1% of the median power.
-        yerr = 1e-2 * self.scalefactors
+        #Use a constant 0.5% of the median power.
+        self.yerr = 5e-3 * self.scalefactors
         #This pre-computes the covariance matrix
-        self.gp.compute(params_cube,yerr=yerr)
+        self.gp.compute(params_cube,yerr=self.yerr)
         optimize_hypers(self.gp, self.flux_vectors)
 
     def predict(self, params):
@@ -179,7 +179,8 @@ class GeorgeGP(GPyGP):
         #likelihood.py is between different output dimensions.
         flux_predict, var = self.gp.predict(self.flux_vectors, params_cube, return_var=True)
         std = np.sqrt(var)
-        return flux_predict[0], std
+        #Should I add the 'data' error here in quadrature?
+        return flux_predict[0], std + self.yerr
 
 
 # This does not work. I have been unable to figure out exactly why, but it appears to be a fairly deep problem,

@@ -108,7 +108,9 @@ def get_simulation_parameters_s8(base):
     jsin = open(os.path.join(base, "SimulationICs.json"), 'r')
     pp = json.load(jsin)
     assert pp["code_args"]["rescale_gamma"] is True
-    parvec = [0., 1., pp['ns'], pp['scalar_amp'], pp["code_args"]["rescale_slope"], pp["code_args"]["rescale_amp"], pp["hubble"]]
+    #Change the pivot value
+    As = pp['scalar_amp'] / (2e-3/(2*np.pi/8.))**(pp['ns']-1.)
+    parvec = [0., 1., pp['ns'], As, pp["code_args"]["rescale_slope"], pp["code_args"]["rescale_amp"], pp["hubble"]]
     return parvec
 
 def run_likelihood_test(testdir, emudir, savedir=None, plot=True, mean_flux_label='s'):

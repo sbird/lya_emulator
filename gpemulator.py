@@ -13,16 +13,22 @@ class MultiBinGP(object):
     """A wrapper around the emulator that constructs a separate emulator for each bin.
     Each one has a separate mean flux parameter.
     The t0 parameter fed to the emulator should be constant factors."""
-    def __init__(self, *, params, kf, powers, param_limits):
+    def __init__(self, *, params, kf, powers, param_limits, gpclass=None, single_output=True):
         #Build an emulator for each redshift separately. This means that the
         #mean flux for each bin can be separated.
+        #If this flag is true, each k bin gets its own Gaussian Process
+        self.single_output = single_output
         self.kf = kf
         self.nk = np.size(kf)
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = int(np.shape(powers)[1]/self.nk)
-        gp = lambda i: GPyGP(params=params, powers=powers[:,i].reshape(-1, 1), param_limits = param_limits)
-        skgp = lambda i: SkLearnGP(params=params, powers=powers[:,i].reshape(-1, 1), param_limits = param_limits)
-        self.gps = [gp(i) for i in range(self.nz * self.nk)]
+        if gpclass is None:
+            gpclass = GPyGP
+        gp = lambda i: gpclass(params=params, powers=powers[:,i].reshape(-1, 1), param_limits = param_limits)
+        ngp = self.nz
+        if self.single_output:
+            ngp *= self.nk
+        self.gps = [gp(i) for i in range(ngp)]
 
     def predict(self,params, tau0_factors = None):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
@@ -33,10 +39,18 @@ class MultiBinGP(object):
             zparams = np.array(params)
             if tau0_factors is not None:
                 #Make sure we use optical depth from the right bin: we want integer division.
-                zparams[0][0] *= tau0_factors[i//self.nk]
+                if self.single_output:
+                    ii = i//self.nk
+                else:
+                    ii = i
+                zparams[0][0] *= tau0_factors[ii]
             (m, s) = gp.predict(zparams)
-            means[0,i] = m
-            std[:,i] = s
+            if self.single_output:
+                means[0,i] = m
+                std[:,i] = s
+            else:
+                means[0,i*self.nk:(i+1)*self.nk] = m
+                std[:,i*self.nk:(i+1)*self.nk] = s
         return means, std
 
 class GPyGP(object):

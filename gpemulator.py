@@ -54,6 +54,10 @@ class MultiBinGP(object):
                 std[:,i*self.nk:(i+1)*self.nk] = s
         return means, std
 
+#This tends to estimate errors a little smaller than they really are.
+#By comparison to the George results I think this is because it is assuming
+#an intrinsic non-zero error in the input data.
+
 class GPyGP(object):
     """An emulator using the one in GPy.
        Parameters: params is a list of parameter vectors.
@@ -169,6 +173,10 @@ class GeorgeGP(GPyGP):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
+        #Should I get the full covariance instead of just the diagonal? I think probably not,
+        #because that is the covariance between different points in parameter space, and
+        #I'm not sure how to translate that into my likelihood. The covariance used in
+        #likelihood.py is between different output dimensions.
         flux_predict, var = self.gp.predict(self.flux_vectors, params_cube, return_var=True)
         std = np.sqrt(var)
         return flux_predict[0], std

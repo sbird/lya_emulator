@@ -8,6 +8,8 @@ import matplotlib
 matplotlib.use('PDF')
 import GPy
 import sklearn.gaussian_process as SKGP
+import scipy.optimize
+import emcee
 
 class MultiBinGP(object):
     """A wrapper around the emulator that constructs a separate emulator for each bin.
@@ -87,9 +89,10 @@ class GPyGP(object):
         kernel = GPy.kern.Linear(nparams)
         kernel += GPy.kern.RBF(nparams)
         noutput = np.shape(flux_vectors)[1]
+        #Note the value of noise_var is actually optimized if non-zero
         self.gp = GPy.models.GPRegression(params_cube, flux_vectors,kernel=kernel, noise_var=1e-10)
         self.gp.optimize(messages=False)
-        #print(kernel)
+        print(kernel)
 
     def _check_interp(self, flux_vectors):
         """Check we reproduce the input"""
@@ -116,6 +119,30 @@ class GPyGP(object):
         predict, sigma = self.predict(test_params)
         return (test_exact - predict)/sigma
 
+# This does not work. I have been unable to figure out exactly why, but it appears to be a fairly deep problem,
+# possibly numerical issues with marginally ill-conditioned matrices.
+
+# The main problem is that the optimization routine is extremely finicky. This is strange because it is
+# based on fmin_l_bfgs_b and does optimization in log space, just like GPy.
+
+# It appears that the gradient of the log likelihood is very different from the same function evaluated in GPy.
+# I suspect there is a scaling factor that is missing from scikit-learn's implementation, but I have been unable
+# determine where exactly. There also seems to be some difference in the log likelihood function.
+
+# scikit-learn has a nice function to restart the optimizer at a randomly chosen
+# (with uniform distribution: should really be log-uniform) initial value.
+# However, this doesn't help much since their optimization is broken!
+
+# GPy has code to do something similar (in paramz.model: optimize_restarts), but it is not run by default.
+# Also the new optimizer start value is chosen from a normal distribution (!)
+
+#Other problems: The multi-valued output case performs badly (much worse than GPy). Probably this is just the optimizer being bad, but I'm not sure.
+
+# Finally, the error estimation is often very wrong. With a single-output case it generally produces results that are about twice the real error.
+#The return_cov output function returns a different answer to return_std - this is expected when there are multiple output dimensions, but
+#not when there is only one. It appears that different Cholesky decompositions of the input matrix are being run, so this makes me think
+#that there are numerical problems in the code somewhere.
+
 class SkLearnGP(GPyGP):
     """Optimize the emulator with scikit-learn instead"""
     def _get_interp(self, flux_vectors):
@@ -123,13 +150,13 @@ class SkLearnGP(GPyGP):
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         nparams = np.shape(self.params)[1]
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
-        #Standard squared-exponential kernel with a different length scale for each parameter, as
-        #they may have very different physical properties.
-        kernel = (SKGP.kernels.DotProduct(sigma_0_bounds=(0.1,100)) + 1**2 * SKGP.kernels.RBF(length_scale_bounds=(0.1, 1000.0)))
-        #kernel *= 1**2
-        #kernel += SKGP.kernels.WhiteKernel(1e-8,  noise_level_bounds = (1e-10, 1e-5))
+        #Standard squared-exponential kernel with adjustable white noise.
+        #Why is scikit learn's objective function different from gpy?
+        kernel = SKGP.kernels.DotProduct(np.sqrt(3))
+        kernel += np.sqrt(3) * SKGP.kernels.RBF(np.sqrt(3))
+        kernel += SKGP.kernels.WhiteKernel(1e-10,  noise_level_bounds = (1e-18, 1e-8))
         noutput = np.shape(flux_vectors)[1]
-        self.gp = SKGP.GaussianProcessRegressor(kernel=kernel, alpha=0, normalize_y=False, copy_X_train=False, n_restarts_optimizer=100)
+        self.gp = SKGP.GaussianProcessRegressor(kernel=kernel, alpha=0, normalize_y=False, copy_X_train=False, n_restarts_optimizer=0)
         self.gp.fit(params_cube, flux_vectors)
         print(self.gp.kernel_)
 
@@ -137,10 +164,39 @@ class SkLearnGP(GPyGP):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
-        #There is a return_std option, which gives a different answer.
+        #return_std and return_cov give different answers for 1-D GPs. Why?
         flux_predict, var = self.gp.predict(params_cube, return_cov=True)
-        std = np.sqrt(var)
-        if std[0] < 1e-2:
-            std[0] = 1e-2
+        std = np.sqrt(np.diag(var))
+        std[np.where(std < 1e-2)] = 1e-2
         return (flux_predict[0] + 1) * self.scalefactors, std * self.scalefactors
 
+# Working optimizer for scikit-learn. Unfortunately this is unreasonably slow.
+def fmin_emcee(obj_func, initial_theta, bounds, nwalkers=20, nsamples = 200):
+    """Initialise and run emcee to do my optimization. Use scipy.optimize at the end to tune."""
+    #Number of knots plus one cosmology plus one for mean flux.
+    ndim = np.shape(bounds)[0]
+    #Limits: we need to hard-prior to the volume of our emulator.
+    pr = (bounds[:,1]-bounds[:,0])
+    #Priors are assumed to be in the middle.
+    p0 = [initial_theta+2*pr/16.*np.random.rand(ndim)-pr/16. for _ in range(nwalkers)]
+    #assert np.all([np.isfinite(self.lnlike_linear(pp)) for pp in p0])
+    def bnd_obj_func(x0):
+        """Version of obj_func which returns -Nan when outside of bounds"""
+        if np.any(x0 < bounds[:,0]) or np.any(x0 > bounds[:,1]):
+            return -np.inf
+        return -obj_func(x0)[0]
+    emcee_sampler = emcee.EnsembleSampler(nwalkers, ndim, bnd_obj_func)
+    pos, _, _ = emcee_sampler.run_mcmc(p0, nsamples)
+    #Check things are reasonable
+    assert np.all(emcee_sampler.acceptance_fraction > 0.01)
+    #Return maximum likelihood
+    lnp = emcee_sampler.flatlnprobability
+    theta,fmin = emcee_sampler.flatchain[np.argmax(lnp)],-np.max(lnp)
+    theta_scipy, fmin_scipy, convergence_dict = scipy.optimize.fmin_l_bfgs_b(obj_func, theta, bounds=None)
+    if convergence_dict["warnflag"] != 0:
+        print("fmin_l_bfgs_b terminated abnormally with the "
+                      " state: %s" % convergence_dict)
+    #Probably this means that bfgs went crazy.
+    if convergence_dict["warnflag"] != 0 or np.any(theta_scipy > bounds[:,1]) or np.any(theta_scipy < bounds[:,0]):
+        return theta, fmin
+    return theta_scipy,fmin_scipy

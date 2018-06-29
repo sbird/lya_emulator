@@ -7,9 +7,8 @@ from latin_hypercube import map_to_unit_cube
 import matplotlib
 matplotlib.use('PDF')
 import GPy
-import sklearn.gaussian_process as SKGP
 import scipy.optimize
-import emcee
+import george
 
 class MultiBinGP(object):
     """A wrapper around the emulator that constructs a separate emulator for each bin.
@@ -25,7 +24,7 @@ class MultiBinGP(object):
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = int(np.shape(powers)[1]/self.nk)
         if gpclass is None:
-            gpclass = GPyGP
+            gpclass = GeorgeGP
         gp = lambda i: gpclass(params=params, powers=powers[:,i].reshape(-1, 1), param_limits = param_limits)
         ngp = self.nz
         if self.single_output:
@@ -72,16 +71,16 @@ class GPyGP(object):
         #Normalize by the median vector.
         self.scalefactors = powers[medind,:]
         self.paramzero = params[medind,:]
-        normspectra = powers/self.scalefactors -1.
         #Get the flux power and build an emulator
-        self._get_interp(flux_vectors=normspectra)
+        self._get_interp(flux_vectors=powers)
         if self._test_interp:
             self._check_interp(powers)
             self._test_interp = False
 
-    def _get_interp(self, flux_vectors):
+    def _get_interp(self, powers):
         """Build the actual interpolator."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
+        flux_vectors = powers/self.scalefactors -1.
         nparams = np.shape(self.params)[1]
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
         #Standard squared-exponential kernel with a different length scale for each parameter, as
@@ -119,6 +118,62 @@ class GPyGP(object):
         predict, sigma = self.predict(test_params)
         return (test_exact - predict)/sigma
 
+def optimize_hypers(gp, data):
+    """Optimize the hyperparameters of the GP kernel using george"""
+
+    def nll(p):
+        """Objective function (negative log-likelihood) for optimization."""
+        gp.set_parameter_vector(p)
+        ll = gp.log_likelihood(data, quiet=True)
+        return -ll if np.isfinite(ll) else 1e25
+
+    def grad_nll(p):
+        """Gradient of the objective function."""
+        gp.set_parameter_vector(p)
+        return -gp.grad_log_likelihood(data, quiet=True)
+
+    # Run the optimization routine.
+    p0 = gp.get_parameter_vector()
+    results = scipy.optimize.minimize(nll, p0, jac=grad_nll, method="L-BFGS-B")
+    # Update the kernel hyperparameters and print them
+    gp.set_parameter_vector(results.x)
+    #print(gp.kernel)
+
+class GeorgeGP(GPyGP):
+    """Use george as the basic GP code."""
+
+    def _get_interp(self, flux_vectors):
+        """Build the actual interpolator."""
+        #Need to store the data separately, and it needs to be 1D
+        self.flux_vectors = flux_vectors[:,0]
+        nparams = np.shape(self.params)[1]
+        #Map the parameters onto a unit cube so that all the variations are similar in magnitude
+        params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
+        #Standard squared-exponential kernel with adjustable white noise.
+        #Can also use LinearKernel(order=1)
+        kernel = 1**2 * george.kernels.DotProductKernel(ndim=nparams)
+        #Each parameter gets a different length scale. This doesn't really improve the test fit,
+        #but it makes the errors more reasonable.
+        kernel += 1**2 * george.kernels.ExpSquaredKernel(metric=np.ones(nparams), ndim=nparams)
+        self.gp = george.GP(kernel=kernel, mean = self.scalefactors, fit_mean=False, white_noise=-23, fit_white_noise=True)
+        #Specify the 'data errors' on the input flux power spectrum.
+        #This models the part of the variation the GP
+        #should not attempt to model, because it comes from numerical noise in the simulation.
+        #Use a constant 1% of the median power.
+        yerr = 1e-2 * self.scalefactors
+        #This pre-computes the covariance matrix
+        self.gp.compute(params_cube,yerr=yerr)
+        optimize_hypers(self.gp, self.flux_vectors)
+
+    def predict(self, params):
+        """Get the predicted flux at a parameter value (or list of parameter values)."""
+        #Map the parameters onto a unit cube so that all the variations are similar in magnitude
+        params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
+        flux_predict, var = self.gp.predict(self.flux_vectors, params_cube, return_var=True)
+        std = np.sqrt(var)
+        return flux_predict[0], std
+
+
 # This does not work. I have been unable to figure out exactly why, but it appears to be a fairly deep problem,
 # possibly numerical issues with marginally ill-conditioned matrices.
 
@@ -143,11 +198,14 @@ class GPyGP(object):
 #not when there is only one. It appears that different Cholesky decompositions of the input matrix are being run, so this makes me think
 #that there are numerical problems in the code somewhere.
 
+import sklearn.gaussian_process as SKGP
+
 class SkLearnGP(GPyGP):
     """Optimize the emulator with scikit-learn instead"""
-    def _get_interp(self, flux_vectors):
+    def _get_interp(self, powers):
         """Build the actual interpolator."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
+        flux_vectors = powers/self.scalefactors -1.
         nparams = np.shape(self.params)[1]
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
         #Standard squared-exponential kernel with adjustable white noise.
@@ -169,6 +227,8 @@ class SkLearnGP(GPyGP):
         std = np.sqrt(np.diag(var))
         std[np.where(std < 1e-2)] = 1e-2
         return (flux_predict[0] + 1) * self.scalefactors, std * self.scalefactors
+
+import emcee
 
 # Working optimizer for scikit-learn. Unfortunately this is unreasonably slow.
 def fmin_emcee(obj_func, initial_theta, bounds, nwalkers=20, nsamples = 200):

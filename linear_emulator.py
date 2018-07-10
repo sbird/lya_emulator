@@ -22,9 +22,9 @@ class Powers(object):
         self.pp = params
         self.zz = zz
 
-    def get_power(self, *, kf, tau0_factor):
+    def get_power(self, *, kf, mean_fluxes):
         """Get the power"""
-        return linear_theory.get_flux_power(bias_flux=np.exp(-tau0_factor), ns = self.pp[0], As=self.pp[1], kf=kf, zz=self.zz)
+        return linear_theory.get_flux_power(bias_flux=mean_fluxes, ns = self.pp[0], As=self.pp[1], kf=kf, zz=self.zz)
 
 def init_lnlike(nsamples, data=None):
     """Initialise the emulator for the likelihood function."""
@@ -34,7 +34,7 @@ def init_lnlike(nsamples, data=None):
     data = lyman_data.SDSSData()
     #Get unique values
     powers = [Powers(pp, zz=data.get_redshifts()) for pp in params]
-    gp = gpemulator.SkLearnGP(params=params, kf=data.kf, powers = powers, param_limits = param_limits)
+    gp = gpemulator.SkLearnGP(params=params, powers = powers, param_limits = param_limits)
     return gp, data
 
 def build_fake_fluxes(nsamples):
@@ -43,7 +43,7 @@ def build_fake_fluxes(nsamples):
     params = latin_hypercube.get_hypercube_samples(param_limits, nsamples)
     data = lyman_data.SDSSData()
     powers = [Powers(pp, zz=data.get_redshifts()) for pp in params]
-    gp = gpemulator.SkLearnGP(params=params, kf=data.kf, powers = powers, param_limits=param_limits)
+    gp = gpemulator.SkLearnGP(params=params, powers = powers, param_limits=param_limits)
     random_samples = latin_hypercube.get_random_samples(param_limits, nsamples//2)
     random_test_flux_vectors = np.array([linear_theory.get_flux_power(bias_flux = pp[0], ns=pp[1], As=pp[2], kf=data.get_kf(),zz=data.get_redshifts()) for pp in random_samples])
     diff_sk = gp.get_predict_error(random_samples, random_test_flux_vectors)

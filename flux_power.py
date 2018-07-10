@@ -21,13 +21,13 @@ class FluxPower(object):
         """Get the number of snapshots in the list"""
         return len(self.spectrae)
 
-    def get_power(self, kf, tau0_factors):
+    def get_power(self, kf, mean_fluxes):
         """Generate the flux power, with known optical depth, from a list of snapshots."""
         mf = None
         flux_arr = np.empty(shape=(self.len(),np.size(kf)))
         for (i,ss) in enumerate(self.spectrae):
-            if tau0_factors is not None:
-                mf = np.exp(-tau0_factors[i])
+            if mean_fluxes is not None:
+                mf = mean_fluxes[i]
             kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
             #Rebin flux power to have desired k bins
             rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)
@@ -53,8 +53,15 @@ class MySpectra(object):
        so that they are the same for each emulator point."""
     def __init__(self, numlos = 32000, max_z= 4.2):
         self.NumLos = numlos
-        #Use the right values for SDSS or BOSS.
-        self.spec_res = 200.
+        #Use the right values for SDSS or BOSS:
+        #this should be slightly redshift dependent,
+        #but since we divide it out we should be ok for now.
+        #It is 60 km/s at 5000 A and 80 km/s at 4300 A.
+        self.spec_res = 70.
+        #For BOSS the pixel resolution is actually 69 km/s.
+        #So we are slightly over-sampling here.
+        #This shouldn't be too important, but maybe change it later.
+        self.pix_res = 50.
         self.NumLos = numlos
         #Want output every 0.2 from z=max to z=2.2, matching SDSS.
         self.zout = np.arange(max_z,2.1,-0.2)
@@ -86,7 +93,7 @@ class MySpectra(object):
         #If savefile exists, reload. Otherwise do not.
         def mkspec(snap, base, cofm, axis, rf):
             """Helper function"""
-            return spectra.Spectra(snap, base, cofm, axis, res=self.spec_res/4., savefile=self.savefile,spec_res = self.spec_res, reload_file=rf,sf_neutral=False,quiet=True)
+            return spectra.Spectra(snap, base, cofm, axis, res=self.pix_res, savefile=self.savefile,spec_res = self.spec_res, reload_file=rf,sf_neutral=False,quiet=True)
         #First try to get data from the savefile, and if we can't, try the snapshot.
         try:
             ss = mkspec(snap, base, None, None, rf=False)
@@ -114,6 +121,7 @@ class MySpectra(object):
     def get_snapshot_list(self, base, snappref="SPECTRA_"):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
+        print('Looking for spectra in', base)
         powerspectra = FluxPower()
         for snap in range(30):
             snapdir = os.path.join(base,snappref+str(snap).rjust(3,'0'))
@@ -121,15 +129,19 @@ class MySpectra(object):
             if not os.path.exists(snapdir):
                 snapdir = os.path.join(base,"PART_"+str(snap).rjust(3,'0'))
                 if not os.path.exists(snapdir):
-                    continue
+                    snapdir = os.path.join(base, "snap_"+str(snap).rjust(3,'0'))
+                    if not os.path.exists(snapdir):
+                        continue
             #We have all we need
             if powerspectra.len() == np.size(self.zout):
                 break
             try:
                 ss = self._get_spectra_snap(snap, base)
+                print('Found spectra in', ss)
                 if ss is not None:
                     powerspectra.add_snapshot(snap,ss)
             except IOError:
+                print("Didn't find any spectra because of IOError")
                 continue
         #Make sure we have enough outputs
         if powerspectra.len() != np.size(self.zout):

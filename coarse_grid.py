@@ -26,8 +26,11 @@ def get_latex(key):
         return key
 
 class Emulator(object):
-    """Small wrapper class to store parameter names and limits, generate simulations and get an emulator."""
-    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None):
+    """Small wrapper class to store parameter names and limits, generate simulations and get an emulator.
+        Arguments:
+            kf_bin_nums - list of element numbers of wavenumber array [kf] to be emulated. Default is all elements.
+    """
+    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, kf_bin_nums=None):
         if param_names is None:
             self.param_names = {'ns':0, 'As':1, 'heat_slope':2, 'heat_amp':3, 'hub':4}
         else:
@@ -37,7 +40,7 @@ class Emulator(object):
         else:
             self.param_limits = param_limits
         if kf is None:
-            self.kf = lyman_data.BOSSData().get_kf()
+            self.kf = lyman_data.BOSSData().get_kf(kf_bin_nums=kf_bin_nums)
         else:
             self.kf = kf
         if mf is None:
@@ -59,10 +62,14 @@ class Emulator(object):
         parts = ['',]*(len(self.param_names) + ndense)
         #Transform the dictionary into a list of string parts,
         #sorted in the same way as the parameter array.
+        if self.param_names == {'HeliumHeatAmp': 0}:
+            string_formatting_type = '%.3g'
+        else:
+            string_formatting_type = '%.2g'
         for nn,val in self.mf.dense_param_names.items():
-            parts[val] = nn+'%.2g' % params[val]
+            parts[val] = nn+string_formatting_type % params[val]
         for nn,val in self.param_names.items():
-            parts[ndense+val] = nn+'%.2g' % params[ndense+val]
+            parts[ndense+val] = nn+string_formatting_type % params[ndense+val]
         name = ''.join(str(elem) for elem in parts)
         return name
 
@@ -210,9 +217,10 @@ class Emulator(object):
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z)
         powers = [self._get_fv(pp, myspec) for pp in pvals]
-        tau0_factors = self.mf.get_t0(myspec.zout)
+        mean_fluxes = np.exp(-self.mf.get_t0(myspec.zout))
+        #Note this gets tau_0 as a linear scale factor from the observed power law
         dpvals = self.mf.get_params()
-        flux_vectors = np.array([ps.get_power(kf = self.kf, tau0_factors = t0) for t0 in tau0_factors for ps in powers])
+        flux_vectors = np.array([ps.get_power(kf = self.kf, mean_fluxes = mef) for mef in mean_fluxes for ps in powers])
         if dpvals is not None:
             aparams = np.array([np.concatenate([dp,pv]) for dp in dpvals for pv in pvals])
         else:

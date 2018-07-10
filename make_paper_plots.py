@@ -13,7 +13,10 @@ import matplotlib.pyplot as plt
 from plot_latin_hypercube import plot_points_hypercube
 import coarse_grid_plot
 
-plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
+#plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
+#plotdir = '/home/keir/Plots/Emulator'
+plotdir = '/Users/kwame/Papers/emulator_paper_1/plots'
+
 def hypercube_plot():
     """Make a plot of some hypercubes"""
     limits = np.array([[0,1],[0,1]])
@@ -44,9 +47,22 @@ def hypercube_plot():
     plt.savefig(path.join(plotdir,"latin_hypercube_good.pdf"))
     plt.clf()
 
+
+def dlogPfdt(spec, t1, t2):
+    """Computes the change in flux power with optical depth"""
+    pf1 = spec.get_flux_power_1D("H",1,1215,mean_flux_desired=np.exp(-t1))
+    pf2 = spec.get_flux_power_1D("H",1,1215,mean_flux_desired=np.exp(-t2))
+    return (pf1[0], (np.log(pf1[1]) - np.log(pf2[1]))/(t1-t2))
+
+def show_t0_gradient(spec, tmin,tmax,steps=20):
+    """Find the mean gradient of the flux power with tau0"""
+    tt = np.linspace(tmin,tmax,steps)
+    df = [np.mean(dlogPfdlogF(spec, t,t-0.005)[1]) for t in tt]
+    return tt, df
+
 def single_parameter_plot():
     """Plot change in each parameter of an emulator from direct simulations."""
-    emulatordir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")
+    emulatordir = path.expanduser("simulations/hires_s8_quadratic")
     mf = ConstMeanFlux(value=1.)
     emu = coarse_grid.Emulator(emulatordir, mf=mf)
     emu.load()
@@ -68,19 +84,23 @@ def single_parameter_plot():
 
 def test_s8_plots():
     """Plot emulator test-cases"""
-    testdir = path.expanduser("~/data/Lya_Boss/hires_s8_test")
-    quaddir = path.expanduser("~/data/Lya_Boss/hires_s8_quadratic")
-    emudir = path.expanduser("~/data/Lya_Boss/hires_s8")
+    testdir = path.expanduser("simulations/hires_s8_test")
+    quaddir = path.expanduser("simulations/hires_s8_quadratic")
+    emudir = path.expanduser("simulations/hires_s8")
     gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_s8"))
     gp_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"))
     quad_quad = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
     return (gp_emu, gp_quad, quad_quad)
 
-def test_knot_plots(mf=1):
+def test_knot_plots(mf=1, testdir = None, emudir = None, plotdir = None, plotname="", kf_bin_nums=None, data_err=False, max_z=4.2):
     """Plot emulator test-cases"""
-    testdir = path.expanduser("~/data/Lya_Boss/hires_knots_test")
-    emudir = path.expanduser("~/data/Lya_Boss/hires_knots")
-    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_knots_mf"+str(mf)),mean_flux=mf)
+    if testdir is None:
+        testdir = path.expanduser("~/data/Lya_Boss/hires_knots_test")
+    if emudir is None:
+        emudir = path.expanduser("~/data/Lya_Boss/hires_knots")
+    if plotdir is None:
+        plotdir = path.expanduser('~/Papers/emulator_paper_1/plots/hires_knots_mf')
+    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=plotdir+str(mf),plotname=plotname,mean_flux=mf,max_z=max_z,kf_bin_nums=kf_bin_nums,data_err=data_err)
     return gp_emu
 
 def sample_var_plot():
@@ -88,12 +108,12 @@ def sample_var_plot():
     mys = flux_power.MySpectra()
     sd = lyman_data.SDSSData()
     kf = sd.get_kf()
-    fp0 = mys.get_snapshot_list("/home/spb/data/Lya_Boss/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7/output/")
-    fp1 = mys.get_snapshot_list("/home/spb/data/Lya_Boss/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed1/output/")
-    fp2 = mys.get_snapshot_list("/home/spb/data/Lya_Boss/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed2/output/")
-    pk0 = fp0.get_power(kf,tau0_factors=None)
-    pk1 = fp1.get_power(kf,tau0_factors=None)
-    pk2 = fp2.get_power(kf,tau0_factors=None)
+    fp0 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7/output/")
+    fp1 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed1/output/")
+    fp2 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed2/output/")
+    pk0 = fp0.get_power(kf,mean_fluxes=None)
+    pk1 = fp1.get_power(kf,mean_fluxes=None)
+    pk2 = fp2.get_power(kf,mean_fluxes=None)
     nred = len(mys.zout)
     nk = len(kf)
     assert np.shape(pk0) == (nred*nk,)

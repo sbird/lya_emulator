@@ -12,20 +12,19 @@ class MultiBinGP(object):
     """A wrapper around the emulator that constructs a separate emulator for each bin.
     Each one has a separate mean flux parameter.
     The t0 parameter fed to the emulator should be constant factors."""
-    def __init__(self, *, params, kf, powers, param_limits, coreg=False):
+    def __init__(self, *, params, kf, powers, param_limits):
         #Build an emulator for each redshift separately. This means that the
         #mean flux for each bin can be separated.
         self.kf = kf
         self.nk = np.size(kf)
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = int(np.shape(powers)[1]/self.nk)
-        self.coreg = coreg
-        gp = lambda i: SkLearnGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits, coreg=coreg)
+        gp = lambda i: SkLearnGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits)
         self.gps = [gp(i) for i in range(self.nz)]
 
     def predict(self,params, tau0_factors = None):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
-        std = np.zeros([1 + self.coreg*(np.shape(params)[1]-1),self.nk*self.nz])
+        std = np.zeros([1,self.nk*self.nz])
         means = np.zeros([1,self.nk*self.nz])
         for i, gp in enumerate(self.gps):
             #Adjust the slope of the mean flux for this bin
@@ -41,15 +40,13 @@ class SkLearnGP(object):
     """An emulator using the one in Scikit-learn.
        Parameters: params is a list of parameter vectors.
                    powers is a list of flux power spectra (same shape as params).
-                   param_limits is a list of parameter limits (shape 2,params).
-                   coreg is a flag to enable GPy's coregionalisation (not helpful)."""
-    def __init__(self, *, params, powers,param_limits, coreg=False):
+                   param_limits is a list of parameter limits (shape 2,params)."""
+    def __init__(self, *, params, powers,param_limits):
         self.params = params
         self.param_limits = param_limits
         self.intol = 3e-5
         #Should we test the built emulator?
         self._test_interp = False
-        self.coreg=coreg
         #Get the flux power and build an emulator
         self._get_interp(flux_vectors=powers)
 
@@ -77,9 +74,6 @@ class SkLearnGP(object):
         kernel = GPy.kern.Linear(nparams)
         kernel += GPy.kern.RBF(nparams)
         noutput = np.shape(normspectra)[1]
-        if self.coreg and noutput > 1:
-            coreg = GPy.kern.Coregionalize(input_dim=nparams,output_dim=noutput)
-            kernel = kernel.prod(coreg,name='coreg.kern')
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
         self.gp.optimize(messages=False)
         #Check we reproduce the input

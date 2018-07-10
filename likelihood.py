@@ -146,6 +146,7 @@ class LikelihoodClass(object):
         npt.assert_allclose(sdssz, self.zout, atol=1.e-16)
         #print('SDSS redshifts are', sdssz)
 
+        self.exact_flux_power_std = [None] * nz
         for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
             std_bin = std[0,nkf*bb:nkf*(bb+1)]
@@ -153,7 +154,9 @@ class LikelihoodClass(object):
 
             if self.rescale_data_error:
                 rescaling_factor = self.data_fluxpower[nkf*bb:nkf*(bb+1)] / self.BOSS_flux_power[bb] #Rescale 1 sigma
+                #if self.fix_error_ratio
                 covar_bin *= np.outer(rescaling_factor, rescaling_factor) #(km / s)**2
+            self.exact_flux_power_std[bb] = np.diag(covar_bin)
 
             assert np.shape(np.diag(std_bin**2)) == np.shape(covar_bin)
             if include_emu:

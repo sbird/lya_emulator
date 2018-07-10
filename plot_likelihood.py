@@ -112,9 +112,9 @@ def get_k_z(likelihood_instance):
     n_z = z.size
     return k_los, z, n_k_los, n_z
 
-def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c'):
+def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c', rescale_data_error=False):
     """Make a plot of the power spectra, with redshift, the BOSS power and the sigmas. Four plots stacked."""
-    like, like_true = run_and_plot_likelihood_samples(testdir, emudir, None, '', mean_flux_label=mean_flux_label, return_class_only=True)
+    like, like_true = run_and_plot_likelihood_samples(testdir, emudir, None, '', mean_flux_label=mean_flux_label, return_class_only=True, rescale_data_error=rescale_data_error)
     k_los, z, n_k_los, n_z = get_k_z(like)
     exact_flux_power = like.data_fluxpower.reshape(n_z, n_k_los)
     emulated_flux_power = like.emulated_flux_power[0].reshape(n_z, n_k_los)
@@ -134,7 +134,8 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c')
     distinct_colours = dc.get_distinct(n_z)
     scaling_factor = k_los / mh.pi
     for i in range(n_z):
-        data_flux_power_std_single_z = np.sqrt(like.sdss.get_covar(z[i]).diagonal())
+        #data_flux_power_std_single_z = np.sqrt(like.sdss.get_covar(z[i]).diagonal())
+        data_flux_power_std_single_z = like.exact_flux_power_std[i]
         print('Diagonal elements of BOSS covariance matrix at single redshift:', data_flux_power_std_single_z)
 
         line_width = 0.5

@@ -63,12 +63,6 @@ class SkLearnGP(object):
         #Normalise by the median value
         normspectra = flux_vectors/self.scalefactors -1.
 
-        #Extracting flux power vectors to disk
-        #date_and_time = str(datetime.now())
-        #savefile = "/Users/kwame/Simulations/emulator/training_flux_power_" + date_and_time + ".npz"
-        #print("Extracting flux power vectors to disk at", date_and_time)
-        #np.savez(savefile, flux_vectors, self.scalefactors, self.paramzero, medind)
-
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)

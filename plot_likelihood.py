@@ -112,9 +112,9 @@ def get_k_z(likelihood_instance):
     n_z = z.size
     return k_los, z, n_k_los, n_z
 
-def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c', rescale_data_error=False):
+def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c', rescale_data_error=False, fix_error_ratio=False, error_ratio=100.):
     """Make a plot of the power spectra, with redshift, the BOSS power and the sigmas. Four plots stacked."""
-    like, like_true = run_and_plot_likelihood_samples(testdir, emudir, None, '', mean_flux_label=mean_flux_label, return_class_only=True, rescale_data_error=rescale_data_error)
+    like, like_true = run_and_plot_likelihood_samples(testdir, emudir, None, '', mean_flux_label=mean_flux_label, return_class_only=True, rescale_data_error=rescale_data_error, fix_error_ratio=fix_error_ratio, error_ratio=error_ratio)
     k_los, z, n_k_los, n_z = get_k_z(like)
     exact_flux_power = like.data_fluxpower.reshape(n_z, n_k_los)
     emulated_flux_power = like.emulated_flux_power[0].reshape(n_z, n_k_los)
@@ -211,7 +211,7 @@ def make_plot(chainfile, savefile, true_parameter_values=None):
     corner.corner(samples, labels=pnames, truths=true_parameter_values)
     plt.savefig(savefile)
 
-def generate_likelihood_class(testdir, emudir, simulation_sub_directory=None, mean_flux_label='c', max_z = 4.2, rescale_data_error=False):
+def generate_likelihood_class(testdir, emudir, simulation_sub_directory=None, mean_flux_label='c', max_z = 4.2, rescale_data_error=False, fix_error_ratio=False, error_ratio=100.):
     if simulation_sub_directory is None:
         #simulation_sub_directory = "/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"
         #simulation_sub_directory = '/AA1.1BB1.1CC1.4DD1.4heat_slope0.43heat_amp1hub0.71/output'
@@ -219,9 +219,9 @@ def generate_likelihood_class(testdir, emudir, simulation_sub_directory=None, me
         #simulation_sub_directory = '/ns0.96As2.6e-09heat_slope-0.19heat_amp1hub0.74/output'
         simulation_sub_directory = '/HeliumHeatAmp1.1/output'
     print('Beginning to initialise LikelihoodClass at', str(datetime.now()))
-    return LikelihoodClass(basedir=emudir, datadir=testdir+simulation_sub_directory, mean_flux=mean_flux_label, max_z=max_z, rescale_data_error=rescale_data_error)
+    return LikelihoodClass(basedir=emudir, datadir=testdir+simulation_sub_directory, mean_flux=mean_flux_label, max_z=max_z, rescale_data_error=rescale_data_error, fix_error_ratio=fix_error_ratio, error_ratio=error_ratio)
 
-def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=True, chain_savedir=None, n_walkers=100, n_burn_in_steps=100, n_steps=400, while_loop=True, mean_flux_label='s', return_class_only=False, rescale_data_error=False, include_emulator_error=True, max_z=4.2):
+def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=True, chain_savedir=None, n_walkers=100, n_burn_in_steps=100, n_steps=400, while_loop=True, mean_flux_label='s', return_class_only=False, rescale_data_error=False, fix_error_ratio=False, error_ratio=100., include_emulator_error=True, max_z=4.2):
     """Generate some likelihood samples"""
     # TODO: Add true values #Read from filenames
     #true_parameter_values = [None, None, 0.97, 1.3, 0.67, 1.3, 0.083, 0.92, 0.69]
@@ -243,7 +243,7 @@ def run_and_plot_likelihood_samples(testdir, emudir, savefile, plotname, plot=Tr
         chain_savedir = testdir
     chainfile = chain_savedir + '/AA0.97BB1.3_chain_' + plotname + '.txt'
 
-    like = generate_likelihood_class(testdir, emudir, mean_flux_label=mean_flux_label, max_z=max_z, rescale_data_error=rescale_data_error)
+    like = generate_likelihood_class(testdir, emudir, mean_flux_label=mean_flux_label, max_z=max_z, rescale_data_error=rescale_data_error, fix_error_ratio=fix_error_ratio, error_ratio=error_ratio)
 
     if return_class_only is False:
         print('Beginning to sample likelihood at', str(datetime.now()))

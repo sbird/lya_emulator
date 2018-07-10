@@ -47,9 +47,11 @@ def gelman_rubin(chain):
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, datadir, mean_flux='s', max_z = 4.2, rescale_data_error=False):
+    def __init__(self, basedir, datadir, mean_flux='s', max_z = 4.2, rescale_data_error=False, fix_error_ratio=False, error_ratio=100.):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         self.rescale_data_error = rescale_data_error
+        self.fix_error_ratio = fix_error_ratio
+        self.error_ratio = error_ratio
         t0_training_value = 0.95
 
         #Use the BOSS covariance matrix
@@ -154,8 +156,10 @@ class LikelihoodClass(object):
 
             if self.rescale_data_error:
                 rescaling_factor = self.data_fluxpower[nkf*bb:nkf*(bb+1)] / self.BOSS_flux_power[bb] #Rescale 1 sigma
-                #if self.fix_error_ratio:
                 covar_bin *= np.outer(rescaling_factor, rescaling_factor) #(km / s)**2
+            if self.fix_error_ratio:
+                fix_rescaling_factor = self.error_ratio * np.mean(std_bin) / np.mean(np.sqrt(np.diag(covar_bin)))
+                covar_bin *= np.outer(fix_rescaling_factor, fix_rescaling_factor)
             self.exact_flux_power_std[bb] = np.sqrt(np.diag(covar_bin))
 
             assert np.shape(np.diag(std_bin**2)) == np.shape(covar_bin)

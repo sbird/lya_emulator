@@ -12,8 +12,8 @@ if __name__ == "__main__":
     plotname = sys.argv[3]
     chain_savedir = sys.argv[4]
 
-    testdir = sim_rootdir + '/hires_s8_test' #'/hot_cold_test' #/share/hypatia/sbird
-    emudir = sim_rootdir + '/hires_s8' #'/hot_cold'
+    testdir = sim_rootdir + '/hot_cold_test' #'/hires_s8_test' #/share/hypatia/sbird
+    emudir = sim_rootdir + '/hot_cold' #'/hires_s8'
 
     simulation_sub_directory1 = '/HeliumHeatAmp0.9/output'
     simulation_sub_directory2 = '/HeliumHeatAmp1.1/output'

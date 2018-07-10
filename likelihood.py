@@ -154,9 +154,9 @@ class LikelihoodClass(object):
 
             if self.rescale_data_error:
                 rescaling_factor = self.data_fluxpower[nkf*bb:nkf*(bb+1)] / self.BOSS_flux_power[bb] #Rescale 1 sigma
-                #if self.fix_error_ratio
+                #if self.fix_error_ratio:
                 covar_bin *= np.outer(rescaling_factor, rescaling_factor) #(km / s)**2
-            self.exact_flux_power_std[bb] = np.diag(covar_bin)
+            self.exact_flux_power_std[bb] = np.sqrt(np.diag(covar_bin))
 
             assert np.shape(np.diag(std_bin**2)) == np.shape(covar_bin)
             if include_emu:

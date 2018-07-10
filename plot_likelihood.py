@@ -134,8 +134,8 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c',
     distinct_colours = dc.get_distinct(n_z)
     scaling_factor = k_los / mh.pi
     for i in range(n_z):
-        #data_flux_power_std_single_z = np.sqrt(like.sdss.get_covar(z[i]).diagonal())
-        data_flux_power_std_single_z = like.exact_flux_power_std[i]
+        data_flux_power_std_single_z = np.sqrt(like.sdss.get_covar(z[i]).diagonal())
+        exact_flux_power_std_single_z = like.exact_flux_power_std[i]
         print('Diagonal elements of BOSS covariance matrix at single redshift:', data_flux_power_std_single_z)
 
         line_width = 0.5
@@ -146,7 +146,7 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c',
         axes[1].plot(k_los, data_flux_power[i]*scaling_factor, color=distinct_colours[i], lw=line_width)
         axes[1].errorbar(k_los, data_flux_power[i]*scaling_factor, yerr=data_flux_power_std_single_z*scaling_factor, ecolor=distinct_colours[i], ls='')
 
-        axes[2].plot(k_los, data_flux_power_std_single_z / exact_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
+        axes[2].plot(k_los, exact_flux_power_std_single_z / exact_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
         axes[2].plot(k_los, emulated_flux_power_std[i] / exact_flux_power[i], color=distinct_colours[i], ls='--',
                      lw=line_width)
 
@@ -174,7 +174,7 @@ def make_plot_flux_power_spectra(testdir, emudir, savefile, mean_flux_label='c',
     axes[1].set_xlabel(xlabel)
     axes[1].set_ylabel(ylabel)
 
-    axes[2].plot([], color='gray', ls='-', label=r'BOSS sigma')
+    axes[2].plot([], color='gray', ls='-', label=r'measurement sigma')
     axes[2].plot([], color='gray', ls='--', label=r'emulated sigma')
     axes[2].legend(frameon=False, fontsize=fontsize)
     axes[2].set_xlim(xlim)

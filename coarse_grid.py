@@ -157,14 +157,14 @@ class Emulator(object):
         """Do the actual IC generation."""
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
         pn = self.param_names
-        #Use Planck 2015 cosmology
-        ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' : ev[pn['heat_amp']]}
+        rescale_slope = ev[pn['heat_slope']]
+        rescale_amp = ev[pn['heat_amp']]
         hub = ev[pn['hub']]
         #Convert pivot of the scalar amplitude from amplitude
         #at 8 Mpc (k = 0.78) to pivot scale of 0.05
         ns = ev[pn['ns']]
         wmap = (0.05/(2*math.pi/8.))**(ns-1.) * ev[pn['As']]
-        ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, code_args = ca, hubble=hub, omega0=self.omegamh2/hub**2, omegab=0.0483)
+        ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, rescale_gamma=True, rescale_slope = rescale_slope, rescale_amp = rescale_amp, hubble=hub, omega0=self.omegamh2/hub**2, omegab=0.0483)
         try:
             ss.make_simulation()
         except RuntimeError as e:
@@ -248,10 +248,10 @@ class KnotEmulator(Emulator):
         """Do the actual IC generation."""
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
         pn = self.param_names
-        #Use Planck 2015 cosmology
-        ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}
+        rescale_slope = ev[pn['heat_slope']]
+        rescale_amp = ev[pn['heat_amp']]
         hub = ev[pn['hub']]
-        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, code_class=lyasimulation.LymanAlphaMPSim, code_args = ca, omega0=self.omegamh2/hub**2, omegab=0.0483)
+        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, rescale_gamma=True, rescale_slope = rescale_slope, rescale_amp = rescale_amp, omega0=self.omegamh2/hub**2, omegab=0.0483)
         try:
             ss.make_simulation()
         except RuntimeError as e:

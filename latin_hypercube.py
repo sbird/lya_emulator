@@ -39,7 +39,6 @@ def get_hypercube_samples(param_limits, nsamples, prior_points = None):
         else:
             prior_points = np.array([map_to_unit_cube(pp, param_limits) for pp in prior_points])
     (sample_points, _) = maximinlhs(ndim, nsamples, prior_points=prior_points)
-    print('Uniformity metric for chosen Latin hypercube sampling =', default_metric_func(sample_points))
     remapped = np.array([map_from_unit_cube(pp, param_limits) for pp in sample_points])
     assert np.shape(remapped) == (nsamples, ndim)
     return remapped

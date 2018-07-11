@@ -13,9 +13,9 @@ import matplotlib.pyplot as plt
 from plot_latin_hypercube import plot_points_hypercube
 import coarse_grid_plot
 
-#plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
+plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
 #plotdir = '/home/keir/Plots/Emulator'
-plotdir = '/Users/kwame/Papers/emulator_paper_1/plots'
+#plotdir = '/Users/kwame/Papers/emulator_paper_1/plots'
 
 def hypercube_plot():
     """Make a plot of some hypercubes"""
@@ -99,7 +99,7 @@ def test_knot_plots(mf=1, testdir = None, emudir = None, plotdir = None, plotnam
     if emudir is None:
         emudir = path.expanduser("~/data/Lya_Boss/hires_knots")
     if plotdir is None:
-        plotdir = path.expanduser('~/Papers/emulator_paper_1/plots/hires_knots_mf')
+        plotdir = path.expanduser('~/papers/emulator_paper_1/plots/hires_knots_mf')
     gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=plotdir+str(mf),plotname=plotname,mean_flux=mf,max_z=max_z,kf_bin_nums=kf_bin_nums,data_err=data_err)
     return gp_emu
 

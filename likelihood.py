@@ -2,7 +2,6 @@
 import os
 import os.path
 import math
-from datetime import datetime
 import numpy as np
 import numpy.testing as npt
 import emcee
@@ -10,7 +9,7 @@ import coarse_grid
 import flux_power
 import lyman_data
 import mean_flux as mflux
-from datetime import datetime
+#from datetime import datetime
 
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""
@@ -47,12 +46,11 @@ def gelman_rubin(chain):
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, datadir, mean_flux='s', max_z = 4.2, rescale_data_error=False, fix_error_ratio=False, error_ratio=100.):
+    def __init__(self, basedir, datadir, mean_flux='s', max_z = 4.2, t0_training_value = 0.95, rescale_data_error=False, fix_error_ratio=False, error_ratio=100.):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         self.rescale_data_error = rescale_data_error
         self.fix_error_ratio = fix_error_ratio
         self.error_ratio = error_ratio
-        t0_training_value = 0.95
 
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
@@ -60,17 +58,13 @@ class LikelihoodClass(object):
         self.max_z = max_z
         myspec = flux_power.MySpectra(max_z=self.max_z)
         self.zout = myspec.zout
-        print(datadir)
+        #print(datadir)
         pps = myspec.get_snapshot_list(datadir)
         self.kf = self.sdss.get_kf()
 
         #Load BOSS data vector
         self.BOSS_flux_power = self.sdss.pf.reshape(-1, self.kf.shape[0])[:self.zout.shape[0]][::-1] #km / s; n_z * n_k
 
-        # For mock data vector: multiply tau_0_i[z] by t0 = 1 (+ small offset in amplitude)
-        # Probably mistake in understanding how amp works
-        # self.data_fluxpower = pps.get_power(kf=self.kf,tau0_factors=mflux.obs_mean_tau(self.zout, amp = -0.5e-4))
-        #Fix bug
         self.data_fluxpower = pps.get_power(kf=self.kf, mean_fluxes=np.exp(-mflux.obs_mean_tau(self.zout, amp=0) * t0_training_value))
         assert np.size(self.data_fluxpower) % np.size(self.kf) == 0
         self.mf_slope = False
@@ -102,9 +96,9 @@ class LikelihoodClass(object):
             self.param_limits[1,:] = t0_factor
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
-        print('Beginning to generate emulator at', str(datetime.now()))
+        #print('Beginning to generate emulator at', str(datetime.now()))
         self.gpemu = self.emulator.get_emulator(max_z=max_z)
-        print('Finished generating emulator at', str(datetime.now()))
+        #print('Finished generating emulator at', str(datetime.now()))
 
     def likelihood(self, params, include_emu=True):
         """A simple likelihood function for the Lyman-alpha forest.
@@ -125,7 +119,6 @@ class LikelihoodClass(object):
 
         # .predict should take [{list of parameters: t0; cosmo.; thermal},]
         # Here: emulating @ cosmo.; thermal; sampled t0 * [tau0_fac from above]
-        print('Parameter array =', nparams)
         predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
 
         #Save emulated flux power specra for analysis
@@ -154,6 +147,7 @@ class LikelihoodClass(object):
             std_bin = std[0,nkf*bb:nkf*(bb+1)]
             covar_bin = self.sdss.get_covar(sdssz[bb])
 
+            #Rescale mock measurement covariance matrix to match BOSS percentage accuracy
             if self.rescale_data_error:
                 rescaling_factor = self.data_fluxpower[nkf*bb:nkf*(bb+1)] / self.BOSS_flux_power[bb] #Rescale 1 sigma
                 covar_bin *= np.outer(rescaling_factor, rescaling_factor) #(km / s)**2
@@ -172,9 +166,7 @@ class LikelihoodClass(object):
             (_, cdet) = np.linalg.slogdet(covar_bin)
             dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
             chi2 += dcd -0.5* cdet
-            print(dcd, cdet)
-            print('chi-squared =', chi2)
-            #assert 0 > chi2 > -2**31
+            assert 0 > chi2 > -2**31
             assert not np.isnan(chi2)
         return chi2
 
@@ -195,7 +187,7 @@ class LikelihoodClass(object):
         emcee_sampler = emcee.EnsembleSampler(nwalkers, self.ndim, self.likelihood, args=(include_emulator_error,))
         pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
          #Check things are reasonable
-        print(np.all(emcee_sampler.acceptance_fraction > 0.01)) #assert
+        assert(np.all(emcee_sampler.acceptance_fraction > 0.01))
         emcee_sampler.reset()
         self.cur_results = emcee_sampler
         gr = 10.
@@ -259,8 +251,7 @@ class LikelihoodClass(object):
         self.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
 
 if __name__ == "__main__":
-#     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots_refine"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))
-    like = LikelihoodClass(basedir=os.path.expanduser("~/Simulations/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/Simulations/Lya_Boss/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))
+    like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots_refine"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))
     #Works very well!
     #     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots/AA0.96BB1.3CC1DD1.3heat_slope-5.6e-17heat_amp1.2hub0.66/output"))
-    output = like.do_sampling(os.path.expanduser("~/Simulations/Lya_Boss/hires_knots_test/AA0.97BB1.3_chain.txt"))
+    #output = like.do_sampling(os.path.expanduser("~/Simulations/Lya_Boss/hires_knots_test/AA0.97BB1.3_chain.txt"))

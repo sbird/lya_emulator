@@ -7,7 +7,6 @@ from latin_hypercube import map_to_unit_cube
 import matplotlib
 matplotlib.use('PDF')
 import GPy
-from datetime import datetime
 
 class MultiBinGP(object):
     """A wrapper around the emulator that constructs a separate emulator for each bin.
@@ -69,7 +68,7 @@ class SkLearnGP(object):
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         nparams = np.shape(self.params)[1]
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
-        print('Normalised parameter values =', params_cube)
+        #print('Normalised parameter values =', params_cube)
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
@@ -98,25 +97,21 @@ class SkLearnGP(object):
         if self.coreg and noutput > 1:
             coreg = GPy.kern.Coregionalize(input_dim=nparams,output_dim=noutput)
             kernel = kernel.prod(coreg,name='coreg.kern')
-        print(kernel)
 
         #Set priors on hyperparameters
         #kernel.rbf.lengthscale.constrain_bounded(1.e-2, np.inf)
         #kernel.Gaussian_noise.variance.constrain_bounded(0., 1.e-9)
 
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
-        #self.gp.Gaussian_noise.variance.constrain_bounded(0., 1.e-9)
-        print(self.gp)
-        print('Gradients of model hyperparameters [before optimisation] =', self.gp.gradient)
 
         #Let's see if there's any output
         self.gp.optimize(messages=True) #False
         print(self.gp)
-        print('Gradients of model hyperparameters [after optimisation] =', self.gp.gradient)
+        #print('Gradients of model hyperparameters [after optimisation] =', self.gp.gradient)
         #Let's check that hyperparameter optimisation is converged
         #self.gp.optimize_restarts(num_restarts=10)
-        print(self.gp)
-        print('Gradients of model hyperparameters [after second optimisation (x 10)] =', self.gp.gradient)
+        #print(self.gp)
+        #print('Gradients of model hyperparameters [after second optimisation (x 10)] =', self.gp.gradient)
 
         #Check we reproduce the input
         if self._test_interp:

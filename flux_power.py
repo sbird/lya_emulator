@@ -121,7 +121,7 @@ class MySpectra(object):
     def get_snapshot_list(self, base, snappref="SPECTRA_"):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
-        print('Looking for spectra in', base)
+        #print('Looking for spectra in', base)
         powerspectra = FluxPower()
         for snap in range(30):
             snapdir = os.path.join(base,snappref+str(snap).rjust(3,'0'))

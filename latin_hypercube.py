@@ -7,26 +7,6 @@ We use rejection-sampled latin hypercubes.
 """
 
 import numpy as np
-import scipy.spatial.distance as spsd
-import sobol_seq as sb
-
-def get_unit_hypercube_samples_Sobol_sequence(parameter_prior_limits, n_parameter_samples, maximise_uniformity=False):
-    """This function generates unit hypercube samples using a Sobol sequence."""
-    if not maximise_uniformity:
-        return sb.i4_sobol_generate(parameter_prior_limits.shape[0], n_parameter_samples)  # 9 x 2
-    else:
-        return maximinlhs(parameter_prior_limits.shape[0], n_parameter_samples, sampling_function=sb.i4_sobol_generate)
-
-'''def get_uniformity_metric(unit_hypercube_samples):
-    distance_matrix = spsd.cdist(unit_hypercube_samples, unit_hypercube_samples)'''
-
-def get_hypercube_samples_Sobol_sequence(parameter_prior_limits, n_parameter_samples, maximise_uniformity=False):
-    """This function generates hypercube samples using a Sobol sequence (the samples are rescaled to the prior
-    (hyper)volume)."""
-    unit_cube_parameter_samples = get_unit_hypercube_samples_Sobol_sequence(parameter_prior_limits, n_parameter_samples, maximise_uniformity=maximise_uniformity)
-    print('Uniformity metric for chosen Sobol sequence sampling =', default_metric_func(unit_cube_parameter_samples))
-    parameter_samples = np.array([map_from_unit_cube(i, parameter_prior_limits) for i in unit_cube_parameter_samples])
-    return parameter_samples
 
 def get_hypercube_samples(param_limits, nsamples, prior_points = None):
     """This function is the main wrapper. Given limits on a set of

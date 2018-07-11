@@ -60,9 +60,9 @@ class Emulator(object):
         #Transform the dictionary into a list of string parts,
         #sorted in the same way as the parameter array.
         for nn,val in self.mf.dense_param_names.items():
-            parts[val] = nn+'%.2g' % params[val]
+            parts[val] = nn+'%.3g' % params[val]
         for nn,val in self.param_names.items():
-            parts[ndense+val] = nn+'%.2g' % params[ndense+val]
+            parts[ndense+val] = nn+'%.3g' % params[ndense+val]
         name = ''.join(str(elem) for elem in parts)
         return name
 

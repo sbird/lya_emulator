@@ -33,7 +33,7 @@ class Emulator(object):
         else:
             self.param_names = param_names
         if param_limits is None:
-            self.param_limits = np.array([[0.6, 1.5], [1.2e-9, 3.0e-9], [-0.5, 0.5],[0.3,1.8],[0.65,0.75]])
+            self.param_limits = np.array([[0.8, 1.1], [1.2e-9, 3.0e-9], [-0.5, 0.5],[0.3,1.8],[0.65,0.75]])
         else:
             self.param_limits = param_limits
         if kf is None:
@@ -158,7 +158,7 @@ class Emulator(object):
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
         pn = self.param_names
         #Use Planck 2015 cosmology
-        ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}
+        ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' : ev[pn['heat_amp']]}
         hub = ev[pn['hub']]
         #Convert pivot of the scalar amplitude from amplitude
         #at 8 Mpc (k = 0.78) to pivot scale of 0.05

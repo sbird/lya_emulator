@@ -7,7 +7,6 @@ import string
 import math
 import json
 import numpy as np
-from SimulationRunner import simulationics
 from SimulationRunner import lyasimulation
 import latin_hypercube
 import flux_power
@@ -53,16 +52,17 @@ class Emulator(object):
         if not os.path.exists(basedir):
             os.mkdir(basedir)
 
-    def build_dirname(self,params, include_dense=False):
+    def build_dirname(self,params, include_dense=False, strsz=3):
         """Make a directory name for a given set of parameter values"""
         ndense = include_dense * len(self.mf.dense_param_names)
         parts = ['',]*(len(self.param_names) + ndense)
         #Transform the dictionary into a list of string parts,
         #sorted in the same way as the parameter array.
+        fstr = "%."+str(strsz)+"g"
         for nn,val in self.mf.dense_param_names.items():
-            parts[val] = nn+'%.3g' % params[val]
+            parts[val] = nn+fstr % params[val]
         for nn,val in self.param_names.items():
-            parts[ndense+val] = nn+'%.3g' % params[ndense+val]
+            parts[ndense+val] = nn+fstr % params[ndense+val]
         name = ''.join(str(elem) for elem in parts)
         return name
 
@@ -120,9 +120,9 @@ class Emulator(object):
         self.mf = mf
         self.basedir = real_basedir
 
-    def get_outdir(self, pp):
+    def get_outdir(self, pp, strsz=3):
         """Get the simulation output directory path for a parameter set."""
-        return os.path.join(os.path.join(self.basedir, self.build_dirname(pp)),"output")
+        return os.path.join(os.path.join(self.basedir, self.build_dirname(pp, strsz=strsz)),"output")
 
     def get_parameters(self):
         """Get the list of parameter vectors in this emulator."""
@@ -188,7 +188,9 @@ class Emulator(object):
 
     def _get_fv(self, pp,myspec):
         """Helper function to get a single flux vector."""
-        di = self.get_outdir(pp)
+        di = self.get_outdir(pp, strsz=3)
+        if not os.path.exists(di):
+            di = self.get_outdir(pp, strsz=2)
         powerspectra = myspec.get_snapshot_list(base=di)
         return powerspectra
 
@@ -210,7 +212,7 @@ class Emulator(object):
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z)
         powers = [self._get_fv(pp, myspec) for pp in pvals]
-        mean_fluxes = np.exp(-self.mf.get_t0(myspec.zout))
+        mean_fluxes = np.exp(-1*self.mf.get_t0(myspec.zout))
         #Note this gets tau_0 as a linear scale factor from the observed power law
         dpvals = self.mf.get_params()
         flux_vectors = np.array([ps.get_power(kf = self.kf, mean_fluxes = mef) for mef in mean_fluxes for ps in powers])

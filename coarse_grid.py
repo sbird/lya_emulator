@@ -167,7 +167,7 @@ class Emulator(object):
         #at 8 Mpc (k = 0.78) to pivot scale of 0.05
         ns = ev[pn['ns']]
         wmap = (0.05/(2*math.pi/8.))**(ns-1.) * ev[pn['As']]
-        ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, rescale_gamma=True, rescale_slope = rescale_slope, rescale_amp = rescale_amp, hubble=hub, omega0=self.omegamh2/hub**2, omegab=0.0483)
+        ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, rescale_gamma=True, rescale_slope = rescale_slope, redend=2.2, rescale_amp = rescale_amp, hubble=hub, omega0=self.omegamh2/hub**2, omegab=0.0483)
         try:
             ss.make_simulation()
         except RuntimeError as e:

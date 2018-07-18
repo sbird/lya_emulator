@@ -78,14 +78,15 @@ def get_k_z(likelihood_instance):
     n_z = z.size
     return k_los, z, n_k_los, n_z
 
-def make_plot_flux_power_spectra(like, savefile):
+def make_plot_flux_power_spectra(like, datadir, savefile):
     """Make a plot of the power spectra, with redshift, the BOSS power and the sigmas. Four plots stacked."""
     k_los = like.gpemu.kf
     n_k_los = k_los.size
     z = like.zout #Highest redshift first
     n_z = z.size
 
-    exact_flux_power = like.data_fluxpower.reshape(n_z, n_k_los)
+    data_fluxpower = likeh.load_data(datadir, kf=k_los)
+    exact_flux_power = data_fluxpower.reshape(n_z, n_k_los)
     emulated_flux_power = like.emulated_flux_power[0].reshape(n_z, n_k_los)
     emulated_flux_power_std = like.emulated_flux_power_std[0].reshape(n_z, n_k_los)
     data_flux_power = like.sdss.pf.reshape(-1, n_k_los)[:n_z][::-1]
@@ -95,6 +96,7 @@ def make_plot_flux_power_spectra(like, savefile):
     scaling_factor = k_los / mh.pi
     for i in range(n_z):
         data_flux_power_std_single_z = np.sqrt(like.sdss.get_covar(z[i]).diagonal())
+        exact_flux_power_std_single_z = np.sqrt(np.diag(like.get_rescaled_BOSS_error(i, data_power = data_fluxpower)))
 #         print('Diagonal elements of BOSS covariance matrix at single redshift:', data_flux_power_std_single_z)
 
         line_width = 0.5
@@ -105,11 +107,12 @@ def make_plot_flux_power_spectra(like, savefile):
         axes[1].plot(k_los, data_flux_power[i]*scaling_factor, color=distinct_colours[i], lw=line_width)
         axes[1].errorbar(k_los, data_flux_power[i]*scaling_factor, yerr=data_flux_power_std_single_z*scaling_factor, ecolor=distinct_colours[i], ls='')
 
-        axes[2].plot(k_los, data_flux_power_std_single_z / emulated_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
-        axes[2].plot(k_los, emulated_flux_power_std[i] / emulated_flux_power[i], color=distinct_colours[i], ls='--',
+        axes[2].plot(k_los, exact_flux_power_std_single_z / exact_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
+        axes[2].plot(k_los, emulated_flux_power_std[i] / exact_flux_power[i], color=distinct_colours[i], ls='--',
                      lw=line_width)
 
-        axes[3].plot(k_los, data_flux_power_std_single_z / data_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
+        #axes[3].plot(k_los, data_flux_power_std_single_z / data_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
+        axes[3].plot(k_los, emulated_flux_power[i] / exact_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
 
     fontsize = 7.
     xlim = [1.e-3, 0.022]
@@ -201,14 +204,15 @@ def run_likelihood_test(testdir, emudir, savedir=None, plot=True, mean_flux_labe
         sname = os.path.basename(os.path.abspath(sdir))
         chainfile = os.path.join(savedir, 'chain_' + sname + '.txt')
         print('Beginning to sample likelihood at', str(datetime.now()))
-        like.do_sampling(chainfile, datadir=os.path.join(sdir,"output"))
+        datadir = os.path.join(sdir, "output")
+        like.do_sampling(chainfile, datadir=datadir)
         if plot is True:
             true_parameter_values = get_simulation_parameters_s8(sdir)
             print('Beginning to make corner plot at', str(datetime.now()))
             savefile = os.path.join(savedir, 'corner_'+sname + ".pdf")
             make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
             fp_savefile = os.path.join(savedir, 'flux_power_'+sname + ".pdf")
-            make_plot_flux_power_spectra(like, fp_savefile)
+            make_plot_flux_power_spectra(like, datadir=datadir, savefile=fp_savefile)
     return like
 
 if __name__ == "__main__":

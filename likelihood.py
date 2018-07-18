@@ -58,8 +58,10 @@ def load_data(datadir, *, kf, max_z=4.2):
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z = 4.2, emulator_class="standard"):
+    def __init__(self, basedir, mean_flux='s', max_z = 4.2, emulator_class="standard", t0_training_value = 0.95, rescale_data_error=False):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
+        self.rescale_data_error = rescale_data_error
+
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
         #'Data' now is a simulation
@@ -67,12 +69,16 @@ class LikelihoodClass(object):
         myspec = flux_power.MySpectra(max_z=max_z)
         self.zout = myspec.zout
         self.kf = self.sdss.get_kf()
+
+        #Load BOSS data vector
+        self.BOSS_flux_power = self.sdss.pf.reshape(-1, self.kf.shape[0])[:self.zout.shape[0]][::-1] #km / s; n_z * n_k
+
         self.mf_slope = False
         #Param limits on t0
         t0_factor = np.array([0.75,1.25])
         #Get the emulator
         if mean_flux == 'c':
-            mf = mflux.ConstMeanFlux(value = 1)
+            mf = mflux.ConstMeanFlux(value = t0_training_value)
         #As each redshift bin is independent, for redshift-dependent mean flux models
         #we just need to convert the input parameters to a list of mean flux scalings
         #in each redshift bin.
@@ -119,13 +125,20 @@ class LikelihoodClass(object):
         if data_power is None:
             data_power = self.data_fluxpower
         if self.mf_slope:
+
+            # tau_0_i[z] @dtau_0 / tau_0_i[z] @[dtau_0 = 0]
+            # Divided by lowest redshift case
             tau0_fac = mflux.mean_flux_slope_to_factor(self.zout, params[0])
-            nparams = params[1:]
+
+            nparams = params[1:] #Keep only t0 sampling parameter (of mean flux parameters)
         else: #Otherwise bug if choose mean_flux = 'c'
             tau0_fac = None
         if np.any(params >= self.param_limits[:,1]) or np.any(params <= self.param_limits[:,0]):
             return -np.inf
         #Set parameter limits as the hull of the original emulator.
+
+        # .predict should take [{list of parameters: t0; cosmo.; thermal},]
+        # Here: emulating @ cosmo.; thermal; sampled t0 * [tau0_fac from above]
         predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
 
         #Save emulated flux power specra for analysis
@@ -137,21 +150,12 @@ class LikelihoodClass(object):
         nz = int(len(diff)/nkf)
         #Likelihood using full covariance matrix
         chi2 = 0
-        #Redshifts
-        sdssz = self.sdss.get_redshifts()
-
-        #Fix maximum redshift bug
-        sdssz = sdssz[sdssz <= self.max_z]
-
-        #Important assertion
-        assert nz == sdssz.size
-        npt.assert_allclose(sdssz, self.zout, atol=1.e-16)
-        #print('SDSS redshifts are', sdssz)
 
         for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
             std_bin = std[0,nkf*bb:nkf*(bb+1)]
-            covar_bin = self.sdss.get_covar(sdssz[bb])
+            covar_bin = self.get_rescaled_BOSS_error(bb, data_power = data_power)
+
             assert np.shape(np.diag(std_bin**2)) == np.shape(covar_bin)
             if include_emu:
                 #Assume each k bin is independent
@@ -170,6 +174,31 @@ class LikelihoodClass(object):
     def load(self, savefile):
         """Load the chain from a savefile"""
         self.flatchain = np.loadtxt(savefile)
+
+    def get_rescaled_BOSS_error(self, zbin, data_power = None):
+        """Get the BOSS covariance matrix error rescaled so the percentage errors are conserved for this data."""
+        #Redshifts
+        sdssz = self.sdss.get_redshifts()
+        nkf = len(self.kf)
+
+        #Fix maximum redshift bug
+        sdssz = sdssz[sdssz <= self.max_z]
+
+        #Important assertion
+        nz = len(data_power)//nkf
+        assert nz == sdssz.size
+        npt.assert_allclose(sdssz, self.zout, atol=1.e-16)
+        #print('SDSS redshifts are', sdssz)
+
+        covar_bin = self.sdss.get_covar(sdssz[zbin])
+        #Rescale mock measurement covariance matrix to match BOSS percentage accuracy
+        if self.rescale_data_error:
+            if data_power is None:
+                data_power = self.data_fluxpower
+            rescaling_factor = data_power[nkf*zbin:nkf*(zbin+1)] / self.BOSS_flux_power[zbin]
+            covar_bin *= np.outer(rescaling_factor, rescaling_factor) #(km / s)**2
+
+        return covar_bin
 
     def do_sampling(self, savefile, datadir, nwalkers=100, burnin=1000, nsamples=3000, while_loop=True, include_emulator_error=True):
         """Initialise and run emcee."""

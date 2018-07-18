@@ -5,8 +5,10 @@ import glob
 import math as mh
 from datetime import datetime
 import numpy as np
-import likelihood as likeh
+import corner
 import distinct_colours_py3 as dc
+import likelihood as likeh
+from mean_flux import mean_flux_slope_to_factor
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
@@ -18,6 +20,7 @@ def make_plot_flux_power_spectra(like, savefile):
     n_k_los = k_los.size
     z = like.zout #Highest redshift first
     n_z = z.size
+
     exact_flux_power = like.data_fluxpower.reshape(n_z, n_k_los)
     emulated_flux_power = like.emulated_flux_power[0].reshape(n_z, n_k_los)
     emulated_flux_power_std = like.emulated_flux_power_std[0].reshape(n_z, n_k_los)
@@ -65,26 +68,33 @@ def make_plot_flux_power_spectra(like, savefile):
     axes[1].set_xlabel(xlabel)
     axes[1].set_ylabel(ylabel)
 
-    axes[2].plot([], color='gray', ls='-', label=r'BOSS sigma')
+    axes[2].plot([], color='gray', ls='-', label=r'measurement sigma')
     axes[2].plot([], color='gray', ls='--', label=r'emulated sigma')
     axes[2].legend(frameon=False, fontsize=fontsize)
     axes[2].set_xlim(xlim)
     axes[2].set_yscale('log')
     axes[2].set_xlabel(xlabel)
-    axes[2].set_ylabel(r'sigma / emulated P(k)')
+    axes[2].set_ylabel(r'sigma / exact P(k)')
 
+    axes[3].axhline(y=1., color='black', ls=':', lw=line_width)
     axes[3].set_xlim(xlim)
-    axes[3].set_yscale('log')
+    #axes[3].set_yscale('log')
     axes[3].set_xlabel(xlabel)
-    axes[3].set_ylabel(r'BOSS sigma / BOSS P(k)')
+    axes[3].set_ylabel(r'emulated P(k) / exact P(k)') #BOSS sigma / BOSS P(k)')
 
     figure.subplots_adjust(hspace=0)
     plt.savefig(savefile)
     plt.show()
 
+    print('Maximum fractional overestimation of flux power spectrum =', np.max((emulated_flux_power / exact_flux_power) - 1.))
+    print('Maximum fractional underestimation of flux power spectrum =', np.min((emulated_flux_power / exact_flux_power) - 1.))
+
+    #make_plot_emulator_error(emudir, '/home/keir/Plots/Emulator/emulator_error_hot_cold.pdf', likelihood_instance=like)
+
+    return like
+
 def make_plot(chainfile, savefile, true_parameter_values=None):
     """Make a plot of parameter posterior values"""
-    import corner
     with open(chainfile+"_names.txt") as ff:
         names = ff.read().split('\n')
     pnames = [i.split(' ')[0] for i in names if len(i) > 0]

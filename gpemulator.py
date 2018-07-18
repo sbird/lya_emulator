@@ -20,17 +20,18 @@ class MultiBinGP(object):
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = int(np.shape(powers)[1]/self.nk)
         gp = lambda i: SkLearnGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits)
+        print('Number of redshifts for emulator generation =', self.nz)
         self.gps = [gp(i) for i in range(self.nz)]
 
     def predict(self,params, tau0_factors = None):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         std = np.zeros([1,self.nk*self.nz])
         means = np.zeros([1,self.nk*self.nz])
-        for i, gp in enumerate(self.gps):
+        for i, gp in enumerate(self.gps): #Looping over redshifts
             #Adjust the slope of the mean flux for this bin
             zparams = np.array(params)
             if tau0_factors is not None:
-                zparams[0][0] *= tau0_factors[i]
+                zparams[0][0] *= tau0_factors[i] #Multiplying t0[z] by "tau0_factors"[z]
             (m, s) = gp.predict(zparams)
             means[0,i*self.nk:(i+1)*self.nk] = m
             std[:,i*self.nk:(i+1)*self.nk] = s
@@ -58,6 +59,7 @@ class SkLearnGP(object):
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         nparams = np.shape(self.params)[1]
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
+        #print('Normalised parameter values =', params_cube)
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
@@ -70,9 +72,20 @@ class SkLearnGP(object):
         #they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)
         kernel += GPy.kern.RBF(nparams)
+
+        #Try rational quadratic kernel
+        #kernel += GPy.kern.RatQuad(nparams)
+
         noutput = np.shape(normspectra)[1]
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
-        self.gp.optimize(messages=False)
+
+        self.gp.optimize(messages=False) #True
+        print(self.gp)
+        #print('Gradients of model hyperparameters [after optimisation] =', self.gp.gradient)
+        #Let's check that hyperparameter optimisation is converged
+        #self.gp.optimize_restarts(num_restarts=10)
+        #print(self.gp)
+        #print('Gradients of model hyperparameters [after second optimisation (x 10)] =', self.gp.gradient)
 
     def _check_interp(self, flux_vectors):
         """Check we reproduce the input"""

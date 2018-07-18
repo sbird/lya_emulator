@@ -121,6 +121,7 @@ class MySpectra(object):
     def get_snapshot_list(self, base, snappref="SPECTRA_"):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
+        #print('Looking for spectra in', base)
         powerspectra = FluxPower()
         for snap in range(30):
             snapdir = os.path.join(base,snappref+str(snap).rjust(3,'0'))
@@ -137,6 +138,7 @@ class MySpectra(object):
                 if ss is not None:
                     powerspectra.add_snapshot(snap,ss)
             except IOError:
+                print("Didn't find any spectra because of IOError")
                 continue
         #Make sure we have enough outputs
         if powerspectra.len() != np.size(self.zout):

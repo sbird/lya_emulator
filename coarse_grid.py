@@ -25,7 +25,10 @@ def get_latex(key):
         return key
 
 class Emulator(object):
-    """Small wrapper class to store parameter names and limits, generate simulations and get an emulator."""
+    """Small wrapper class to store parameter names and limits, generate simulations and get an emulator.
+        Arguments:
+            kf_bin_nums - list of element numbers of wavenumber array [kf] to be emulated. Default is all elements.
+    """
     def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, kf_bin_nums=None):
         if param_names is None:
             self.param_names = {'ns':0, 'As':1, 'heat_slope':2, 'heat_amp':3, 'hub':4}

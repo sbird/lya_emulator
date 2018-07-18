@@ -14,6 +14,7 @@ import mean_flux as mflux
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 def plot_convexhull(emulatordir):
     """Plot the convex hull of the projection of the emulator parameters"""
@@ -140,9 +141,9 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     t0 = None
     if mean_flux:
         t0 = 0.95
-    mf = mflux.ConstMeanFlux(value=t0)
+    mf = mflux.ConstMeanFlux(value=t0) #In 'ConstMeanFlux' case: multiply tau_0_i[z] by t0 = 0.95
     if mean_flux == 2:
-        mf = mflux.MeanFluxFactor()
+        mf = mflux.MeanFluxFactor() #In 'MeanFluxFactor' case: DON'T multiply tau_0_i[z] by t0 - because *emulate* t0[z]
     params_test = coarse_grid.Emulator(testdir,mf=mf, kf_bin_nums=kf_bin_nums)
     params_test.load()
     if emuclass is None:
@@ -173,8 +174,8 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
         if mean_flux == 2:
-            pp = np.concatenate([[t0,], pp])
-        predicted,std = gp.predict(pp.reshape(1,-1))
+            pp = np.concatenate([[t0,], pp]) #In 'MeanFluxFactor' case: choose t0 point for fair comparison
+        predicted,std = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: t0; cosmo.; thermal},]
         ps = myspec.get_snapshot_list(dd)
         meanfluxes = np.exp(-t0*mflux.obs_mean_tau(myspec.zout))
         exact = ps.get_power(kf = kf, mean_fluxes = meanfluxes)
@@ -210,6 +211,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
                 upper_plot = (predicted[0] + measurement_errors_to_max_z) / exact
                 plt.ylim([0.9, 1.1])
             plt.fill_between(kf,lower_plot[i*nk:(i+1)*nk], upper_plot[i*nk:(i+1)*nk],alpha=0.3, color="grey")
+        #plt.yscale('log')
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
         name = params_test.build_dirname(pp, include_dense=True)
@@ -247,12 +249,16 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         #plt.xlim(-6,6)
         #plt.savefig(os.path.join(savedir, "errhist"+plotname+".pdf"))
         #plt.clf()
-        _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=250, xlabel=r"(Predicted - Exact) / $1 \sigma$ [BOSS error]")
+        _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=250) #, xlabel=r"(Predicted - Exact) / $1 \sigma$ [BOSS error]")
 
     return gp, all_power_array, myspec.zout
 
-def plot_test_matter_interpolate(emulatordir,testdir, redshift=3.):
+def plot_test_matter_interpolate(emulatordir,testdir, savedir=None, redshift=3.):
     """Make a plot showing the interpolation error for the matter power spectrum."""
+    if savedir is None:
+        savedir = testdir
+    savename = testdir+"/matter_power.pdf"
+
     params = coarse_grid.MatterPowerEmulator(emulatordir)
     params.load()
     gp = params.get_emulator()
@@ -270,7 +276,7 @@ def plot_test_matter_interpolate(emulatordir,testdir, redshift=3.):
     plt.title("Matter power")
     plt.legend(loc=0)
     plt.show()
-    plt.savefig(testdir+"matter_power.pdf")
-    print(testdir+"matter_power.pdf")
+    plt.savefig(savename)
+    print(savename)
     plt.clf()
     return gp

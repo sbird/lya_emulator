@@ -171,7 +171,7 @@ class LikelihoodClass(object):
         """Load the chain from a savefile"""
         self.flatchain = np.loadtxt(savefile)
 
-    def do_sampling(self, savefile, datadir, nwalkers=100, burnin=1000, nsamples=3000, while_loop=True):
+    def do_sampling(self, savefile, datadir, nwalkers=100, burnin=1000, nsamples=3000, while_loop=True, include_emulator_error=True):
         """Initialise and run emcee."""
         pnames = self.emulator.print_pnames()
         #Load the data directory
@@ -187,8 +187,8 @@ class LikelihoodClass(object):
         #Priors are assumed to be in the middle.
         cent = (self.param_limits[:,1]+self.param_limits[:,0])/2.
         p0 = [cent+2*pr/16.*np.random.rand(self.ndim)-pr/16. for _ in range(nwalkers)]
-        assert np.all([np.isfinite(self.likelihood(pp)) for pp in p0])
-        emcee_sampler = emcee.EnsembleSampler(nwalkers, self.ndim, self.likelihood)
+        assert np.all([np.isfinite(self.likelihood(pp, include_emu=include_emulator_error)) for pp in p0])
+        emcee_sampler = emcee.EnsembleSampler(nwalkers, self.ndim, self.likelihood, args=(include_emulator_error,))
         pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
         #Check things are reasonable
         assert np.all(emcee_sampler.acceptance_fraction > 0.01)

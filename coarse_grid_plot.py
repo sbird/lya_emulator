@@ -108,6 +108,7 @@ def _plot_error_histogram(savedir, plotname, err_norm, axis=None, xlim=6., nbins
     if axis is None:
         plt.hist(err_norm, bins=nbins, density=True)
         xx = np.arange(-6, 6, 0.01)
+        np.savetxt(os.path.join(savedir, "table_errhist" + plotname + ".txt"), err_norm)
         _plot_unit_Gaussians(xx)
         plt.xlabel(xlabel)
         plt.xlim(-1. * xlim, xlim)

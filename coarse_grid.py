@@ -7,7 +7,6 @@ import string
 import math
 import json
 import numpy as np
-from SimulationRunner import simulationics
 from SimulationRunner import lyasimulation
 import latin_hypercube
 import flux_power
@@ -36,7 +35,7 @@ class Emulator(object):
         else:
             self.param_names = param_names
         if param_limits is None:
-            self.param_limits = np.array([[0.6, 1.5], [1.2e-9, 3.0e-9], [-0.5, 0.5],[0.5,1.5],[0.65,0.75]])
+            self.param_limits = np.array([[0.8, 1.1], [1.4e-9, 2.6e-9], [-0.5, 0.5],[0.3,1.8],[0.62,0.75]])
         else:
             self.param_limits = param_limits
         if kf is None:
@@ -56,20 +55,17 @@ class Emulator(object):
         if not os.path.exists(basedir):
             os.mkdir(basedir)
 
-    def build_dirname(self,params, include_dense=False):
+    def build_dirname(self,params, include_dense=False, strsz=3):
         """Make a directory name for a given set of parameter values"""
         ndense = include_dense * len(self.mf.dense_param_names)
         parts = ['',]*(len(self.param_names) + ndense)
         #Transform the dictionary into a list of string parts,
         #sorted in the same way as the parameter array.
-        if self.param_names == {'HeliumHeatAmp': 0}:
-            string_formatting_type = '%.3g'
-        else:
-            string_formatting_type = '%.2g'
+        fstr = "%."+str(strsz)+"g"
         for nn,val in self.mf.dense_param_names.items():
-            parts[val] = nn+string_formatting_type % params[val]
+            parts[val] = nn+fstr % params[val]
         for nn,val in self.param_names.items():
-            parts[ndense+val] = nn+string_formatting_type % params[ndense+val]
+            parts[ndense+val] = nn+fstr % params[ndense+val]
         name = ''.join(str(elem) for elem in parts)
         return name
 
@@ -127,9 +123,9 @@ class Emulator(object):
         self.mf = mf
         self.basedir = real_basedir
 
-    def get_outdir(self, pp):
+    def get_outdir(self, pp, strsz=3):
         """Get the simulation output directory path for a parameter set."""
-        return os.path.join(os.path.join(self.basedir, self.build_dirname(pp)),"output")
+        return os.path.join(os.path.join(self.basedir, self.build_dirname(pp, strsz=strsz)),"output")
 
     def get_parameters(self):
         """Get the list of parameter vectors in this emulator."""
@@ -164,14 +160,14 @@ class Emulator(object):
         """Do the actual IC generation."""
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
         pn = self.param_names
-        #Use Planck 2015 cosmology
-        ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}
+        rescale_slope = ev[pn['heat_slope']]
+        rescale_amp = ev[pn['heat_amp']]
         hub = ev[pn['hub']]
         #Convert pivot of the scalar amplitude from amplitude
-        #at 8 Mpc (k = 0.78) to camb pivot scale
+        #at 8 Mpc (k = 0.78) to pivot scale of 0.05
         ns = ev[pn['ns']]
-        wmap = (2e-3/(2*math.pi/8.))**(ns-1.) * ev[pn['As']]
-        ss = simulationics.SimulationICs(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, code_args = ca, code_class=lyasimulation.LymanAlphaMPSim, hubble=hub, omega0=self.omegamh2/hub**2, omegab=0.0483)
+        wmap = (0.05/(2*math.pi/8.))**(ns-1.) * ev[pn['As']]
+        ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, rescale_gamma=True, rescale_slope = rescale_slope, redend=2.2, rescale_amp = rescale_amp, hubble=hub, omega0=self.omegamh2/hub**2, omegab=0.0483)
         try:
             ss.make_simulation()
         except RuntimeError as e:
@@ -195,7 +191,9 @@ class Emulator(object):
 
     def _get_fv(self, pp,myspec):
         """Helper function to get a single flux vector."""
-        di = self.get_outdir(pp)
+        di = self.get_outdir(pp, strsz=3)
+        if not os.path.exists(di):
+            di = self.get_outdir(pp, strsz=2)
         powerspectra = myspec.get_snapshot_list(base=di)
         return powerspectra
 
@@ -217,7 +215,7 @@ class Emulator(object):
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z)
         powers = [self._get_fv(pp, myspec) for pp in pvals]
-        mean_fluxes = np.exp(-self.mf.get_t0(myspec.zout))
+        mean_fluxes = np.exp(-1*self.mf.get_t0(myspec.zout))
         #Note this gets tau_0 as a linear scale factor from the observed power law
         dpvals = self.mf.get_params()
         flux_vectors = np.array([ps.get_power(kf = self.kf, mean_fluxes = mef) for mef in mean_fluxes for ps in powers])
@@ -255,10 +253,10 @@ class KnotEmulator(Emulator):
         """Do the actual IC generation."""
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
         pn = self.param_names
-        #Use Planck 2015 cosmology
-        ca={'rescale_gamma': True, 'rescale_slope': ev[pn['heat_slope']], 'rescale_amp' :ev[pn['heat_amp']]}
+        rescale_slope = ev[pn['heat_slope']]
+        rescale_amp = ev[pn['heat_amp']]
         hub = ev[pn['hub']]
-        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, code_class=lyasimulation.LymanAlphaMPSim, code_args = ca, omega0=self.omegamh2/hub**2, omegab=0.0483)
+        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, rescale_gamma=True, redend=2.2, rescale_slope = rescale_slope, rescale_amp = rescale_amp, omega0=self.omegamh2/hub**2, omegab=0.0483)
         try:
             ss.make_simulation()
         except RuntimeError as e:

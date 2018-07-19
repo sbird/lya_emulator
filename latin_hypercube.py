@@ -44,31 +44,6 @@ def default_metric_func(lhs):
     assert np.shape(minn) == (nsamples - 1,)
     return np.sqrt(np.sum(minn))
 
-def maximinlhs(n, samples, prior_points = None, metric_func = None, maxlhs = 10000):
-    """Generate multiple latin hypercubes and pick the one that maximises the metric function.
-    Arguments:
-    n: dimensionality of the cube to sample [0-1]^n
-    samples: total number of samples.
-    prior_points: List of previously evaluated points. If None, totally repopulate the space.
-    metric_func: Function with which to judge the 'goodness' of the generated latin hypercube.
-    Should be a scalar function of one hypercube sample set.
-    maxlhs: Maximum number of latin hypercube to generate in total.
-    Note convergence is pretty slow at the moment."""
-    #Use the default metric if none is specified.
-    if metric_func is None:
-        metric_func = default_metric_func
-    #Minimal metric is zero.
-    metric = -1
-    group = 1000
-    for _ in range(maxlhs//group):
-        new = [lhscentered(n, samples, prior_points = prior_points) for _ in range(group)]
-        new_metric = [metric_func(nn) for nn in new]
-        best = np.argmax(new_metric)
-        if new_metric[best] > metric:
-            metric = new_metric[best]
-            current = new[best]
-    return current,metric
-
 def remove_single_parameter(center, prior_points):
     """Remove all values within cells covered by prior samples for a particular parameter.
     Arguments:
@@ -116,6 +91,31 @@ def lhscentered(n, samples, prior_points = None):
             H[:, j] = np.random.permutation(_center)
     assert np.shape(H) == (samples, n)
     return H
+
+def maximinlhs(n, samples, prior_points = None, metric_func = None, maxlhs = 10000, sampling_function = lhscentered):
+    """Generate multiple latin hypercubes and pick the one that maximises the metric function.
+    Arguments:
+    n: dimensionality of the cube to sample [0-1]^n
+    samples: total number of samples.
+    prior_points: List of previously evaluated points. If None, totally repopulate the space.
+    metric_func: Function with which to judge the 'goodness' of the generated latin hypercube.
+    Should be a scalar function of one hypercube sample set.
+    maxlhs: Maximum number of latin hypercube to generate in total.
+    Note convergence is pretty slow at the moment."""
+    #Use the default metric if none is specified.
+    if metric_func is None:
+        metric_func = default_metric_func
+    #Minimal metric is zero.
+    metric = -1
+    group = 1000
+    for _ in range(maxlhs//group):
+        new = [sampling_function(n, samples, prior_points = prior_points) for _ in range(group)]
+        new_metric = [metric_func(nn) for nn in new]
+        best = np.argmax(new_metric)
+        if new_metric[best] > metric:
+            metric = new_metric[best]
+            current = new[best]
+    return current,metric
 
 def map_from_unit_cube(param_vec, param_limits):
     """

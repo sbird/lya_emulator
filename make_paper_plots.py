@@ -13,9 +13,8 @@ import matplotlib.pyplot as plt
 from plot_latin_hypercube import plot_points_hypercube
 import coarse_grid_plot
 
-#plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
+plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
 #plotdir = '/home/keir/Plots/Emulator'
-plotdir = 'plots'
 
 def hypercube_plot():
     """Make a plot of some hypercubes"""
@@ -95,7 +94,7 @@ def test_s8_plots():
 def test_knot_plots(mf=1, testdir = None, emudir = None, plotdir = None, plotname="", kf_bin_nums=None, data_err=False, max_z=4.2):
     """Plot emulator test-cases"""
     if testdir is None:
-        testdir = path.expanduser("simulations/hires_knots_test")
+        testdir = path.expanduser("~/data/Lya_Boss/hires_knots_test")
     if emudir is None:
         emudir = path.expanduser("simulations/hires_knots")
     if plotdir is None:

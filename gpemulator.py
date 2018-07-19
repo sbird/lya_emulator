@@ -71,6 +71,7 @@ class SkLearnGP(object):
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)
+        print(kernel)
         kernel += GPy.kern.RBF(nparams)
 
         #Try rational quadratic kernel

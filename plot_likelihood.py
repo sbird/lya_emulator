@@ -91,6 +91,15 @@ def make_plot_flux_power_spectra(like, datadir, savefile):
     emulated_flux_power_std = like.emulated_flux_power_std[0].reshape(n_z, n_k_los)
     data_flux_power = like.sdss.pf.reshape(-1, n_k_los)[:n_z][::-1]
 
+    '''emulated_flux_power_direct = [None] * 200
+    emulator_error_direct = [None] * 200
+    j=0
+    np.savez('/home/keir/Data/emulator/emulator_error_test.npz', np.array(like.gpemu.predict(np.array([np.linspace(0.8, 1.2, num=200)[50],]).reshape(1, -1), tau0_factors=None)), np.array(np.linspace(0.8, 1.2, num=200)[50]))
+    for i in np.linspace(0.8, 1.2, num=200):
+        emulated_flux_power_direct[j], emulator_error_direct[j] = like.gpemu.predict(np.array([i,]).reshape(1, -1), tau0_factors=None)
+        j+=1
+    np.savez('/home/keir/Data/emulator/emulator_error_direct.npz', np.array(emulated_flux_power_direct), np.array(emulator_error_direct), k_los)'''
+
     figure, axes = plt.subplots(nrows=4, ncols=1, figsize=(6.4*2., 10.))
     distinct_colours = dc.get_distinct(n_z)
     scaling_factor = k_los / mh.pi

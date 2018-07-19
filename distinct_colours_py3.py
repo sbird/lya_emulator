@@ -34,14 +34,12 @@ def get_distinct(nr):
     #
     # check if nr is in correct range
     #
-
     if nr < 1 or nr > 12:
         raise ValueError("wrong nr of distinct colours!")
 
     #
     # get list of indices
     #
-
     lst = xarr[nr-1]
 
     #

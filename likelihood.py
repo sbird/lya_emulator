@@ -2,7 +2,6 @@
 import os
 import os.path
 import math
-from datetime import datetime
 import numpy as np
 import numpy.testing as npt
 import emcee
@@ -111,9 +110,9 @@ class LikelihoodClass(object):
             self.param_limits[1,:] = t0_factor
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
-        print('Beginning to generate emulator at', str(datetime.now()))
+        #print('Beginning to generate emulator at', str(datetime.now()))
         self.gpemu = self.emulator.get_emulator(max_z=max_z)
-        print('Finished generating emulator at', str(datetime.now()))
+        #print('Finished generating emulator at', str(datetime.now()))
 
     def likelihood(self, params, include_emu=True, data_power=None):
         """A simple likelihood function for the Lyman-alpha forest.
@@ -151,6 +150,7 @@ class LikelihoodClass(object):
         #Likelihood using full covariance matrix
         chi2 = 0
 
+        self.exact_flux_power_std = [None] * nz
         for bb in range(nz):
             diff_bin = diff[nkf*bb:nkf*(bb+1)]
             std_bin = std[0,nkf*bb:nkf*(bb+1)]

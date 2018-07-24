@@ -228,7 +228,10 @@ class Emulator(object):
         """Launch a set of batch scripts into the queue to compute the lyman alpha spectra and their flux vectors."""
         pvals = self.get_parameters()
         for pp in pvals:
-            self.batch_script(pp)
+            di = self.get_outdir(pp, strsz=3)
+            if not os.path.exists(di):
+                di = self.get_outdir(pp, strsz=2)
+            self.batch_script(di)
 
     def batch_script(self, pdir):
         """The batch script to use. For biocluster."""

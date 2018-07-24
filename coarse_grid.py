@@ -3,6 +3,7 @@ from __future__ import print_function
 import os
 import os.path
 import shutil
+import glob
 import string
 import math
 import json
@@ -85,6 +86,29 @@ class Emulator(object):
         for arr in self.really_arrays:
             self.__dict__[arr] = np.array(self.__dict__[arr])
         self.really_arrays = []
+
+    def _recon_one(self, pdir):
+        """Get the parameters of a simulation from the SimulationICs.json file"""
+        with open(os.path.join(pdir, "SimulationICs.json"), 'r') as jsin:
+            sics = json.load(jsin)
+        ev = np.zeros_like(self.param_limits[:,0])
+        pn = self.param_names
+        ev[pn['heat_slope']] = sics["rescale_slope"]
+        ev[pn['heat_amp']] = sics["rescale_amp"]
+        ev[pn['hub']] = sics["hubble"]
+        ev[pn['ns']] = sics["ns"]
+        wmap = sics["scalar_amp"]
+        #Convert pivot of the scalar amplitude from amplitude
+        #at 8 Mpc (k = 0.78) to pivot scale of 0.05
+        conv = (0.05/(2*math.pi/8.))**(sics["ns"]-1.)
+        ev[pn['As']] = wmap / conv
+        return ev
+
+    def reconstruct(self):
+        """Reconstruct the parameters of an emulator by loading the parameters of each simulation in turn."""
+        dirs = glob.glob(os.path.join(self.basedir, "*"))
+        self.sample_params = np.array([self._recon_one(pdir) for pdir in dirs])
+        assert np.shape(self.sample_params) == (len(dirs), np.size(self.param_limits[:,0]))
 
     def dump(self, dumpfile="emulator_params.json"):
         """Dump parameters to a textfile."""

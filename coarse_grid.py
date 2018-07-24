@@ -252,9 +252,9 @@ class Emulator(object):
         """Launch a set of batch scripts into the queue to compute the lyman alpha spectra and their flux vectors."""
         pvals = self.get_parameters()
         for pp in pvals:
-            di = self.get_outdir(pp, strsz=3)
+            di = os.path.join(self.basedir, self.build_dirname(pp, strsz=3))
             if not os.path.exists(di):
-                di = self.get_outdir(pp, strsz=2)
+                di = os.path.join(self.basedir, self.build_dirname(pp, strsz=2))
             self.batch_script(di)
 
     def batch_script(self, pdir):
@@ -265,7 +265,7 @@ class Emulator(object):
             submit.write("""#!/bin/bash\n#SBATCH --partition=short\n#SBATCH --job-name="""+pdir+"\n")
             submit.write("""#SBATCH --time=1:55:00\n#SBATCH --nodes=1\n#SBATCH --ntasks-per-node=1\n#SBATCH --cpus-per-task=32\n#SBATCH --mem-per-cpu=4G\n""")
             submit.write( """#SBATCH --mail-type=end\n#SBATCH --mail-user=sbird@ucr.edu\n""")
-            submit.write("python flux_power.py "+pdir+"\n")
+            submit.write("python flux_power.py "+pdir+"/output\n")
 
     def _get_custom_emulator(self, *, emuobj, max_z=4.2):
         """Helper to allow supporting different emulators."""

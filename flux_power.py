@@ -1,5 +1,6 @@
 """Modules to generate the flux power spectrum from a simulation box."""
 from __future__ import print_function
+import argparse
 import os.path
 import scipy.interpolate
 import numpy as np
@@ -154,3 +155,10 @@ def _get_header_attr_from_snap(attr, num, base):
     value = f.get_header_attr(attr)
     del f
     return value
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('base', type=str, help='Snapshot directory')
+    args = parser.parse_args()
+    myspec = MySpectra()
+    myspec.get_snapshot_list(args.base)

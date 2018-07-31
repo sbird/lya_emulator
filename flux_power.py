@@ -138,7 +138,7 @@ class MySpectra(object):
                 break
             try:
                 ss = self._get_spectra_snap(snap, base)
-                print('Found spectra in', ss)
+#                 print('Found spectra in', ss)
                 if ss is not None:
                     powerspectra.add_snapshot(snap,ss)
             except IOError:

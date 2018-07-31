@@ -8,6 +8,7 @@ import string
 import math
 import json
 import numpy as np
+import h5py
 from SimulationRunner import lyasimulation
 import latin_hypercube
 import flux_power
@@ -48,7 +49,7 @@ class Emulator(object):
         else:
             self.mf = mf
         #We fix omega_m h^2 = 0.1199 (Planck best-fit) and vary omega_m and h^2 to match it.
-        #h^2 itself has no effect on the forest.
+        #h^2 itself has little effect on the forest.
         self.omegamh2 = 0.1199
         #Corresponds to omega_m = (0.23, 0.31) which should be enough.
         self.sample_params = []
@@ -237,16 +238,39 @@ class Emulator(object):
         nparams = np.shape(pvals)[1]
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z)
-        powers = [self._get_fv(pp, myspec) for pp in pvals]
         mean_fluxes = np.exp(-1*self.mf.get_t0(myspec.zout))
+        aparams = pvals
         #Note this gets tau_0 as a linear scale factor from the observed power law
         dpvals = self.mf.get_params()
-        flux_vectors = np.array([ps.get_power(kf = self.kf, mean_fluxes = mef) for mef in mean_fluxes for ps in powers])
         if dpvals is not None:
             aparams = np.array([np.concatenate([dp,pv]) for dp in dpvals for pv in pvals])
-        else:
-            aparams = pvals
+        try:
+            flux_vectors = self.load_flux_vectors(aparams)
+        except (AssertionError, OSError):
+            powers = [self._get_fv(pp, myspec) for pp in pvals]
+            flux_vectors = np.array([ps.get_power(kf = self.kf, mean_fluxes = mef) for mef in mean_fluxes for ps in powers])
+            self.save_flux_vectors(aparams, flux_vectors)
         return aparams, flux_vectors
+
+    def save_flux_vectors(self, aparams, flux_vectors, savefile="emulator_flux_vectors.hdf5"):
+        """Save the flux vectors and parameters to a file, which is the only thing read on reload."""
+        save = h5py.File(os.path.join(self.basedir, savefile), 'w')
+        save.attrs["classname"] = str(self.__class__)
+        save["params"] = aparams
+        save["flux_vectors"] = flux_vectors
+        save.close()
+
+    def load_flux_vectors(self, aparams, savefile="emulator_flux_vectors.hdf5"):
+        """Save the flux vectors and parameters to a file, which is the only thing read on reload."""
+        load = h5py.File(os.path.join(self.basedir, savefile), 'r')
+        inparams = np.array(load["params"])
+        flux_vectors = np.array(load["flux_vectors"])
+        name = str(load.attrs["classname"])
+        load.close()
+        assert name == str(self.__class__)
+        assert np.shape(inparams) == np.shape(aparams)
+        assert np.all(inparams - aparams < 1e-3)
+        return flux_vectors
 
     def get_flux_vectors_batch(self):
         """Launch a set of batch scripts into the queue to compute the lyman alpha spectra and their flux vectors."""

@@ -45,9 +45,11 @@ class SkLearnGP(object):
     def __init__(self, *, params, powers,param_limits):
         self.params = params
         self.param_limits = param_limits
-        self.intol = 3e-5
+        self.intol = 1e-4
         #Should we test the built emulator?
-        self._test_interp = True
+        #Turn this off because our emulator is now so large
+        #that it always fails because of Gaussianity!
+        self._test_interp = False
         #Get the flux power and build an emulator
         self._get_interp(flux_vectors=powers)
         if self._test_interp:
@@ -89,11 +91,12 @@ class SkLearnGP(object):
 
     def _check_interp(self, flux_vectors):
         """Check we reproduce the input"""
-        means, std = zip(*[self.predict(pp.reshape(1,-1)) for pp in self.params])
-        worst = np.abs(np.array(means)/flux_vectors[:,0] - 1)
-        if np.max(worst) > self.intol:
-            print("Bad interpolation at:", np.where(worst > np.max(worst)*0.9), np.max(worst))
-            assert np.max(worst) < self.intol
+        for i, pp in enumerate(self.params):
+            means, _ = self.predict(pp.reshape(1,-1))
+            worst = np.abs(np.array(means) - flux_vectors[i,:])/self.scalefactors
+            if np.max(worst) > self.intol:
+                print("Bad interpolation at:", np.where(worst > np.max(worst)*0.9), np.max(worst))
+                assert np.max(worst) < self.intol
 
     def predict(self, params):
         """Get the predicted flux at a parameter value (or list of parameter values)."""

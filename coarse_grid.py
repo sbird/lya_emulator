@@ -250,6 +250,7 @@ class Emulator(object):
             powers = [self._get_fv(pp, myspec) for pp in pvals]
             flux_vectors = np.array([ps.get_power(kf = self.kf, mean_fluxes = mef) for mef in mean_fluxes for ps in powers])
             self.save_flux_vectors(aparams, flux_vectors)
+        assert np.shape(flux_vectors)[0] == np.shape(aparams)[0]
         return aparams, flux_vectors
 
     def save_flux_vectors(self, aparams, flux_vectors, savefile="emulator_flux_vectors.hdf5"):

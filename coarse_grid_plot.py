@@ -177,7 +177,9 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
             pp = np.concatenate([[t0,], pp]) #In 'MeanFluxFactor' case: choose t0 point for fair comparison
         predicted,std = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: t0; cosmo.; thermal},]
         ps = myspec.get_snapshot_list(dd)
-        meanfluxes = np.exp(-t0*mflux.obs_mean_tau(myspec.zout))
+        meanfluxes = None
+        if t0 is not None:
+            meanfluxes = np.exp(-t0*mflux.obs_mean_tau(myspec.zout))
         exact = ps.get_power(kf = kf, mean_fluxes = meanfluxes)
         ratio = predicted[0]/exact
         upper = (predicted[0] + std[0])/exact

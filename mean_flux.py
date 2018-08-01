@@ -18,13 +18,13 @@ class ConstMeanFlux(object):
     def get_t0(self, zzs):
         """Get mean optical depth."""
         if self.value is None:
-            return None
+            return np.array([None,])
         return np.array([self.value * obs_mean_tau(zzs),])
 
     def get_mean_flux(self, zzs):
         """Get mean flux"""
         t0 = self.get_t0(zzs)
-        if t0 is None:
+        if t0[0] is None:
             return t0
         return np.exp(-1 * t0)
 

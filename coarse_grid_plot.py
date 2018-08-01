@@ -140,7 +140,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     myspec = flux_power.MySpectra(max_z=max_z)
     t0 = None
     if mean_flux:
-        t0 = 0.95
+        t0 = 1. #0.95
     mf = mflux.ConstMeanFlux(value=t0) #In 'ConstMeanFlux' case: multiply tau_0_i[z] by t0 = 0.95
     if mean_flux == 2:
         mf = mflux.MeanFluxFactor() #In 'MeanFluxFactor' case: DON'T multiply tau_0_i[z] by t0 - because *emulate* t0[z]
@@ -220,8 +220,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.legend(loc='right')
         plt.tight_layout()
         plt.show()
-        if mean_flux:
-            name = name+"mf0.95"
         if data_err is False:
             name_ending = ".pdf"
         elif data_err is True:

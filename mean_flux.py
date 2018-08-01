@@ -11,13 +11,22 @@ def obs_mean_tau(redshift, amp=0, slope=0):
 class ConstMeanFlux(object):
     """Object which implements different mean flux models. This model fixes the mean flux to a constant value.
     """
-    def __init__(self, value = 0.95):
+    def __init__(self, value = 1.):
         self.value = value
         self.dense_param_names = {}
 
     def get_t0(self, zzs):
-        """Get change in mean optical depth from parameter values"""
+        """Get mean optical depth."""
+        if self.value is None:
+            return None
         return np.array([self.value * obs_mean_tau(zzs),])
+
+    def get_mean_flux(self, zzs):
+        """Get mean flux"""
+        t0 = self.get_t0(zzs)
+        if t0 is None:
+            return t0
+        return np.exp(-1 * t0)
 
     def get_params(self):
         """Returns a list of parameters where the mean flux is evaluated."""

@@ -238,7 +238,7 @@ class Emulator(object):
         nparams = np.shape(pvals)[1]
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z)
-        mean_fluxes = np.exp(-1*self.mf.get_t0(myspec.zout))
+        mean_fluxes = self.mf.get_mean_flux(myspec.zout)
         aparams = pvals
         #Note this gets tau_0 as a linear scale factor from the observed power law
         dpvals = self.mf.get_params()

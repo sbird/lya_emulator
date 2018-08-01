@@ -173,11 +173,11 @@ class Emulator(object):
             self.sample_params = self.build_params(nsamples)
         if samples is None:
             samples = self.sample_params
+        else:
+            self.sample_params = np.vstack([self.sample_params, samples])
         #Generate ICs for each set of parameter inputs
         for ev in samples:
             self._do_ic_generation(ev, npart, box)
-        if samples is not None:
-            self.sample_params = np.vstack([self.sample_params, samples])
         self.dump()
 
     def _do_ic_generation(self,ev,npart,box):

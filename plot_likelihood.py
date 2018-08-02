@@ -177,18 +177,31 @@ def get_simulation_parameters_knots(base):
     pp = json.load(jsin)
     knv = pp["knot_val"]
     #This will fail!
-    assert pp["code_args"]["rescale_gamma"] is True
-    parvec = [0., 1., *knv, pp["code_args"]["rescale_slope"], pp["code_args"]["rescale_amp"], pp["hubble"]]
+    slope, amp = _therm_params(pp)
+    parvec = [0., 1., *knv, slope, amp, pp["hubble"]]
     return parvec
+
+def _therm_params(pp):
+    """Helper to get thermal parameters from a json dictionary."""
+    try:
+        #Old-style emulator
+        assert pp["code_args"]["rescale_gamma"] is True
+        slope = pp["code_args"]["rescale_slope"]
+        amp = pp["code_args"]["rescale_amp"]
+    except KeyError:
+        assert pp["rescale_gamma"] is True
+        slope = pp["rescale_slope"]
+        amp = pp["rescale_amp"]
+    return slope, amp
 
 def get_simulation_parameters_s8(base):
     """Get the parameters of a sigma8-ns-based simulation from the SimulationICs JSON file."""
     jsin = open(os.path.join(base, "SimulationICs.json"), 'r')
     pp = json.load(jsin)
-    assert pp["code_args"]["rescale_gamma"] is True
+    slope, amp = _therm_params(pp)
     #Change the pivot value
     As = pp['scalar_amp'] / (2e-3/(2*np.pi/8.))**(pp['ns']-1.)
-    parvec = [0., 1., pp['ns'], As, pp["code_args"]["rescale_slope"], pp["code_args"]["rescale_amp"], pp["hubble"]]
+    parvec = [0., 1., pp['ns'], As, slope, amp, pp["hubble"]]
     return parvec
 
 def run_likelihood_test(testdir, emudir, savedir=None, plot=True, mean_flux_label='s'):

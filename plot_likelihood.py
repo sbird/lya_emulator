@@ -5,13 +5,13 @@ import glob
 import math as mh
 from datetime import datetime
 import numpy as np
-import corner
 import distinct_colours_py3 as dc
 import likelihood as likeh
 from mean_flux import mean_flux_slope_to_factor
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
+import corner
 
 def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_label='c', likelihood_instance=None, max_z=4.2):
     """Make a plot of emulator error as a fraction of the data error"""
@@ -78,7 +78,7 @@ def get_k_z(likelihood_instance):
     n_z = z.size
     return k_los, z, n_k_los, n_z
 
-def make_plot_flux_power_spectra(like, datadir, savefile):
+def make_plot_flux_power_spectra(like, params, datadir, savefile):
     """Make a plot of the power spectra, with redshift, the BOSS power and the sigmas. Four plots stacked."""
     k_los = like.gpemu.kf
     n_k_los = k_los.size
@@ -87,8 +87,9 @@ def make_plot_flux_power_spectra(like, datadir, savefile):
 
     data_fluxpower = likeh.load_data(datadir, kf=k_los)
     exact_flux_power = data_fluxpower.reshape(n_z, n_k_los)
-    emulated_flux_power = like.emulated_flux_power[0].reshape(n_z, n_k_los)
-    emulated_flux_power_std = like.emulated_flux_power_std[0].reshape(n_z, n_k_los)
+    emulated_flux_power, emulated_flux_power_std = like.get_predicted(params)
+    emulated_flux_power = emulated_flux_power[0].reshape(n_z, n_k_los)
+    emulated_flux_power_std = emulated_flux_power_std[0].reshape(n_z, n_k_los)
     data_flux_power = like.sdss.pf.reshape(-1, n_k_los)[:n_z][::-1]
 
     figure, axes = plt.subplots(nrows=4, ncols=1, figsize=(6.4*2., 10.))
@@ -203,16 +204,17 @@ def run_likelihood_test(testdir, emudir, savedir=None, plot=True, mean_flux_labe
     for sdir in subdirs:
         sname = os.path.basename(os.path.abspath(sdir))
         chainfile = os.path.join(savedir, 'chain_' + sname + '.txt')
-        print('Beginning to sample likelihood at', str(datetime.now()))
         datadir = os.path.join(sdir, "output")
-        like.do_sampling(chainfile, datadir=datadir)
+        true_parameter_values = get_simulation_parameters_s8(sdir)
         if plot is True:
-            true_parameter_values = get_simulation_parameters_s8(sdir)
-            print('Beginning to make corner plot at', str(datetime.now()))
+            fp_savefile = os.path.join(savedir, 'flux_power_'+sname + ".pdf")
+            make_plot_flux_power_spectra(like, true_parameter_values, datadir, savefile=fp_savefile)
+        print('Beginning to sample likelihood at', str(datetime.now()))
+        like.do_sampling(chainfile, datadir=datadir)
+        print('Done sampling likelihood at', str(datetime.now()))
+        if plot is True:
             savefile = os.path.join(savedir, 'corner_'+sname + ".pdf")
             make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
-            fp_savefile = os.path.join(savedir, 'flux_power_'+sname + ".pdf")
-            make_plot_flux_power_spectra(like, datadir=datadir, savefile=fp_savefile)
     return like
 
 if __name__ == "__main__":

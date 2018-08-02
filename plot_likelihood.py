@@ -194,13 +194,13 @@ def _therm_params(pp):
         amp = pp["rescale_amp"]
     return slope, amp
 
-def get_simulation_parameters_s8(base):
+def get_simulation_parameters_s8(base, pivot=0.05):
     """Get the parameters of a sigma8-ns-based simulation from the SimulationICs JSON file."""
     jsin = open(os.path.join(base, "SimulationICs.json"), 'r')
     pp = json.load(jsin)
     slope, amp = _therm_params(pp)
     #Change the pivot value
-    As = pp['scalar_amp'] / (2e-3/(2*np.pi/8.))**(pp['ns']-1.)
+    As = pp['scalar_amp'] / (pivot/(2*np.pi/8.))**(pp['ns']-1.)
     parvec = [0., 1., pp['ns'], As, slope, amp, pp["hubble"]]
     return parvec
 

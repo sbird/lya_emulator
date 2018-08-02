@@ -115,35 +115,34 @@ class LikelihoodClass(object):
         self.gpemu = self.emulator.get_emulator(max_z=max_z)
         print('Finished generating emulator at', str(datetime.now()))
 
+    def get_predicted(self, params):
+        """Helper function to get the predicted flux power spectrum and error."""
+        nparams = params
+        if self.mf_slope:
+            # tau_0_i[z] @dtau_0 / tau_0_i[z] @[dtau_0 = 0]
+            # Divided by lowest redshift case
+            tau0_fac = mflux.mean_flux_slope_to_factor(self.zout, params[0])
+            nparams = params[1:] #Keep only t0 sampling parameter (of mean flux parameters)
+        else: #Otherwise bug if choose mean_flux = 'c'
+            tau0_fac = None
+        # .predict should take [{list of parameters: t0; cosmo.; thermal},]
+        # Here: emulating @ cosmo.; thermal; sampled t0 * [tau0_fac from above]
+        predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
+        return predicted, std
+
     def likelihood(self, params, include_emu=True, data_power=None):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix.
         The covariance for the emulator points is assumed to be
         completely correlated with each z bin, as the emulator
         parameters are estimated once per z bin."""
-        nparams = params
         if data_power is None:
             data_power = self.data_fluxpower
-        if self.mf_slope:
-
-            # tau_0_i[z] @dtau_0 / tau_0_i[z] @[dtau_0 = 0]
-            # Divided by lowest redshift case
-            tau0_fac = mflux.mean_flux_slope_to_factor(self.zout, params[0])
-
-            nparams = params[1:] #Keep only t0 sampling parameter (of mean flux parameters)
-        else: #Otherwise bug if choose mean_flux = 'c'
-            tau0_fac = None
+        #Set parameter limits as the hull of the original emulator.
         if np.any(params >= self.param_limits[:,1]) or np.any(params <= self.param_limits[:,0]):
             return -np.inf
-        #Set parameter limits as the hull of the original emulator.
 
-        # .predict should take [{list of parameters: t0; cosmo.; thermal},]
-        # Here: emulating @ cosmo.; thermal; sampled t0 * [tau0_fac from above]
-        predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
-
-        #Save emulated flux power specra for analysis
-        self.emulated_flux_power = predicted
-        self.emulated_flux_power_std = std
+        predicted, std = self.get_predicted(params)
 
         diff = predicted[0]-data_power
         nkf = len(self.kf)

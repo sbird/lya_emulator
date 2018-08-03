@@ -154,6 +154,7 @@ def make_plot_flux_power_spectra(like, params, datadir, savefile):
     plt.savefig(savefile)
     plt.show()
 
+    print(datadir)
     print('Maximum fractional overestimation of flux power spectrum =', np.max((emulated_flux_power / exact_flux_power) - 1.))
     print('Maximum fractional underestimation of flux power spectrum =', np.min((emulated_flux_power / exact_flux_power) - 1.))
 

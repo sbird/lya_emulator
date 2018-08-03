@@ -54,13 +54,18 @@ class MySpectra(object):
        so that they are the same for each emulator point."""
     def __init__(self, numlos = 32000, max_z= 4.2):
         self.NumLos = numlos
-        #Use the right values for SDSS or BOSS:
-        #this should be slightly redshift dependent,
-        #but since we divide it out we should be ok for now.
-        #It is 60 km/s at 5000 A and 80 km/s at 4300 A.
-        self.spec_res = 70.
+        #For SDSS or BOSS the spectral resolution is
+        #60 km/s at 5000 A and 80 km/s at 4300 A.
+        #In principle we could generate smoothed spectra
+        #and then correct the window function.
+        #However, this non-linear smoothing will change the mean flux
+        #and hence does not commute with mean flux rescaling.
+        #I have checked that for k < 0.1 the corrected version
+        #is identical to the unsmoothed version (without mean flux rescaling).
+        self.spec_res = 0.
         #For BOSS the pixel resolution is actually 69 km/s.
         #So we are slightly over-sampling here.
+        #Note to self: decrease pixel resolution so the HCDs are more confined.
         #This shouldn't be too important, but maybe change it later.
         self.pix_res = 50.
         self.NumLos = numlos

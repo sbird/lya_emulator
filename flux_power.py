@@ -99,7 +99,7 @@ class MySpectra(object):
         #If savefile exists, reload. Otherwise do not.
         def mkspec(snap, base, cofm, axis, rf):
             """Helper function"""
-            return spectra.Spectra(snap, base, cofm, axis, res=self.pix_res, savefile=self.savefile,spec_res = self.spec_res, reload_file=rf,sf_neutral=False,quiet=True)
+            return spectra.Spectra(snap, base, cofm, axis, res=self.pix_res, savefile=self.savefile,spec_res = self.spec_res, reload_file=rf,sf_neutral=False,quiet=True, load_snapshot=rf)
         #First try to get data from the savefile, and if we can't, try the snapshot.
         try:
             ss = mkspec(snap, base, None, None, rf=False)

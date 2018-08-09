@@ -72,24 +72,28 @@ class SkLearnGP(object):
         self.scalefactors = flux_vectors[medind,:]
         self.paramzero = params_cube[medind,:]
         #Normalise by the median value
-        normspectra = flux_vectors/self.scalefactors -1.
+        normspectra = flux_vectors/self.scalefactors
+        #Find the mean value and perform a separate GP fit for it.
+        means = np.mean(normspectra, axis=1)
+        normflux = normspectra-np.outer(means, np.ones(np.shape(normspectra)[1]))
+        mkernel = GPy.kern.Linear(nparams)
+        mkernel += GPy.kern.RBF(nparams)
+        self.meangp = GPy.models.GPRegression(params_cube, means.reshape(-1,1),kernel=mkernel, noise_var=0)
+        status = self.meangp.optimize(messages=True) #True
+        if status.status != 'Converged':
+            print(status)
+            self.meangp.optimize_restarts(num_restarts=3)
+        print(self.meangp)
 
-        #Standard squared-exponential kernel with a different length scale for each parameter, as
-        #they may have very different physical properties.
+        #Now fit the multi-dimensional residual shapes.
         kernel = GPy.kern.Linear(nparams)
         kernel += GPy.kern.RBF(nparams)
-
-        #Try rational quadratic kernel
-        #kernel += GPy.kern.RatQuad(nparams)
-
-        noutput = np.shape(normspectra)[1]
-        self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
-
+        self.gp = GPy.models.GPRegression(params_cube, normflux,kernel=kernel, noise_var=1e-10)
         status = self.gp.optimize(messages=True) #True
         #print('Gradients of model hyperparameters [after optimisation] =', self.gp.gradient)
         #Let's check that hyperparameter optimisation is converged
         if status.status != 'Converged':
-            self.gp.optimize_restarts(num_restarts=10)
+            self.gp.optimize_restarts(num_restarts=3)
         print(self.gp)
         #print('Gradients of model hyperparameters [after second optimisation (x 10)] =', self.gp.gradient)
 
@@ -107,8 +111,11 @@ class SkLearnGP(object):
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
         flux_predict, var = self.gp.predict(params_cube)
-        mean = (flux_predict+1)*self.scalefactors
-        std = np.sqrt(var) * self.scalefactors
+        mean_predict, meanvar = self.meangp.predict(params_cube)
+        mean = (mean_predict + flux_predict)*self.scalefactors
+        #This works almost as well as the combination!
+#         mean = (mean_predict)*self.scalefactors
+        std = np.sqrt(meanvar + var) * self.scalefactors
         return mean, std
 
     def get_predict_error(self, test_params, test_exact):

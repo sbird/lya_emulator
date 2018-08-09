@@ -38,7 +38,7 @@ class MultiBinGP(object):
         return means, std
 
 class SkLearnGP(object):
-    """An emulator using the one in Scikit-learn.
+    """An emulator wrapping a GP code.
        Parameters: params is a list of parameter vectors.
                    powers is a list of flux power spectra (same shape as params).
                    param_limits is a list of parameter limits (shape 2,params)."""
@@ -61,6 +61,10 @@ class SkLearnGP(object):
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         nparams = np.shape(self.params)[1]
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
+        #Check that we span the parameter space
+        for i in range(nparams):
+            assert np.max(params_cube[:,i]) > 0.9
+            assert np.min(params_cube[:,i]) < 0.1
         #print('Normalised parameter values =', params_cube)
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.

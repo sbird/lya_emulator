@@ -64,10 +64,9 @@ class MySpectra(object):
         #is identical to the unsmoothed version (without mean flux rescaling).
         self.spec_res = 0.
         #For BOSS the pixel resolution is actually 69 km/s.
-        #So we are slightly over-sampling here.
-        #Note to self: decrease pixel resolution so the HCDs are more confined.
-        #This shouldn't be too important, but maybe change it later.
-        self.pix_res = 50.
+        #We use a much smaller pixel resolution so that the window functions
+        #are small for mean flux rescaling, and also so that HCDs are confined.
+        self.pix_res = 10.
         self.NumLos = numlos
         #Want output every 0.2 from z=max to z=2.2, matching SDSS.
         self.zout = np.arange(max_z,2.1,-0.2)

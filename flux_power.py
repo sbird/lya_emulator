@@ -38,6 +38,7 @@ class FluxPower(object):
             flux_arr[i] = ff
         flux_arr = np.ravel(flux_arr)
         assert np.shape(flux_arr) == (self.len()*np.size(kf),)
+        self.drop_table()
         return flux_arr
 
     def get_zout(self):

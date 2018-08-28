@@ -173,6 +173,8 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
 
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
+        if not os.path.exists(dd):
+            dd = params_test.get_outdir(pp, strsz=2)
         if mean_flux == 2:
             pp = np.concatenate([[t0,], pp]) #In 'MeanFluxFactor' case: choose t0 point for fair comparison
         predicted,std = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: t0; cosmo.; thermal},]
@@ -266,6 +268,8 @@ def plot_test_matter_interpolate(emulatordir,testdir, savedir=None, redshift=3.)
     params_test.load()
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
+        if not os.path.exists(dd):
+            dd = params_test.get_outdir(pp, strsz=2)
         predicted = gp.predict(pp)
         exact = matter_power.get_matter_power(dd,params.kf, redshift=redshift)
         ratio = predicted[0]/exact

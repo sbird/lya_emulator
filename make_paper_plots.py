@@ -5,7 +5,7 @@ import latin_hypercube
 import coarse_grid
 import flux_power
 from quadratic_emulator import QuadraticEmulator
-from mean_flux import ConstMeanFlux
+from mean_flux import ConstMeanFlux,MeanFluxFactor
 import lyman_data
 import matplotlib
 matplotlib.use("PDF")
@@ -60,6 +60,40 @@ def show_t0_gradient(spec, tmin,tmax,steps=20):
     df = [np.mean(dlogPfdlogF(spec, t,t-0.005)[1]) for t in tt]
     return tt, df
 
+def mean_flux_rescale():
+    """Plot the effect of changing the mean flux as a function of cosmology."""
+    emulatordir = path.expanduser("simulations/hires_s8")
+    mf = MeanFluxFactor()
+    emu = coarse_grid.Emulator(emulatordir, mf=mf)
+    emu.load()
+    par, flux_vectors = emu.get_flux_vectors(max_z=2.4)
+    params = emu.dense_param_names
+    nmflux = mf.dense_samples
+    nsims = np.shape(emu.get_parameters())[0]
+    lss = ["-", "--", ":", "-."]
+    #todo: choose these so that they vary one cosmological parameter in the quadratic set.
+    js = [np.random.randint(21) for _ in range(2)]
+    for jj in range(2):
+        j = js[jj]
+        simpar = par[j::nsims]
+        simflux = flux_vectors[j::nsims,:len(emu.kf)]
+        defpar = simpar[nmflux//2,0]
+        deffv = simflux[nmflux//2,:]
+        ind = np.where(simpar[:,0] != defpar)
+        assert np.size(ind) > 0
+        for i in np.ravel(ind):
+            tp = simpar[i,0]
+            fp = simflux[i]/deffv
+            assert np.shape(emu.kf) == np.shape(fp)
+            plt.semilogx(emu.kf, fp, ls=lss[jj%4], label=r"$\tau_0$=%.3g" % tp)
+    plt.xlim(1e-3,2e-2)
+    plt.ylim(ymin=0.3)
+    plt.legend(loc="lower left",ncol=4, fontsize=8)
+    plt.title("Mean flux, z=2.4, sims %d %d" % (js[0], js[1]))
+    plt.savefig(path.join(plotdir,"single_param_mean_flux.pdf"))
+    plt.clf()
+    return par
+
 def single_parameter_plot():
     """Plot change in each parameter of an emulator from direct simulations."""
     emulatordir = path.expanduser("simulations/hires_s8_quadratic")
@@ -75,7 +109,8 @@ def single_parameter_plot():
         for i in np.ravel(ind):
             tp = par[i,index]
             fp = (flux_vectors[i]/deffv).reshape(-1,len(emu.kf))
-            plt.semilogx(emu.kf, fp[0,:], label=name+"="+str(tp)+" (z=2.4)")
+            plt.semilogx(emu.kf, fp[0,:], label=name+"=%.2g (z=2.4)" % tp)
+            plt.semilogx(emu.kf, fp[1,:], label=name+"=%.2g (z=2.2)" % tp, ls="--")
         plt.xlim(1e-3,2e-2)
         plt.ylim(ymin=0.6)
         plt.legend(loc=0)
@@ -132,6 +167,7 @@ if __name__ == "__main__":
     sample_var_plot()
     hypercube_plot()
     single_parameter_plot()
-    test_s8_plots()
+    pars = mean_flux_rescale()
+    gp_emu, flux_powers, zout = test_s8_plots()
     test_knot_plots(mf=1)
     test_knot_plots(mf=2)

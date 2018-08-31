@@ -25,6 +25,6 @@ class RateNetworkSpectra(spectra.Spectra):
     def __init__(self, *args, photo_factor = 1, selfshield=False, **kwargs):
         super().__init__(*args, **kwargs)
         try:
-            self.gasprop = RateNetworkGas(redshift = self.redshift, absnap = self.absnap, hubble=self.hubble, units = self.units, sf_neutral=False, photo_factor = photo_factor, selfshield=selfshield)
+            self.gasprop = RateNetworkGas(redshift = self.red, absnap = self.snapshot_set, hubble=self.hubble, units = self.units, sf_neutral=False, photo_factor = photo_factor, selfshield=selfshield)
         except AttributeError:
             pass

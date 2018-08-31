@@ -62,7 +62,7 @@ def show_t0_gradient(spec, tmin,tmax,steps=20):
 
 def mean_flux_rescale():
     """Plot the effect of changing the mean flux as a function of cosmology."""
-    emulatordir = path.expanduser("simulations/hires_s8")
+    emulatordir = path.expanduser("simulations/hires_s8_quadratic")
     mf = MeanFluxFactor()
     emu = coarse_grid.Emulator(emulatordir, mf=mf)
     emu.load()
@@ -71,27 +71,30 @@ def mean_flux_rescale():
     nmflux = mf.dense_samples
     nsims = np.shape(emu.get_parameters())[0]
     lss = ["-", "--", ":", "-."]
-    #todo: choose these so that they vary one cosmological parameter in the quadratic set.
-    js = [np.random.randint(21) for _ in range(2)]
-    for jj in range(2):
-        j = js[jj]
-        simpar = par[j::nsims]
-        simflux = flux_vectors[j::nsims,:len(emu.kf)]
-        defpar = simpar[nmflux//2,0]
-        deffv = simflux[nmflux//2,:]
-        ind = np.where(simpar[:,0] != defpar)
-        assert np.size(ind) > 0
-        for i in np.ravel(ind):
-            tp = simpar[i,0]
-            fp = simflux[i]/deffv
-            assert np.shape(emu.kf) == np.shape(fp)
-            plt.semilogx(emu.kf, fp, ls=lss[jj%4], label=r"$\tau_0$=%.3g" % tp)
-    plt.xlim(1e-3,2e-2)
-    plt.ylim(ymin=0.3)
-    plt.legend(loc="lower left",ncol=4, fontsize=8)
-    plt.title("Mean flux, z=2.4, sims %d %d" % (js[0], js[1]))
-    plt.savefig(path.join(plotdir,"single_param_mean_flux.pdf"))
-    plt.clf()
+    for (name, iparam) in emu.param_names.items():
+        ind = np.where(par[:nsims, iparam+1] != par[0, iparam+1])
+        js = [0, ind[0][2]]
+        for jj in range(2):
+            j = js[jj]
+            simpar = par[j::nsims]
+            simflux = flux_vectors[j::nsims,:len(emu.kf)]
+            defpar = simpar[nmflux//2,0]
+            deffv = simflux[nmflux//2,:]
+            ind = np.where(simpar[:,0] != defpar)
+            assert np.size(ind) > 0
+            for i in np.ravel(ind):
+                tp = simpar[i,0]
+                fp = simflux[i]/deffv
+                assert np.shape(emu.kf) == np.shape(fp)
+                plt.semilogx(emu.kf, fp, ls=lss[jj%4], label=r"$\tau_0$=%.3g" % tp)
+        plt.xlim(1e-3,2e-2)
+        plt.xlabel(r"$k_F$ (s/km)")
+        plt.ylabel(r'$P_\mathrm{F}(k)$ ratio')
+        plt.ylim(ymin=0.3)
+        plt.legend(loc="lower left",ncol=4, fontsize=8)
+        plt.title("Mean flux, z=2.4, varying "+name)
+        plt.savefig(path.join(plotdir,"sp_"+name+"_mean_flux.pdf"))
+        plt.clf()
     return par
 
 def single_parameter_plot():

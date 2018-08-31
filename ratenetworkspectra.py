@@ -12,8 +12,10 @@ class RateNetworkGas(gas_properties.GasProperties):
 
     def get_reproc_HI(self, part_type, segment):
         """Get a neutral hydrogen fraction using a rate network which reads temperature and density of the gas."""
-        density = self.absnap.get_data(part_type, "Density", segment=segment)
-        ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)
+        #expecting units of atoms/cm^3
+        density = self.get_code_rhoH(part_type, segment)
+        #expecting units of 10^-10 ergs/g
+        ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*units.UnitInternalEnergy_in_cgs/1e10
         #We assume primordial helium
         nh0 = self.rates.get_neutral_fraction(density, ienergy)
         return nh0

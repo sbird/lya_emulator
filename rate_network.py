@@ -8,12 +8,12 @@ import scipy.optimize
 class RateNetwork(object):
     """A rate network for neutral hydrogen following
     Katz, Weinberg & Hernquist 1996, astro-ph/9509107, eq. 28-32."""
-    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-7, selfshield=True, cool="KWH", recomb="V96", collisional=True):
+    def __init__(self,redshift, photo_factor = 1., f_bar = 0.17, converge = 1e-7, selfshield=True, cool="KWH", recomb="V96", collisional=True, treecool_file="TREECOOL_ep_2018p"):
         if recomb == "V96":
             self.recomb = RecombRatesVerner96()
         else:
             self.recomb = RecombRatesCen92()
-        self.photo = PhotoRates()
+        self.photo = PhotoRates(treecool_file=treecool_file)
         self.photo_factor = photo_factor
         self.f_bar = f_bar
         if cool == "KWH":

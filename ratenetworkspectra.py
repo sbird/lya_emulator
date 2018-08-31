@@ -15,7 +15,7 @@ class RateNetworkGas(gas_properties.GasProperties):
         #expecting units of atoms/cm^3
         density = self.get_code_rhoH(part_type, segment)
         #expecting units of 10^-10 ergs/g
-        ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*units.UnitInternalEnergy_in_cgs/1e10
+        ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10
         #We assume primordial helium
         nh0 = self.rates.get_neutral_fraction(density, ienergy)
         return nh0

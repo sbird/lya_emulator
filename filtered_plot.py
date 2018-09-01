@@ -62,6 +62,7 @@ def filtering_effect_plot(num, base):
     plt.title(r"Ratio removing particles with $\rho > 3 \times 10^{-4}$")
 
     plt.savefig("plots/filtered_power.pdf")
+    plt.clf()
 
 def get_mean_flux_effect(num, base):
     """Get the effect of rescaling the mean flux vs solving a rate network on the flux power"""
@@ -94,14 +95,16 @@ def mean_flux_effect_plot(base):
     plt.semilogx(kf24, dpkf24, ls="-", label=r"$z=2.4$")
     plt.semilogx(kf3, dpkf3, ls="--", label=r"$z=3$")
 
-    plt.xlim(1.e-3, 0.03)
+    plt.xlim(1.e-3, 0.05)
     plt.axvspan(1.084e-3, 1.95e-2, facecolor='grey', alpha=0.3)
     plt.ylim(0.95,1.0)
     plt.xlabel(r'$k$ ($\mathrm{s}\,\mathrm{km}^{-1}$)')
     plt.ylabel(r'$P_\mathrm{F}(k, mean flux)/P_\mathrm{F}(k, UVB)$')
     plt.tight_layout()
+    plt.legend(loc="lower left")
     #plt.title(r"Flux power spectru")
     plt.savefig("plots/mean_flux_power.pdf")
+    plt.clf()
 
 
 if __name__ == "__main__":

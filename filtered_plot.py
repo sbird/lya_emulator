@@ -2,6 +2,8 @@
 for which the mean flux rescaling is not fully accurate, on the flux power spectrum."""
 import numpy as np
 from fake_spectra import spectra
+from fake_spectra import fluxstatistics as fstat
+from ratenetworkspectra import RateNetworkSpectra
 import matplotlib
 matplotlib.use("PDF")
 import matplotlib.pyplot as plt
@@ -30,8 +32,8 @@ class FilteredSpectra(spectra.Spectra):
             return (pos[ii2], vel, elem_den[ii2], temp, hh[ii2], amumass)
 
 
-def make_plot(num, base):
-    """Make the plot."""
+def filtering_effect_plot(num, base):
+    """Plot the effect of filtering out the largest density particles."""
     spec = spectra.Spectra(num, base, None, None, savefile="lya_forest_spectra.hdf5", sf_neutral=False)
 
     try:
@@ -61,6 +63,47 @@ def make_plot(num, base):
 
     plt.savefig("plots/filtered_power.pdf")
 
+def get_mean_flux_effect(num, base):
+    """Get the effect of rescaling the mean flux vs solving a rate network on the flux power"""
+    spec = spectra.Spectra(num, base, None, None, savefile="lya_forest_spectra.hdf5", sf_neutral=False)
+    #Get the mean flux scaling factor
+    mf = np.exp(-fstat.obs_mean_tau(spec.red))
+    #mean flux scaling is 1/UVB amp in photo-ion equilib.
+    photo_factor = 1./fstat.mean_flux(spec.get_tau("H",1,1215),mean_flux_desired=mf)
+    (kf, pkf) = spec.get_flux_power_1D(mean_flux_desired=mf)
+    try:
+        rnspecph = RateNetworkSpectra(num, base, spec.cofm, spec.axis, savefile="lya_forest_spectra_uvb.hdf5", sf_neutral=False, reload_file=False, res=10.,photo_factor=photo_factor)
+    except IOError:
+        rnspecph = RateNetworkSpectra(num, base, spec.cofm, spec.axis, savefile="lya_forest_spectra_uvb.hdf5", sf_neutral=False, reload_file=True, res=10.,photo_factor=photo_factor)
+        rnspecph.get_tau("H", 1, 1215)
+        rnspecph.save_file()
+    #Get without mean flux rescaling
+    (kfph, pkfph) = rnspecph.get_flux_power_1D(mean_flux_desired=None)
+    assert np.all(kf == kfph)
+    #Check that the mean flux of the output is roughly the same
+    mfph = np.mean(np.exp(-rnspecph.get_tau("H",1,1215)))
+    assert np.abs(mfph/mf -1 ) < 0.03
+    print("Redshift %g. Mean flux from UVB %g, rescaled %g. UVB factor %g." % (spec.red, mfph, mf, photo_factor))
+    return kf, pkf/pkfph
+
+def mean_flux_effect_plot(base):
+    """Plot the effect of doing mean flux rescaling vs a UVB."""
+    (kf24, dpkf24) = get_mean_flux_effect(10, base)
+    (kf3, dpkf3) = get_mean_flux_effect(7, base)
+
+    plt.semilogx(kf24, dpkf24, ls="-", label=r"$z=2.4$")
+    plt.semilogx(kf3, dpkf3, ls="--", label=r"$z=3$")
+
+    plt.xlim(1.e-3, 0.03)
+    plt.axvspan(1.084e-3, 1.95e-2, facecolor='grey', alpha=0.3)
+    plt.ylim(0.95,1.0)
+    plt.xlabel(r'$k$ ($\mathrm{s}\,\mathrm{km}^{-1}$)')
+    plt.ylabel(r'$P_\mathrm{F}(k, mean flux)/P_\mathrm{F}(k, UVB)$')
+    plt.tight_layout()
+    #plt.title(r"Flux power spectru")
+    plt.savefig("plots/mean_flux_power.pdf")
+
 
 if __name__ == "__main__":
-    make_plot(10, "simulations/hires_s8_test/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output")
+    filtering_effect_plot(10, "simulations/hires_s8_test/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output")
+    mean_flux_effect_plot("simulations/hires_s8_test/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output")

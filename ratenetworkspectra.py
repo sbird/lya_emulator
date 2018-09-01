@@ -9,10 +9,13 @@ from rate_network import RateNetwork
 def RateNetworkGasTest():
     """Test that the spline is working."""
     gasprop = RateNetworkGas(3, None)
-    randd = (np.max(gasprop.densgrid) - np.min(gasprop.densgrid)) * np.random.random(size=2000) + np.min(gasprop.densgrid)
-    randi = (np.max(gasprop.ienergygrid) - np.min(gasprop.ienergygrid)) * np.random.random(size=2000) + np.min(gasprop.ienergygrid)
+    dlim = (np.log(1e-7), np.log(3))
+    elim = (np.log(20), np.log(3e6))
+    randd = (dlim[1] - dlim[0]) * np.random.random(size=2000) + dlim[0]
+    randi = (elim[1] - elim[0]) * np.random.random(size=2000) + elim[0]
+    spline = gasprop.build_interp(dlim, elim)
     for dd, ii in zip(randd, randi):
-        spl = gasprop.spline(dd, ii)
+        spl = spline(dd, ii)[0]
         rate = np.log(gasprop.rates.get_neutral_fraction(np.exp(dd), np.exp(ii)))
         assert np.abs(spl - rate) < 1e-5
 
@@ -23,14 +26,17 @@ class RateNetworkGas(gas_properties.GasProperties):
         self.rates = RateNetwork(redshift, photo_factor = photo_factor, f_bar = fbar, cool="KWH", recomb="C92", selfshield=selfshield, treecool_file="TREECOOL_fg_dec11")
         self.temp_factor = 1
         self.gamma_factor = 1
+
+    def build_interp(self, dlim, elim, sz=500):
+        """Build the interpolator"""
         #Build interpolation
-        sz = 500
-        self.densgrid = np.log(np.logspace(-7, np.log10(3), 2*sz))
-        self.ienergygrid = np.log(np.logspace(np.log10(20), np.log10(3e6), sz))
-        dgrid, egrid = np.meshgrid(self.densgrid, self.ienergygrid)
-        self.lh0grid = np.log(self.rates.get_neutral_fraction(np.exp(dgrid), np.exp(egrid)))
+        densgrid = np.linspace(dlim[0], dlim[1], 2*sz)
+        ienergygrid = np.linspace(elim[0], elim[1], sz)
+        dgrid, egrid = np.meshgrid(densgrid, ienergygrid)
+        lh0grid = np.log(self.rates.get_neutral_fraction(np.exp(dgrid), np.exp(egrid)))
         #We assume primordial helium
-        self.spline = interp2d(self.densgrid, self.ienergygrid, self.lh0grid, kind='cubic')
+        spline = interp2d(densgrid, ienergygrid, lh0grid, kind='cubic')
+        return spline
 
     def get_reproc_HI(self, part_type, segment):
         """Get a neutral hydrogen fraction using a rate network which reads temperature and density of the gas."""
@@ -38,14 +44,9 @@ class RateNetworkGas(gas_properties.GasProperties):
         density = np.log(self.get_code_rhoH(part_type, segment))
         #expecting units of 10^-10 ergs/g
         ienergy = np.log(self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10)
-        outside = (density > np.max(self.densgrid)) + (density < np.min(self.densgrid)) + (ienergy > np.max(self.ienergygrid)) + (ienergy < np.min(self.ienergygrid))
-        ii = np.where(np.logical_not(outside))
-        nh0 = np.zeros_like(density)
-        nh0[ii] = np.exp(self.spline(density[ii], ienergy[ii]))
-        ii = np.where(outside)
-        if np.size(ii) > 0.05*np.size(nh0):
-            print("Interpolation range misses %d of particles." % np.size(ii)/np.size(nh0))
-            nh0[ii] = np.array([self.rates.get_neutral_fraction(np.exp(dd), np.exp(ee)) for (dd, ee) in zip(density[ii], ienergy[ii])])
+        spline = self.build_interp(dlim=(np.min(density), np.max(density)), elim=(np.min(ienergy), np.max(ienergy)))
+        #spline(density, ienergy) evaluates on a Ndens x Nenerg grid!
+        nh0 = np.exp([spline(dd, ii)[0] for (dd, ii) in zip(density, ienergy)])
         return nh0
 
     def _get_ienergy_rescaled(self, density, ienergy, density0):

@@ -38,8 +38,7 @@ class RateNetworkGas(gas_properties.GasProperties):
         density = self.get_code_rhoH(part_type, segment)
         #expecting units of 10^-10 ergs/g
         ienergy = self.absnap.get_data(part_type, "InternalEnergy", segment=segment)*self.units.UnitInternalEnergy_in_cgs/1e10
-        outside = density > np.max(self.densgrid) + density < np.min(self.densgrid)
-                + ienergy > np.max(self.ienergygrid) + ienergy < np.min(self.ienergygrid)
+        outside = density > np.max(self.densgrid) + density < np.min(self.densgrid) + ienergy > np.max(self.ienergygrid) + ienergy < np.min(self.ienergygrid)
         ii = np.where(np.logical_not(outside))
         nh0 = np.zeros_like(density)
         nh0[ii] = np.exp(self.spline(np.log(density[ii]), ienergy[ii]))
@@ -49,7 +48,7 @@ class RateNetworkGas(gas_properties.GasProperties):
             nh0[ii] = np.array([self.rates.get_neutral_fraction(dd, ii) for (dd, ii) in zip(density[ii], ienergy[ii])])
         return nh0
 
-    def _get_ienergy_rescaled(self, ienergy):
+    def _get_ienergy_rescaled(self, density, ienergy, density0):
         """Get the internal energy, rescaled to give the desired equation of state.
         Technically the e. of s. normally used is:
             T = T_0 (rho / rho_0)^(gamma-1)
@@ -66,8 +65,7 @@ class RateNetworkGas(gas_properties.GasProperties):
         ienergy *= self.temp_factor
         #Adjust slope by same factor: note use gamma_factor -1 so gamma_factor = 1 means no change.
         if self.gamma_factor != 1.:
-            density = self.get_code_rhoH(bar)
-            ienergy *= (density/self.density0)**self.gamma_factor-1.
+            ienergy *= (density/density0)**self.gamma_factor-1.
         return ienergy
 
 class RateNetworkSpectra(spectra.Spectra):

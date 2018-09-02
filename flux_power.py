@@ -9,9 +9,11 @@ from fake_spectra import abstractsnapshot as absn
 
 class FluxPower(object):
     """Class stores the flux power spectrum."""
-    def __init__(self):
+    def __init__(self, maxk):
         self.spectrae = []
         self.snaps = []
+        self.maxk = maxk
+        self.kf = None
 
     def add_snapshot(self,snapshot, spec):
         """Add a power spectrum to the list."""
@@ -23,7 +25,8 @@ class FluxPower(object):
         return len(self.spectrae)
 
     def get_power(self, kf, mean_fluxes):
-        """Generate the flux power, with known optical depth, from a list of snapshots."""
+        """Generate a flux power spectrum rebinned to be like the flux power from BOSS.
+        This can be used as an artificial data vector."""
         mf = None
         flux_arr = np.empty(shape=(self.len(),np.size(kf)))
         for (i,ss) in enumerate(self.spectrae):
@@ -41,6 +44,37 @@ class FluxPower(object):
         self.drop_table()
         return flux_arr
 
+    def get_power_native_binning(self, mean_fluxes):
+        """ Generate the flux power, with known optical depth, from a list of snapshots.
+            maxk should be in comoving Mpc/h.
+            kf is stored in comoving Mpc/h units.
+            The P_F returned is in km/s units.
+        """
+        mf = None
+        flux_arr = np.array([])
+        for (i,ss) in enumerate(self.spectrae):
+            if mean_fluxes is not None:
+                mf = mean_fluxes[i]
+            kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
+            #Store k_F in comoving Mpc/h units, so that it is independent of redshift.
+            vscale = ss.velfac * 3.085678e24/ss.rscale
+            kf_sim *= vscale
+            ii = np.where(kf_sim <= self.maxk)
+            flux_arr = np.append(flux_arr,flux_power_sim[ii])
+            if self.kf is None:
+                self.kf = kf_sim[ii]
+            else:
+                assert np.all(np.abs(kf_sim[ii]/self.kf - 1) < 1e-5)
+        flux_arr = np.ravel(flux_arr)
+        assert np.shape(flux_arr) == (self.len()*np.size(self.kf),)
+        self.drop_table()
+        return flux_arr
+
+    def get_kf_kms(self):
+        """Get a vector of kf in km/s units for all redshifts."""
+        kfkms = np.array([ self.kf / ss.velfac * 3.085678e24/ss.rscale for ss in self.spectrae])
+        return kfkms
+
     def get_zout(self):
         """Get output redshifts"""
         return np.array([ss.red for ss in self.spectrae])
@@ -52,8 +86,9 @@ class FluxPower(object):
 
 class MySpectra(object):
     """This class stores the randomly positioned sightlines once,
-       so that they are the same for each emulator point."""
-    def __init__(self, numlos = 32000, max_z= 4.2):
+       so that they are the same for each emulator point.
+       max_k is in comoving h/Mpc."""
+    def __init__(self, numlos = 32000, max_z= 4.2, max_k = 5.):
         self.NumLos = numlos
         #For SDSS or BOSS the spectral resolution is
         #60 km/s at 5000 A and 80 km/s at 4300 A.
@@ -71,6 +106,7 @@ class MySpectra(object):
         self.NumLos = numlos
         #Want output every 0.2 from z=max to z=2.2, matching SDSS.
         self.zout = np.arange(max_z,2.1,-0.2)
+        self.max_k = max_k
         self.savefile = "lya_forest_spectra.hdf5"
 
     def _get_cofm(self, num, base):
@@ -128,7 +164,7 @@ class MySpectra(object):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
         #print('Looking for spectra in', base)
-        powerspectra = FluxPower()
+        powerspectra = FluxPower(maxk=self.max_k)
         for snap in range(30):
             snapdir = os.path.join(base,snappref+str(snap).rjust(3,'0'))
             #We ran out of snapshots

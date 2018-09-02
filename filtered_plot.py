@@ -95,9 +95,9 @@ def mean_flux_effect_plot(base):
     plt.semilogx(kf24, dpkf24, ls="-", label=r"$z=2.4$")
     plt.semilogx(kf3, dpkf3, ls="--", label=r"$z=3$")
 
-    plt.xlim(1.e-3, 0.05)
+    plt.xlim(1.e-3, 0.1)
     plt.axvspan(1.084e-3, 1.95e-2, facecolor='grey', alpha=0.3)
-    plt.ylim(0.95,1.0)
+    plt.ylim(0.95,1.01)
     plt.xlabel(r'$k$ ($\mathrm{s}\,\mathrm{km}^{-1}$)')
     plt.ylabel(r'$P_\mathrm{F}(k, mean flux)/P_\mathrm{F}(k, UVB)$')
     plt.tight_layout()

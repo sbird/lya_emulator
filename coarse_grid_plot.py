@@ -39,55 +39,6 @@ def plot_convexhull(emulatordir):
                 ax.plot(projected[simplex, 0], projected[simplex, 1], 'k-')
     return hull
 
-def plot_test_interpolate_kf_bin_loop(emulatordir, testdir, savedir=None, plotname="", kf_bin_nums=np.arange(1)):
-    """Plot the validation set vs the test points from the emulator for a specific k bin,
-       looping over all the validation points."""
-    if savedir is None:
-        savedir = emulatordir
-
-    all_power_array_all_kf = [None] * kf_bin_nums.size
-    for i in range(kf_bin_nums.size):
-        plotname_single_kf_bin = plotname + '_' + str(kf_bin_nums[i])
-        _, all_power_array_all_kf[i], z_labs = plot_test_interpolate(emulatordir, testdir, savedir=savedir, plotname=plotname_single_kf_bin, kf_bin_nums=[kf_bin_nums[i],])
-
-    all_power_array_all_kf = np.array(all_power_array_all_kf)
-    for j in range(all_power_array_all_kf.shape[1]): #Loop over validation points in parameter space
-        print("Validation point", j+1, "/", all_power_array_all_kf.shape[1])
-        #Plot error histogram
-        power_difference = all_power_array_all_kf[:, j, 1, :] - all_power_array_all_kf[:, j, 3, :]
-        err_norm = power_difference / all_power_array_all_kf[:, j, 2, :]
-        _plot_error_histogram(savedir, "_validation_parameters_" + str(j) + plotname, err_norm.flatten())
-
-        #Plot predicted/exact
-        power_ratio = all_power_array_all_kf[:, j, 1, :] / all_power_array_all_kf[:, j, 3, :]
-        power_lower = (all_power_array_all_kf[:, j, 1, :] - all_power_array_all_kf[:, j, 2, :]) / all_power_array_all_kf[:, j, 3, :]
-        power_upper = (all_power_array_all_kf[:, j, 1, :] + all_power_array_all_kf[:, j, 2, :]) / all_power_array_all_kf[:, j, 3, :]
-        for k in range(all_power_array_all_kf.shape[3]): #Loop over redshift bins
-            kf = all_power_array_all_kf[:, j, 0, k]
-            plt.semilogx(kf, power_ratio[:, k], label=z_labs[k])
-            plt.fill_between(kf, power_lower[:, k], power_upper[:, k], alpha=0.3, color="grey")
-        plt.xlabel(r"$k_F$ (s/km)")
-        plt.ylabel(r"Predicted/Exact")
-        plt.xlim(xmax=0.05)
-        plt.legend(loc=0)
-        plt.tight_layout()
-        plt.show()
-        name = "validation_parameters_" + str(j) + plotname + ".pdf"
-        plt.savefig(os.path.join(savedir, name))
-        print(name)
-        plt.clf()
-
-    _plot_by_redshift_bins(savedir, plotname, z_labs, all_power_array_all_kf)
-
-    #Plot combined error histogram
-    power_difference = all_power_array_all_kf[:, :, 1, :] - all_power_array_all_kf[:, :, 3, :]
-    err_norm = power_difference / all_power_array_all_kf[:, :, 2, :]
-    _plot_error_histogram(savedir, plotname, err_norm.flatten())
-
-    #Save combined output
-    array_savename = os.path.join(savedir, "combined_output" + plotname + '.npy')
-    np.save(array_savename, all_power_array_all_kf)
-
 def _plot_by_redshift_bins(savedir, plotname, z_labs, all_power_array_all_kf):
     """Plot the different redshift bins on different plots"""
     ncols = 3
@@ -133,7 +84,7 @@ def _plot_unit_Gaussians(xx, axis=None):
         axis.plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), ls="-", color="black", label=r"Unit Gaussian")
         axis.plot(xx, np.exp(-xx ** 2 / 2 / 2 ** 2) / np.sqrt(2 * np.pi * 2 ** 2), ls="--", color="grey")
 
-def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_flux=1, max_z=4.2, emuclass=None, kf_bin_nums=None,data_err=False):
+def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_flux=1, max_z=4.2, emuclass=None):
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
@@ -144,12 +95,12 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     mf = mflux.ConstMeanFlux(value=t0) #In 'ConstMeanFlux' case: multiply tau_0_i[z] by t0 = 0.95
     if mean_flux == 2:
         mf = mflux.MeanFluxFactor() #In 'MeanFluxFactor' case: DON'T multiply tau_0_i[z] by t0 - because *emulate* t0[z]
-    params_test = coarse_grid.Emulator(testdir,mf=mf, kf_bin_nums=kf_bin_nums)
+    params_test = coarse_grid.Emulator(testdir,mf=mf)
     params_test.load()
     if emuclass is None:
-        params = coarse_grid.Emulator(emulatordir, mf=mf, kf_bin_nums=kf_bin_nums)
+        params = coarse_grid.Emulator(emulatordir, mf=mf)
     else:
-        params = emuclass(emulatordir, mf=mf, kf_bin_nums=kf_bin_nums)
+        params = emuclass(emulatordir, mf=mf)
     params.load()
     print('Beginning to generate emulator at', str(datetime.now()))
     gp = params.get_emulator(max_z=max_z)
@@ -166,11 +117,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     all_power_array = np.zeros((params_test.get_parameters().shape[0], 4, nkf*nred)) #kf, predicted, std, exact
     validation_number = 0
 
-    #Get BOSS flux power spectra measurement errors
-    if data_err is True:
-        BOSS_data_instance = lyman_data.BOSSData()
-        measurement_errors = np.sqrt(BOSS_data_instance.get_covar_diag()) #sqrt[(stat. 1 sigma)**2 + (sys. 1 sigma)**2]
-
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
         if not os.path.exists(dd):
@@ -186,14 +132,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         ratio = predicted[0]/exact
         upper = (predicted[0] + std[0])/exact
         lower = (predicted[0] - std[0])/exact
-        if data_err is False:
-            errlist = np.concatenate([errlist, (predicted[0] - exact)/std[0]])
-        else:
-            measurement_errors_to_max_z = measurement_errors[:nred * nkf].reshape((nred, nkf))[::-1].flatten()
-            if kf_bin_nums is not None:
-                measurement_errors_to_max_z = measurement_errors_to_max_z.reshape((nred, nkf))[:,kf_bin_nums].flatten()
-            errlist = np.concatenate([errlist, (predicted[0] - exact) / measurement_errors_to_max_z])
-            print(measurement_errors_to_max_z)
+        errlist = np.concatenate([errlist, (predicted[0] - exact)/std[0]])
         #REMOVE
         plt.hist((predicted[0]-exact)/std[0],bins=100 , density=True) #No 'density' property in Matplotlib v1
         xx = np.arange(-6, 6, 0.01)

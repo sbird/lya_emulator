@@ -28,10 +28,8 @@ def get_latex(key):
 
 class Emulator(object):
     """Small wrapper class to store parameter names and limits, generate simulations and get an emulator.
-        Arguments:
-            kf_bin_nums - list of element numbers of wavenumber array [kf] to be emulated. Default is all elements.
     """
-    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, kf_bin_nums=None):
+    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None):
         if param_names is None:
             self.param_names = {'ns':0, 'As':1, 'heat_slope':2, 'heat_amp':3, 'hub':4}
         else:
@@ -41,7 +39,7 @@ class Emulator(object):
         else:
             self.param_limits = param_limits
         if kf is None:
-            self.kf = lyman_data.BOSSData().get_kf(kf_bin_nums=kf_bin_nums)
+            self.kf = lyman_data.BOSSData().get_kf()
         else:
             self.kf = kf
         if mf is None:

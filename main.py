@@ -24,8 +24,7 @@ if __name__ == "__main__":
     emulator_error_plot_savefile = savedir + '/emulator_error_' + plotname + '.pdf'
     initial_parameter_samples_plot_savefile = savedir + '/initial_parameter_samples_' + plotname + '.pdf'
 
-    #test_knot_plots(testdir=testdir, emudir=emudir, plotdir=savedir, plotname=plotname, mf=2, kf_bin_nums=None, data_err=False, max_z=4.2)
-    #plot_test_interpolate_kf_bin_loop(emudir, testdir, savedir=savedir, plotname="_Two_loop", kf_bin_nums=np.arange(2))
+    #test_knot_plots(testdir=testdir, emudir=emudir, plotdir=savedir, plotname=plotname, mf=2, max_z=4.2)
 
     #make_plot(chain_savedir + '/AA0.97BB1.3_chain_20000_MeanFluxFactor.txt', likelihood_samples_plot_savefile)
     output = make_plot_flux_power_spectra(testdir, emudir, flux_power_plot_savefile, mean_flux_label='s', rescale_data_error=True, fix_error_ratio=True, error_ratio=100.)

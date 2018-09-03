@@ -125,7 +125,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
             pp = np.concatenate([[t0,], pp]) #In 'MeanFluxFactor' case: choose t0 point for fair comparison
         predicted_nat,std_nat = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: t0; cosmo.; thermal},]
         #This is binned as for the simulation, in comoving Mpc. Needs rebinning
-        omega_m = params.omegamh2/pp[len(params.mf.dense_param_names)+params.param_names['hub']]**2
+        omega_m = params_test.omegamh2/pp[len(params_test.mf.dense_param_names)+params_test.param_names['hub']]**2
         okf, predicted = flux_power.rebin_power_to_kms(kfkms=kf, kfmpc=gp.kf, flux_powers = predicted_nat[0], zbins=myspec.zout, omega_m = omega_m)
         _, std = flux_power.rebin_power_to_kms(kfkms=kf, kfmpc=gp.kf, flux_powers = std_nat[0], zbins=myspec.zout, omega_m = omega_m)
 

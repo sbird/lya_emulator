@@ -153,7 +153,7 @@ class LikelihoodClass(object):
         chi2 = 0
 
         for bb in range(nz):
-            idp = np.where(self.kf >= ofk[bb][0])
+            idp = np.where(self.kf >= okf[bb][0])
             diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
             std_bin = std[bb]
             covar_bin = self.get_BOSS_error(bb)[idp,idp]
@@ -181,17 +181,12 @@ class LikelihoodClass(object):
         """Get the BOSS covariance matrix error."""
         #Redshifts
         sdssz = self.sdss.get_redshifts()
-        nkf = len(self.kf)
-
         #Fix maximum redshift bug
         sdssz = sdssz[sdssz <= self.max_z]
-
         #Important assertion
         npt.assert_allclose(sdssz, self.zout, atol=1.e-16)
         #print('SDSS redshifts are', sdssz)
-
         covar_bin = self.sdss.get_covar(sdssz[zbin])
-        #Rescale mock measurement covariance matrix to match BOSS percentage accuracy
         return covar_bin
 
     def do_sampling(self, savefile, datadir, nwalkers=100, burnin=1000, nsamples=3000, while_loop=True, include_emulator_error=True):
@@ -264,7 +259,7 @@ class LikelihoodClass(object):
         for bb in range(nz):
             covar_bin = self.sdss.get_covar(sdssz[bb])
             if include_emu:
-                idp = np.where(self.kf >= ofk[bb][0])
+                idp = np.where(self.kf >= okf[bb][0])
                 std_bin = std[bb]
                 #Assume completely correlated emulator errors within this bin
                 covar_emu = np.outer(std_bin, std_bin)

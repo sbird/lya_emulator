@@ -67,7 +67,6 @@ def mean_flux_rescale():
     emu = coarse_grid.Emulator(emulatordir, mf=mf)
     emu.load()
     par, kfs, flux_vectors = emu.get_flux_vectors(max_z=2.4)
-    params = emu.dense_param_names
     nmflux = mf.dense_samples
     nsims = np.shape(emu.get_parameters())[0]
     lss = ["-", "--", ":", "-."]

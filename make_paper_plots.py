@@ -93,7 +93,7 @@ def mean_flux_rescale():
         plt.ylabel(r'$P_\mathrm{F}(k)$ ratio')
         plt.ylim(ymin=0.3)
         plt.legend(loc="lower left",ncol=4, fontsize=8)
-        plt.title("Mean flux, z=2.2, varying "+name)
+        plt.title("Mean flux, z=2.4, varying "+name)
         plt.savefig(path.join(plotdir,"sp_"+name+"_mean_flux.pdf"))
         plt.clf()
     return par
@@ -113,8 +113,8 @@ def single_parameter_plot():
         for i in np.ravel(ind):
             tp = par[i,index]
             fp = (flux_vectors[i]/deffv)
-            plt.semilogx(kfs[i][0], fp[0:np.size(kfs[i][0])], label=name+"=%.2g (z=2.2)" % tp)
-            plt.semilogx(kfs[i][1], fp[np.size(kfs[i][0]):], label=name+"=%.2g (z=2.4)" % tp, ls="--")
+            plt.semilogx(kfs[i][0], fp[0:np.size(kfs[i][0])], label=name+"=%.2g (z=2.4)" % tp)
+            plt.semilogx(kfs[i][1], fp[np.size(kfs[i][0]):], label=name+"=%.2g (z=2.2)" % tp, ls="--")
         plt.xlim(1e-3,2e-2)
         plt.ylim(ymin=0.6)
         plt.legend(loc=0)

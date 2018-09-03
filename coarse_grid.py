@@ -50,6 +50,14 @@ class Emulator(object):
         #h^2 itself has little effect on the forest.
         self.omegamh2 = 0.1199
         #Corresponds to omega_m = (0.23, 0.31) which should be enough.
+
+        #Maximal velfactor: the h dependence cancels but there is an omegam
+        minhub = self.param_limits[self.param_names['hub'],0]
+        velfac = lambda a: a * 100.0* np.sqrt(self.omegamh2/minhub**2/a**3 + (1 - self.omegamh2/minhub))
+        #Maximum k value to use in comoving Mpc/h.
+        #Comes out to k ~ 5, which is a bit larger than strictly necessary.
+        self.maxk = np.max(self.kf) * velfac(1/(1+4.4)) * 2
+
         self.sample_params = []
         self.basedir = os.path.expanduser(basedir)
         if not os.path.exists(basedir):
@@ -230,12 +238,12 @@ class Emulator(object):
         gp = self._get_custom_emulator(emuobj=gpemulator.MultiBinGP, max_z=max_z)
         return gp
 
-    def get_flux_vectors(self, max_z=4.2):
+    def get_flux_vectors(self, max_z=4.2, kfunits="kms"):
         """Get the desired flux vectors and their parameters"""
         pvals = self.get_parameters()
         nparams = np.shape(pvals)[1]
         assert nparams == len(self.param_names)
-        myspec = flux_power.MySpectra(max_z=max_z)
+        myspec = flux_power.MySpectra(max_z=max_z, max_k=self.maxk)
         mean_fluxes = self.mf.get_mean_flux(myspec.zout)
         aparams = pvals
         #Note this gets tau_0 as a linear scale factor from the observed power law
@@ -243,20 +251,30 @@ class Emulator(object):
         if dpvals is not None:
             aparams = np.array([np.concatenate([dp,pv]) for dp in dpvals for pv in pvals])
         try:
-            flux_vectors = self.load_flux_vectors(aparams)
+            kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams)
         except (AssertionError, OSError):
             powers = [self._get_fv(pp, myspec) for pp in pvals]
-            flux_vectors = np.array([ps.get_power(kf = self.kf, mean_fluxes = mef) for mef in mean_fluxes for ps in powers])
-            self.save_flux_vectors(aparams, flux_vectors)
+            flux_vectors = np.array([ps.get_power_native_binning(mean_fluxes = mef) for mef in mean_fluxes for ps in powers])
+            #'natively' binned k values in km/s units as a function of redshift
+            kfkms = [ps.get_kf_kms() for mef in mean_fluxes for ps in powers]
+            kfmpc = ps.kf
+            self.save_flux_vectors(aparams, kfmpc, kfkms, flux_vectors)
         assert np.shape(flux_vectors)[0] == np.shape(aparams)[0]
-        return aparams, flux_vectors
+        if kfunits == "kms":
+            kf = kfkms
+        else:
+            kf = kfmpc
+        return aparams, kf, flux_vectors
 
-    def save_flux_vectors(self, aparams, flux_vectors, savefile="emulator_flux_vectors.hdf5"):
+    def save_flux_vectors(self, aparams, kfmpc, kfkms, flux_vectors, savefile="emulator_flux_vectors.hdf5"):
         """Save the flux vectors and parameters to a file, which is the only thing read on reload."""
         save = h5py.File(os.path.join(self.basedir, savefile), 'w')
         save.attrs["classname"] = str(self.__class__)
         save["params"] = aparams
         save["flux_vectors"] = flux_vectors
+        #Save in both km/s and Mpc/h units.
+        save["kfkms"] = kfkms
+        save["kfmpc"] = kfmpc
         save.close()
 
     def load_flux_vectors(self, aparams, savefile="emulator_flux_vectors.hdf5"):
@@ -264,12 +282,14 @@ class Emulator(object):
         load = h5py.File(os.path.join(self.basedir, savefile), 'r')
         inparams = np.array(load["params"])
         flux_vectors = np.array(load["flux_vectors"])
+        kfkms = np.array(load["kfkms"])
+        kfmpc = np.array(load["kfmpc"])
         name = str(load.attrs["classname"])
         load.close()
         assert name == str(self.__class__)
         assert np.shape(inparams) == np.shape(aparams)
         assert np.all(inparams - aparams < 1e-3)
-        return flux_vectors
+        return kfmpc, kfkms, flux_vectors
 
     def get_flux_vectors_batch(self):
         """Launch a set of batch scripts into the queue to compute the lyman alpha spectra and their flux vectors."""
@@ -292,9 +312,9 @@ class Emulator(object):
 
     def _get_custom_emulator(self, *, emuobj, max_z=4.2):
         """Helper to allow supporting different emulators."""
-        aparams, flux_vectors = self.get_flux_vectors(max_z=max_z)
+        aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
         plimits = self.get_param_limits(include_dense=True)
-        gp = emuobj(params=aparams, kf=self.kf, powers = flux_vectors, param_limits = plimits)
+        gp = emuobj(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits)
         return gp
 
 class KnotEmulator(Emulator):

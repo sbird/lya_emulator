@@ -7,6 +7,22 @@ import numpy as np
 from fake_spectra import spectra
 from fake_spectra import abstractsnapshot as absn
 
+def rebin_power_to_kms(kfkms, kfmpc, flux_powers, zbins, omega_m, omega_l = None):
+    """Rebins a power spectrum to constant km/s bins.
+    Bins larger than the box are discarded. The return type is thus a list,
+    with each redshift bin having potentially different lengths."""
+    if omegal is None:
+        omegal = 1 - omegam
+    nz = np.size(zbins)
+    nk = np.size(kfmpc)
+    assert np.size(flux_powers) == nz * nk
+    velfac = lambda zz: 1./(1+zz) * 100.0* np.sqrt(omegam * (1 + zz)**3 + omegal)
+    flux_rebinned = np.zeros(nz*np.size(kfkms))
+    rebinned=[scipy.interpolate.interpolate.interp1d(kfmpc,flux_powers[ii*nk:(ii+1)*nk]) for ii in range(nz)]
+    okmsbins = [kfkms[np.where(kfkms > np.min(kfmpc)/velfac(zz))] for zz in zbins]
+    flux_rebinned = [rebinned[ii](okmsbins[ii]/velfac(zz)) for ii, zz in enumerate(zbins)]
+    return okmsbins, flux_rebinned
+
 class FluxPower(object):
     """Class stores the flux power spectrum."""
     def __init__(self, maxk):

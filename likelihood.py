@@ -116,7 +116,7 @@ class LikelihoodClass(object):
         print('Finished generating emulator at', str(datetime.now()))
 
     def get_predicted(self, params):
-        """Helper function to get the predicted flux power spectrum and error."""
+        """Helper function to get the predicted flux power spectrum and error, rebinned to match the desired kbins."""
         nparams = params
         if self.mf_slope:
             # tau_0_i[z] @dtau_0 / tau_0_i[z] @[dtau_0 = 0]
@@ -127,7 +127,10 @@ class LikelihoodClass(object):
             tau0_fac = None
         # .predict should take [{list of parameters: t0; cosmo.; thermal},]
         # Here: emulating @ cosmo.; thermal; sampled t0 * [tau0_fac from above]
-        predicted, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
+        predicted_nat, std_nat = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
+        omega_m = self.emulator.omegamh2/nparams[self.emulator.param_names['hub']]**2
+        okf, predicted = flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=self.gpemu.kf, flux_powers = predicted_nat[0], zbins=self.zout, omega_m = omega_m)
+        _, std= flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=self.gpemu.kf, flux_powers = std_nat[0], zbins=self.zout, omega_m = omega_m)
         return predicted, std
 
     def likelihood(self, params, include_emu=True, data_power=None):

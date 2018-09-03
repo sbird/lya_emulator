@@ -123,18 +123,26 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
             dd = params_test.get_outdir(pp, strsz=2)
         if mean_flux == 2:
             pp = np.concatenate([[t0,], pp]) #In 'MeanFluxFactor' case: choose t0 point for fair comparison
-        predicted,std = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: t0; cosmo.; thermal},]
+        predicted_nat,std_nat = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: t0; cosmo.; thermal},]
+        #This is binned as for the simulation, in comoving Mpc. Needs rebinning
+        omega_m = params.omegamh2/pp[len(params.mf.dense_param_names)+params.param_names['hub']]**2
+        okf, predicted = flux_power.rebin_power_to_kms(kfkms=kf, kfmpc=gp.kf, flux_powers = predicted_nat[0], zbins=myspec.zout, omega_m = omega_m)
+        _, std = flux_power.rebin_power_to_kms(kfkms=kf, kfmpc=gp.kf, flux_powers = std_nat[0], zbins=myspec.zout, omega_m = omega_m)
+
         ps = myspec.get_snapshot_list(dd)
         meanfluxes = None
         if t0 is not None:
             meanfluxes = np.exp(-t0*mflux.obs_mean_tau(myspec.zout))
-        exact = ps.get_power(kf = kf, mean_fluxes = meanfluxes)
-        ratio = predicted[0]/exact
-        upper = (predicted[0] + std[0])/exact
-        lower = (predicted[0] - std[0])/exact
-        errlist = np.concatenate([errlist, (predicted[0] - exact)/std[0]])
+        exact_nat = ps.get_power_native_binning(mean_fluxes = meanfluxes)
+        okf_ex, exact = flux_power.rebin_power_to_kms(kfkms=kf, kfmpc=gp.kf, flux_powers = exact_nat, zbins=myspec.zout, omega_m = omega_m)
+        assert np.all([np.all(np.abs(okf_ex[ii]/okf[ii]-1) < 1e-5) for ii in range(nred)])
+        ratio =  [predicted[ii]/exact[ii] for ii in range(nred)]
+        upper =  [(predicted[ii] + std[ii])/exact[ii] for ii in range(nred)]
+        lower =  [(predicted[ii]-std[ii])/exact[ii] for ii in range(nred)]
+        errrr =  [(predicted[ii]-exact[ii])/std[ii] for ii in range(nred)]
+        errlist = np.concatenate([errlist, errrr)
         #REMOVE
-        plt.hist((predicted[0]-exact)/std[0],bins=100 , density=True) #No 'density' property in Matplotlib v1
+        plt.hist((errrr,bins=100 , density=True) #No 'density' property in Matplotlib v1
         xx = np.arange(-6, 6, 0.01)
         plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
         plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
@@ -142,11 +150,10 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.savefig(os.path.join(savedir, "errhist_"+str(np.size(errlist))+plotname+".pdf"))
         plt.clf()
         #DONE
-        nk = len(kf)
-        assert np.shape(ratio) == (nred*nk,)
         for i in range(nred):
-            plt.semilogx(kf,ratio[i*nk:(i+1)*nk],label=round(myspec.zout[i],1))
-            plt.fill_between(kf,lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk],alpha=0.3, color="grey")
+            assert np.size(ratio[i]) == np.size(okf[i])
+            plt.semilogx(okf[i],ratio[i],label=round(myspec.zout[i],1))
+            plt.fill_between(okf[i],lower[i], upper[i],alpha=0.3, color="grey")
         #plt.yscale('log')
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")

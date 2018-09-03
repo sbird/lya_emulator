@@ -66,7 +66,7 @@ def mean_flux_rescale():
     mf = MeanFluxFactor()
     emu = coarse_grid.Emulator(emulatordir, mf=mf)
     emu.load()
-    par, flux_vectors = emu.get_flux_vectors(max_z=2.4)
+    par, kfs, flux_vectors = emu.get_flux_vectors(max_z=2.4)
     params = emu.dense_param_names
     nmflux = mf.dense_samples
     nsims = np.shape(emu.get_parameters())[0]
@@ -77,7 +77,7 @@ def mean_flux_rescale():
         for jj in range(2):
             j = js[jj]
             simpar = par[j::nsims]
-            simflux = flux_vectors[j::nsims,:len(emu.kf)]
+            simflux = flux_vectors[j::nsims,:np.size(kf[i])]
             defpar = simpar[nmflux//2,0]
             deffv = simflux[nmflux//2,:]
             ind = np.where(simpar[:,0] != defpar)
@@ -85,8 +85,8 @@ def mean_flux_rescale():
             for i in np.ravel(ind):
                 tp = simpar[i,0]
                 fp = simflux[i]/deffv
-                assert np.shape(emu.kf) == np.shape(fp)
-                plt.semilogx(emu.kf, fp, ls=lss[jj%4], label=r"$\tau_0$=%.3g" % tp)
+                assert np.shape(kfs[i]) == np.shape(fp)
+                plt.semilogx(kfs[i], fp, ls=lss[jj%4], label=r"$\tau_0$=%.3g" % tp)
         plt.xlim(1e-3,2e-2)
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r'$P_\mathrm{F}(k)$ ratio')
@@ -103,7 +103,7 @@ def single_parameter_plot():
     mf = ConstMeanFlux(value=1.)
     emu = coarse_grid.Emulator(emulatordir, mf=mf)
     emu.load()
-    par, flux_vectors = emu.get_flux_vectors(max_z=2.4)
+    par, kfs, flux_vectors = emu.get_flux_vectors(max_z=2.4)
     params = emu.param_names
     defpar = par[0,:]
     deffv = flux_vectors[0]
@@ -111,9 +111,9 @@ def single_parameter_plot():
         ind = np.where(par[:,index] != defpar[index])
         for i in np.ravel(ind):
             tp = par[i,index]
-            fp = (flux_vectors[i]/deffv).reshape(-1,len(emu.kf))
-            plt.semilogx(emu.kf, fp[0,:], label=name+"=%.2g (z=2.4)" % tp)
-            plt.semilogx(emu.kf, fp[1,:], label=name+"=%.2g (z=2.2)" % tp, ls="--")
+            fp = (flux_vectors[i]/deffv).reshape(-1,len(kfs[i]))
+            plt.semilogx(kfs[i], fp[0,:], label=name+"=%.2g (z=2.4)" % tp)
+            plt.semilogx(kfs[i], fp[1,:], label=name+"=%.2g (z=2.2)" % tp, ls="--")
         plt.xlim(1e-3,2e-2)
         plt.ylim(ymin=0.6)
         plt.legend(loc=0)

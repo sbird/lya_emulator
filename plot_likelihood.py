@@ -29,11 +29,10 @@ def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_la
 
     for i in range(parameter_value_samples.shape[0]):
         param_val = np.array([parameter_value_samples[i],])
-        tau0_factors = None
         if mean_flux_label == 's':
             param_val = np.concatenate(([mean_flux_sample[1],], param_val))
-            tau0_factors = mean_flux_slope_to_factor(z, mean_flux_sample[0])
-        emulated_flux_power[i], emulator_error[i] = likelihood_instance.gpemu.predict(param_val.reshape(1, -1), tau0_factors=tau0_factors)
+        emulated_flux_power[i], emulator_error[i] = likelihood_instance.get_predicted(param_val)
+
         fractional_emulator_error[i] = (emulator_error[i][0] / emulated_flux_power[i][0]).reshape(n_z, n_k_los)
         emulator_error_plot[i] = np.nanmean(fractional_emulator_error[i], axis=-1)
         print('Standard deviation of fractional emulator error with scale =', np.std(fractional_emulator_error[i], axis=-1))

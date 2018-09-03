@@ -146,14 +146,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         assert np.shape(ratio) == (nred*nk,)
         for i in range(nred):
             plt.semilogx(kf,ratio[i*nk:(i+1)*nk],label=round(myspec.zout[i],1))
-            if data_err is False:
-                lower_plot = lower
-                upper_plot = upper
-            elif data_err is True:
-                lower_plot = (predicted[0] - measurement_errors_to_max_z) / exact
-                upper_plot = (predicted[0] + measurement_errors_to_max_z) / exact
-                plt.ylim([0.9, 1.1])
-            plt.fill_between(kf,lower_plot[i*nk:(i+1)*nk], upper_plot[i*nk:(i+1)*nk],alpha=0.3, color="grey")
+            plt.fill_between(kf,lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk],alpha=0.3, color="grey")
         #plt.yscale('log')
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
@@ -163,10 +156,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.legend(loc='right')
         plt.tight_layout()
         plt.show()
-        if data_err is False:
-            name_ending = ".pdf"
-        elif data_err is True:
-            name_ending = '_data_err.pdf'
+        name_ending = ".pdf"
         name = re.sub(r"\.","_",str(name))+plotname+name_ending
         #So we can use it in a latex document
         plt.savefig(os.path.join(savedir, name))
@@ -180,8 +170,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         validation_number+=1
 
     #Plot the distribution of errors, compared to a Gaussian
-    if data_err is True:
-        plotname = plotname + "_data_err"
     if np.all(np.isfinite(errlist)):
         #plt.hist(errlist,bins=100, density=True)
         #xx = np.arange(-6, 6, 0.01)

@@ -131,7 +131,7 @@ class LikelihoodClass(object):
         omega_m = self.emulator.omegamh2/nparams[self.emulator.param_names['hub']]**2
         okf, predicted = flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=self.gpemu.kf, flux_powers = predicted_nat[0], zbins=self.zout, omega_m = omega_m)
         _, std= flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=self.gpemu.kf, flux_powers = std_nat[0], zbins=self.zout, omega_m = omega_m)
-        return predicted, std
+        return okf, predicted, std
 
     def likelihood(self, params, include_emu=True, data_power=None):
         """A simple likelihood function for the Lyman-alpha forest.
@@ -145,20 +145,21 @@ class LikelihoodClass(object):
         if np.any(params >= self.param_limits[:,1]) or np.any(params <= self.param_limits[:,0]):
             return -np.inf
 
-        predicted, std = self.get_predicted(params)
+        okf, predicted, std = self.get_predicted(params)
 
-        diff = predicted[0]-data_power
+        diff = predicted-data_power
         nkf = len(self.kf)
         nz = int(len(diff)/nkf)
         #Likelihood using full covariance matrix
         chi2 = 0
 
         for bb in range(nz):
-            diff_bin = diff[nkf*bb:nkf*(bb+1)]
-            std_bin = std[0,nkf*bb:nkf*(bb+1)]
-            covar_bin = self.get_rescaled_BOSS_error(bb, data_power = data_power)
+            idp = np.where(self.kf >= ofk[bb][0])
+            diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
+            std_bin = std[bb]
+            covar_bin = self.get_rescaled_BOSS_error(bb, data_power = data_power)[idp,idp]
 
-            assert np.shape(np.diag(std_bin**2)) == np.shape(covar_bin)
+            assert np.shape(np.outer(std_bin,std_bin)) == np.shape(covar_bin)
             if include_emu:
                 #Assume each k bin is independent
 #                 covar_emu = np.diag(std_bin**2)
@@ -267,15 +268,16 @@ class LikelihoodClass(object):
         nz = sdssz.size
         nkf = len(self.kf)
         if include_emu:
-            _, std = self.get_predicted(params)
+            okf, _, std = self.get_predicted(params)
         detc = 1
         for bb in range(nz):
             covar_bin = self.sdss.get_covar(sdssz[bb])
             if include_emu:
-                std_bin = std[0,nkf*bb:nkf*(bb+1)]
+                idp = np.where(self.kf >= ofk[bb][0])
+                std_bin = std[bb]
                 #Assume completely correlated emulator errors within this bin
                 covar_emu = np.outer(std_bin, std_bin)
-                covar_bin += covar_emu
+                covar_bin[idp,idp] += covar_emu
             _, det_bin = np.linalg.slogdet(covar_bin)
             #We have a block diagonal covariance
             detc *= det_bin

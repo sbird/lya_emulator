@@ -256,12 +256,6 @@ class LikelihoodClass(object):
 
     def get_covar_det(self, params, include_emu):
         """Get the determinant of the covariance matrix.for certain parameters"""
-        nparams = params
-        if self.mf_slope:
-            tau0_fac = mflux.mean_flux_slope_to_factor(self.zout, params[0])
-            nparams = params[1:]
-        else: #Otherwise bug if choose mean_flux = 'c'
-            tau0_fac = None
         if np.any(params >= self.param_limits[:,1]) or np.any(params <= self.param_limits[:,0]):
             return -np.inf
         sdssz = self.sdss.get_redshifts()
@@ -270,7 +264,7 @@ class LikelihoodClass(object):
         nz = sdssz.size
         nkf = len(self.kf)
         if include_emu:
-            _, std = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
+            _, std = self.get_predicted(params)
         detc = 1
         for bb in range(nz):
             covar_bin = self.sdss.get_covar(sdssz[bb])

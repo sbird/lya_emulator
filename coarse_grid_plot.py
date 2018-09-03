@@ -140,9 +140,9 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         upper =  [(predicted[ii] + std[ii])/exact[ii] for ii in range(nred)]
         lower =  [(predicted[ii]-std[ii])/exact[ii] for ii in range(nred)]
         errrr =  [(predicted[ii]-exact[ii])/std[ii] for ii in range(nred)]
-        errlist = np.concatenate([errlist, errrr)
+        errlist = np.concatenate([errlist, errrr])
         #REMOVE
-        plt.hist((errrr,bins=100 , density=True) #No 'density' property in Matplotlib v1
+        plt.hist(errrr,bins=100 , density=True) #No 'density' property in Matplotlib v1
         xx = np.arange(-6, 6, 0.01)
         plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
         plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")

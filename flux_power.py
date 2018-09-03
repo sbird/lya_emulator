@@ -20,7 +20,7 @@ def rebin_power_to_kms(kfkms, kfmpc, flux_powers, zbins, omega_m, omega_l = None
     flux_rebinned = np.zeros(nz*np.size(kfkms))
     rebinned=[scipy.interpolate.interpolate.interp1d(kfmpc,flux_powers[ii*nk:(ii+1)*nk]) for ii in range(nz)]
     okmsbins = [kfkms[np.where(kfkms > np.min(kfmpc)/velfac(zz))] for zz in zbins]
-    flux_rebinned = [rebinned[ii](okmsbins[ii]/velfac(zz)) for ii, zz in enumerate(zbins)]
+    flux_rebinned = [rebinned[ii](okmsbins[ii]*velfac(zz)) for ii, zz in enumerate(zbins)]
     return okmsbins, flux_rebinned
 
 class FluxPower(object):

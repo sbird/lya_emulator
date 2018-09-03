@@ -51,6 +51,17 @@ class Emulator(object):
         self.omegamh2 = 0.1199
         #Corresponds to omega_m = (0.23, 0.31) which should be enough.
 
+        self.set_maxk()
+
+        self.sample_params = []
+        self.basedir = os.path.expanduser(basedir)
+        if not os.path.exists(basedir):
+            os.mkdir(basedir)
+
+    def set_maxk(self):
+        """Get the maximum k in Mpc/h that we will need."""
+        #Corresponds to omega_m = (0.23, 0.31) which should be enough.
+
         #Maximal velfactor: the h dependence cancels but there is an omegam
         minhub = self.param_limits[self.param_names['hub'],0]
         velfac = lambda a: a * 100.0* np.sqrt(self.omegamh2/minhub**2/a**3 + (1 - self.omegamh2/minhub))
@@ -58,10 +69,6 @@ class Emulator(object):
         #Comes out to k ~ 5, which is a bit larger than strictly necessary.
         self.maxk = np.max(self.kf) * velfac(1/(1+4.4)) * 2
 
-        self.sample_params = []
-        self.basedir = os.path.expanduser(basedir)
-        if not os.path.exists(basedir):
-            os.mkdir(basedir)
 
     def build_dirname(self,params, include_dense=False, strsz=3):
         """Make a directory name for a given set of parameter values"""
@@ -153,6 +160,7 @@ class Emulator(object):
         self.kf = kf
         self.mf = mf
         self.basedir = real_basedir
+        self.set_maxk()
 
     def get_outdir(self, pp, strsz=3):
         """Get the simulation output directory path for a parameter set."""

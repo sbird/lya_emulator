@@ -16,29 +16,6 @@ matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-def plot_convexhull(emulatordir):
-    """Plot the convex hull of the projection of the emulator parameters"""
-    params = coarse_grid.Emulator(emulatordir, mf=None)
-    params.load()
-    points = params.sample_params
-    hull = scipy.spatial.ConvexHull(points)
-    K = np.shape(points)[1]
-    _, axes = plt.subplots(K, K)
-    for i in range(K):
-        for j in range(K):
-            ax = axes[i,j]
-            if j >= i:
-                ax.set_frame_on(False)
-                ax.set_xticks([])
-                ax.set_yticks([])
-                continue
-            ax.plot(points[:,i], points[:,j], 'o')
-            projected = np.vstack([points[:,i], points[:,j]]).T
-            hull = scipy.spatial.ConvexHull(projected)
-            for simplex in hull.simplices:
-                ax.plot(projected[simplex, 0], projected[simplex, 1], 'k-')
-    return hull
-
 def _plot_by_redshift_bins(savedir, plotname, z_labs, all_power_array_all_kf):
     """Plot the different redshift bins on different plots"""
     ncols = 3

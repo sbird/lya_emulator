@@ -77,22 +77,24 @@ def mean_flux_rescale():
         for jj in range(2):
             j = js[jj]
             simpar = par[j::nsims]
-            simflux = flux_vectors[j::nsims,:np.size(kf[i])]
+            simkf = kfs[j::nsims]
+            nk = np.shape(simkf)[-1]
+            simflux = flux_vectors[j::nsims]
             defpar = simpar[nmflux//2,0]
-            deffv = simflux[nmflux//2,:]
+            deffv = simflux[nmflux//2][:nk]
             ind = np.where(simpar[:,0] != defpar)
             assert np.size(ind) > 0
             for i in np.ravel(ind):
                 tp = simpar[i,0]
-                fp = simflux[i]/deffv
-                assert np.shape(kfs[i]) == np.shape(fp)
-                plt.semilogx(kfs[i], fp, ls=lss[jj%4], label=r"$\tau_0$=%.3g" % tp)
+                fp = simflux[i][:nk]/deffv
+                assert np.shape(kfs[i][0]) == np.shape(fp)
+                plt.semilogx(kfs[i][0], fp, ls=lss[jj%4], label=r"$\tau_0$=%.3g" % tp)
         plt.xlim(1e-3,2e-2)
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r'$P_\mathrm{F}(k)$ ratio')
         plt.ylim(ymin=0.3)
         plt.legend(loc="lower left",ncol=4, fontsize=8)
-        plt.title("Mean flux, z=2.4, varying "+name)
+        plt.title("Mean flux, z=2.2, varying "+name)
         plt.savefig(path.join(plotdir,"sp_"+name+"_mean_flux.pdf"))
         plt.clf()
     return par
@@ -111,9 +113,9 @@ def single_parameter_plot():
         ind = np.where(par[:,index] != defpar[index])
         for i in np.ravel(ind):
             tp = par[i,index]
-            fp = (flux_vectors[i]/deffv).reshape(-1,len(kfs[i]))
-            plt.semilogx(kfs[i], fp[0,:], label=name+"=%.2g (z=2.4)" % tp)
-            plt.semilogx(kfs[i], fp[1,:], label=name+"=%.2g (z=2.2)" % tp, ls="--")
+            fp = (flux_vectors[i]/deffv)
+            plt.semilogx(kfs[i][0], fp[0:np.size(kfs[i][0])], label=name+"=%.2g (z=2.2)" % tp)
+            plt.semilogx(kfs[i][1], fp[np.size(kfs[i][0]):], label=name+"=%.2g (z=2.4)" % tp, ls="--")
         plt.xlim(1e-3,2e-2)
         plt.ylim(ymin=0.6)
         plt.legend(loc=0)

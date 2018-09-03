@@ -58,9 +58,8 @@ def load_data(datadir, *, kf, max_z=4.2):
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z = 4.2, emulator_class="standard", t0_training_value = 0.95, rescale_data_error=False):
+    def __init__(self, basedir, mean_flux='s', max_z = 4.2, emulator_class="standard", t0_training_value = 0.95):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
-        self.rescale_data_error = rescale_data_error
 
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
@@ -157,7 +156,7 @@ class LikelihoodClass(object):
             idp = np.where(self.kf >= ofk[bb][0])
             diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
             std_bin = std[bb]
-            covar_bin = self.get_rescaled_BOSS_error(bb, data_power = data_power)[idp,idp]
+            covar_bin = self.get_BOSS_error(bb)[idp,idp]
 
             assert np.shape(np.outer(std_bin,std_bin)) == np.shape(covar_bin)
             if include_emu:
@@ -178,8 +177,8 @@ class LikelihoodClass(object):
         """Load the chain from a savefile"""
         self.flatchain = np.loadtxt(savefile)
 
-    def get_rescaled_BOSS_error(self, zbin, data_power = None):
-        """Get the BOSS covariance matrix error rescaled so the percentage errors are conserved for this data."""
+    def get_BOSS_error(self, zbin):
+        """Get the BOSS covariance matrix error."""
         #Redshifts
         sdssz = self.sdss.get_redshifts()
         nkf = len(self.kf)
@@ -188,19 +187,11 @@ class LikelihoodClass(object):
         sdssz = sdssz[sdssz <= self.max_z]
 
         #Important assertion
-        nz = len(data_power)//nkf
-        assert nz == sdssz.size
         npt.assert_allclose(sdssz, self.zout, atol=1.e-16)
         #print('SDSS redshifts are', sdssz)
 
         covar_bin = self.sdss.get_covar(sdssz[zbin])
         #Rescale mock measurement covariance matrix to match BOSS percentage accuracy
-        if self.rescale_data_error:
-            if data_power is None:
-                data_power = self.data_fluxpower
-            rescaling_factor = data_power[nkf*zbin:nkf*(zbin+1)] / self.BOSS_flux_power[zbin]
-            covar_bin *= np.outer(rescaling_factor, rescaling_factor) #(km / s)**2
-
         return covar_bin
 
     def do_sampling(self, savefile, datadir, nwalkers=100, burnin=1000, nsamples=3000, while_loop=True, include_emulator_error=True):

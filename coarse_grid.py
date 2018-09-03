@@ -265,7 +265,9 @@ class Emulator(object):
             flux_vectors = np.array([ps.get_power_native_binning(mean_fluxes = mef) for mef in mean_fluxes for ps in powers])
             #'natively' binned k values in km/s units as a function of redshift
             kfkms = [ps.get_kf_kms() for mef in mean_fluxes for ps in powers]
-            kfmpc = ps.kf
+            #Same in all boxes
+            kfmpc = powers[0].kf
+            assert np.all(np.abs(powers[0].kf/ powers[-1].kf-1) < 1e-6)
             self.save_flux_vectors(aparams, kfmpc, kfkms, flux_vectors)
         assert np.shape(flux_vectors)[0] == np.shape(aparams)[0]
         if kfunits == "kms":

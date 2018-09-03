@@ -73,7 +73,7 @@ class FluxPower(object):
                 mf = mean_fluxes[i]
             kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
             #Store k_F in comoving Mpc/h units, so that it is independent of redshift.
-            vscale = ss.velfac * 3.085678e24/ss.rscale
+            vscale = ss.velfac * 3.085678e24/ss.units.UnitLength_in_cm
             kf_sim *= vscale
             ii = np.where(kf_sim <= self.maxk)
             flux_arr = np.append(flux_arr,flux_power_sim[ii])

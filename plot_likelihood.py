@@ -13,62 +13,6 @@ matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 import corner
 
-def make_plot_emulator_error(emulator_training_directory, savefile, mean_flux_label='c', likelihood_instance=None, max_z=4.2):
-    """Make a plot of emulator error as a fraction of the data error"""
-    if likelihood_instance is None:
-        likelihood_instance = likeh.LikelihoodClass(emulator_training_directory, mean_flux=mean_flux_label, max_z=max_z)
-    _, z, n_k_los, n_z = get_k_z(likelihood_instance)
-
-    parameter_value_samples = np.linspace(0.8, 1.2, num=200) #HeliumHeatAmp
-    mean_flux_sample = np.array([0., 0.95]) #dtau0, tau0
-    emulator_error_plot = np.zeros((parameter_value_samples.shape[0], n_z))
-
-    emulated_flux_power = [None] * parameter_value_samples.shape[0]
-    emulator_error = [None] * parameter_value_samples.shape[0]
-    fractional_emulator_error = [None] * parameter_value_samples.shape[0]
-
-    for i in range(parameter_value_samples.shape[0]):
-        param_val = np.array([parameter_value_samples[i],])
-        if mean_flux_label == 's':
-            param_val = np.concatenate(([mean_flux_sample[1],], param_val))
-        emulated_flux_power[i], emulator_error[i] = likelihood_instance.get_predicted(param_val)
-
-        fractional_emulator_error[i] = (emulator_error[i][0] / emulated_flux_power[i][0]).reshape(n_z, n_k_los)
-        emulator_error_plot[i] = np.nanmean(fractional_emulator_error[i], axis=-1)
-        print('Standard deviation of fractional emulator error with scale =', np.std(fractional_emulator_error[i], axis=-1))
-
-    _, axis = plt.subplots(nrows=1, ncols=1, figsize=(6.4 * 2., 10.))
-    distinct_colours = dc.get_distinct(n_z)
-    line_width = 0.5
-    fontsize = 7.
-    for i in range(n_z):
-        data_error = np.sqrt(likelihood_instance.sdss.get_covar(z[i]).diagonal()) #n_k_los
-        data_error_rescaling_factor = likelihood_instance.data_fluxpower[n_k_los*i:n_k_los*(i+1)] / likelihood_instance.BOSS_flux_power[i]
-        data_error *= data_error_rescaling_factor
-        fractional_data_error = data_error[np.newaxis, :] / np.array(emulated_flux_power)[:, 0].reshape(-1, n_z, n_k_los)[:, i]
-        data_error_plot = np.nanmean(fractional_data_error, axis=-1)
-        #n_samples, n_k_los
-
-        axis.plot(parameter_value_samples, emulator_error_plot[:,i], color=distinct_colours[i], lw=line_width, label=r'$z = %.1f$' % z[i])
-        axis.plot(parameter_value_samples, data_error_plot, color=distinct_colours[i], lw=line_width, ls='--')
-        #axis.scatter(parameter_value_samples, emulator_error_plot[:,i], c=distinct_colours[i], label=r'$z = %.1f$' % z[i])
-
-    axis.plot([], color='gray', ls='-', label=r'emulated sigma')
-    axis.plot([], color='gray', ls='--', label=r'BOSS sigma')
-
-    axis.axvline(x=0.9, color='black', ls=':', lw=line_width)
-    #axis.axvline(x=0.95, color='black', ls=':', lw=line_width)
-    axis.axvline(x=1., color='black', ls=':', lw=line_width)
-    #axis.axvline(x=1.05, color='black', ls=':', lw=line_width)
-    axis.axvline(x=1.1, color='black', ls=':', lw=line_width)
-    axis.legend(frameon=False, fontsize=fontsize)
-    axis.set_yscale('log')
-    axis.set_xlabel(r'HeliumHeatAmp')
-    axis.set_ylabel(r'(sigma / emulated P(k)) [averaged over scale]')
-
-    #np.savez('/home/keir/Data/emulator/emulator_error.npz', parameter_value_samples, emulator_error_plot, np.array(fractional_emulator_error), np.array(emulator_error), np.array(emulated_flux_power), k_los)
-    plt.savefig(savefile)
-
 def get_k_z(likelihood_instance):
     """Get k and z bins"""
     k_los = likelihood_instance.gpemu.kf

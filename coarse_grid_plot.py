@@ -122,8 +122,8 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.clf()
         #DONE
         for i in range(nred):
-            plt.semilogx(okf[i*nk:(i+1)*kf],ratio[i*nk:(i+1)*kf],label=round(myspec.zout[i],1))
-            plt.fill_between(okf[i*nk:(i+1)*kf],lower[i*nk:(i+1)*kf], upper[i*nk:(i+1)*kf],alpha=0.3, color="grey")
+            plt.semilogx(okf[i],ratio[i*nk:(i+1)*nk],label=round(myspec.zout[i],1))
+            plt.fill_between(okf[i],lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk],alpha=0.3, color="grey")
         #plt.yscale('log')
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")

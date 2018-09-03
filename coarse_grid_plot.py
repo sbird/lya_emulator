@@ -4,17 +4,14 @@ import os.path
 import re
 import math
 from datetime import datetime
-import scipy.spatial
 import numpy as np
 import coarse_grid
 import flux_power
 import matter_power
-import lyman_data
 import mean_flux as mflux
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
-from datetime import datetime
 
 def _plot_by_redshift_bins(savedir, plotname, z_labs, all_power_array_all_kf):
     """Plot the different redshift bins on different plots"""
@@ -100,24 +97,20 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
             dd = params_test.get_outdir(pp, strsz=2)
         if mean_flux == 2:
             pp = np.concatenate([[t0,], pp]) #In 'MeanFluxFactor' case: choose t0 point for fair comparison
-        predicted_nat,std_nat = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: t0; cosmo.; thermal},]
-        #This is binned as for the simulation, in comoving Mpc. Needs rebinning
-        omega_m = params_test.omegamh2/pp[len(params_test.mf.dense_param_names)+params_test.param_names['hub']]**2
-        okf, predicted = flux_power.rebin_power_to_kms(kfkms=kf, kfmpc=gp.kf, flux_powers = predicted_nat[0], zbins=myspec.zout, omega_m = omega_m)
-        _, std = flux_power.rebin_power_to_kms(kfkms=kf, kfmpc=gp.kf, flux_powers = std_nat[0], zbins=myspec.zout, omega_m = omega_m)
+        predicted,std = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: t0; cosmo.; thermal},]
 
         ps = myspec.get_snapshot_list(dd)
         meanfluxes = None
         if t0 is not None:
             meanfluxes = np.exp(-t0*mflux.obs_mean_tau(myspec.zout))
-        exact_nat = ps.get_power_native_binning(mean_fluxes = meanfluxes)
+        exact = ps.get_power_native_binning(mean_fluxes = meanfluxes)
+        okf = ps.get_kf_kms()
+        nk = np.size(ps.kf)
         assert np.all(np.abs(gp.kf/ps.kf - 1) < 1e-5)
-        okf_ex, exact = flux_power.rebin_power_to_kms(kfkms=kf, kfmpc=gp.kf, flux_powers = exact_nat, zbins=myspec.zout, omega_m = omega_m)
-        assert np.all([np.all(np.abs(okf_ex[ii]/okf[ii]-1) < 1e-5) for ii in range(nred)])
-        ratio =  [predicted[ii]/exact[ii] for ii in range(nred)]
-        upper =  [(predicted[ii] + std[ii])/exact[ii] for ii in range(nred)]
-        lower =  [(predicted[ii]-std[ii])/exact[ii] for ii in range(nred)]
-        errrr =  [(predicted[ii]-exact[ii])/std[ii] for ii in range(nred)]
+        ratio =  predicted[0]/exact
+        upper =  (predicted[0] + std[0])/exact
+        lower =  (predicted[0]-std[0])/exact
+        errrr =  (predicted[0]-exact)/std[0]
         errlist = np.concatenate([errlist, errrr])
         #REMOVE
         plt.hist(errrr,bins=100 , density=True) #No 'density' property in Matplotlib v1
@@ -129,9 +122,8 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.clf()
         #DONE
         for i in range(nred):
-            assert np.size(ratio[i]) == np.size(okf[i])
-            plt.semilogx(okf[i],ratio[i],label=round(myspec.zout[i],1))
-            plt.fill_between(okf[i],lower[i], upper[i],alpha=0.3, color="grey")
+            plt.semilogx(okf[i*nk:(i+1)*kf],ratio[i*nk:(i+1)*kf],label=round(myspec.zout[i],1))
+            plt.fill_between(okf[i*nk:(i+1)*kf],lower[i*nk:(i+1)*kf], upper[i*nk:(i+1)*kf],alpha=0.3, color="grey")
         #plt.yscale('log')
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")

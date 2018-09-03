@@ -88,7 +88,7 @@ class FluxPower(object):
 
     def get_kf_kms(self):
         """Get a vector of kf in km/s units for all redshifts."""
-        kfkms = np.array([ self.kf / ss.velfac * 3.085678e24/ss.rscale for ss in self.spectrae])
+        kfkms = np.array([ self.kf / (ss.velfac * 3.085678e24/ss.units.UnitLength_in_cm) for ss in self.spectrae])
         return kfkms
 
     def get_zout(self):

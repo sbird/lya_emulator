@@ -65,7 +65,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
-    myspec = flux_power.MySpectra(max_z=max_z)
     t0 = None
     if mean_flux:
         t0 = 1. #0.95
@@ -83,6 +82,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     gp = params.get_emulator(max_z=max_z)
     print('Finished generating emulator at', str(datetime.now()))
     kf = params.kf
+    myspec = flux_power.MySpectra(max_z=max_z, max_k=params.maxk)
     del params
     errlist = np.array([])
     #Constant mean flux.
@@ -111,6 +111,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         if t0 is not None:
             meanfluxes = np.exp(-t0*mflux.obs_mean_tau(myspec.zout))
         exact_nat = ps.get_power_native_binning(mean_fluxes = meanfluxes)
+        assert np.all(np.abs(gp.kf/ps.kf - 1) < 1e-5)
         okf_ex, exact = flux_power.rebin_power_to_kms(kfkms=kf, kfmpc=gp.kf, flux_powers = exact_nat, zbins=myspec.zout, omega_m = omega_m)
         assert np.all([np.all(np.abs(okf_ex[ii]/okf[ii]-1) < 1e-5) for ii in range(nred)])
         ratio =  [predicted[ii]/exact[ii] for ii in range(nred)]

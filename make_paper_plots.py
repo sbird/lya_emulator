@@ -168,10 +168,10 @@ def sample_var_plot():
     plt.clf()
 
 if __name__ == "__main__":
-#     sample_var_plot()
-    hypercube_plot()
+    gp_emu, gp_quad, gp_quad_quad = test_s8_plots()
     single_parameter_plot()
     pars = mean_flux_rescale()
-    gp_emu, gp_quad, gp_quad_quad = test_s8_plots()
+    hypercube_plot()
+#     sample_var_plot()
 #     test_knot_plots(mf=1)
 #     test_knot_plots(mf=2)

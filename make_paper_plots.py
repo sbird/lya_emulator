@@ -126,9 +126,9 @@ def test_s8_plots():
     testdir = path.expanduser("simulations/hires_s8_test")
     quaddir = path.expanduser("simulations/hires_s8_quadratic")
     emudir = path.expanduser("simulations/hires_s8")
-    gp_emu, _, _ = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_s8"),mean_flux=1)
-    gp_quad, _, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"),mean_flux=2)
-    quad_quad, _, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
+    gp_emu, _ = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_s8"),mean_flux=1)
+    gp_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"),mean_flux=2)
+    quad_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
     return (gp_emu, gp_quad, quad_quad)
 
 def test_knot_plots(mf=1, testdir = None, emudir = None, plotdir = None, plotname="", max_z=4.2):
@@ -139,7 +139,7 @@ def test_knot_plots(mf=1, testdir = None, emudir = None, plotdir = None, plotnam
         emudir = path.expanduser("simulations/hires_knots")
     if plotdir is None:
         plotdir = path.expanduser('plots/hires_knots_mf')
-    gp_emu = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=plotdir+str(mf),plotname=plotname,mean_flux=mf,max_z=max_z)
+    gp_emu,_ = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=plotdir+str(mf),plotname=plotname,mean_flux=mf,max_z=max_z)
     return gp_emu
 
 def sample_var_plot():

@@ -88,8 +88,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     nred = len(myspec.zout)
     nkf = kf.size
     #print("Number of validation points =", params_test.get_parameters().shape[0])
-    all_power_array = np.zeros((params_test.get_parameters().shape[0], 4, nkf*nred)) #kf, predicted, std, exact
-    validation_number = 0
 
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)
@@ -141,10 +139,8 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.clf()
 
         #Save output
-        all_power_array[validation_number] = np.vstack((np.tile(kf, nred), predicted[0], std[0], exact))
         array_savename = os.path.join(savedir, name[:-4] + '.npy')
-        np.save(array_savename, all_power_array[validation_number])
-        validation_number+=1
+        np.save(array_savename, [okf, predicted[0], std[0], exact])
 
     #Plot the distribution of errors, compared to a Gaussian
     if np.all(np.isfinite(errlist)):
@@ -157,7 +153,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         #plt.clf()
         _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=250) #, xlabel=r"(Predicted - Exact) / $1 \sigma$ [BOSS error]")
 
-    return gp, all_power_array, myspec.zout
+    return gp, myspec.zout
 
 def plot_test_matter_interpolate(emulatordir,testdir, savedir=None, redshift=3.):
     """Make a plot showing the interpolation error for the matter power spectrum."""

@@ -21,9 +21,9 @@ def RateNetworkGasTest():
 
 class RateNetworkGas(gas_properties.GasProperties):
     """Replace the get_reproc_HI function with something that solves the rate network. Optionally can also do self-shielding."""
-    def __init__(self, redshift, absnap, hubble=0.71, fbar=0.17, units=None, sf_neutral=True, selfshield=False, photo_factor=1):
+    def __init__(self, redshift, absnap, hubble=0.71, fbar=0.17, units=None, sf_neutral=True, selfshield=False, photo_factor=1, collisional=True):
         super().__init__(redshift, absnap, hubble=hubble, fbar=fbar, units=units, sf_neutral=sf_neutral)
-        self.rates = RateNetwork(redshift, photo_factor = photo_factor, f_bar = fbar, cool="KWH", recomb="C92", selfshield=selfshield, treecool_file="TREECOOL_hm_2012_sherwood")
+        self.rates = RateNetwork(redshift, photo_factor = photo_factor, f_bar = fbar, cool="KWH", recomb="C92", selfshield=selfshield, treecool_file="TREECOOL_hm_2012_sherwood", collisional=collisional)
         self.temp_factor = 1
         self.gamma_factor = 1
 
@@ -71,9 +71,9 @@ class RateNetworkGas(gas_properties.GasProperties):
 
 class RateNetworkSpectra(spectra.Spectra):
     """Generate spectra with a neutral fraction from a rate network"""
-    def __init__(self, *args, photo_factor = 1, selfshield=False, **kwargs):
+    def __init__(self, *args, photo_factor = 1, collisional=True, selfshield=False, **kwargs):
         super().__init__(*args, **kwargs)
         try:
-            self.gasprop = RateNetworkGas(redshift = self.red, absnap = self.snapshot_set, hubble=self.hubble, units = self.units, sf_neutral=False, photo_factor = photo_factor, selfshield=selfshield)
+            self.gasprop = RateNetworkGas(redshift = self.red, absnap = self.snapshot_set, hubble=self.hubble, units = self.units, sf_neutral=False, photo_factor = photo_factor, selfshield=selfshield, collisional=collisional)
         except AttributeError:
             pass

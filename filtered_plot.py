@@ -64,7 +64,7 @@ def filtering_effect_plot(num, base):
     plt.savefig("plots/filtered_power.pdf")
     plt.clf()
 
-def get_mean_flux_effect(num, base):
+def get_mean_flux_effect(num, base, collisional=True):
     """Get the effect of rescaling the mean flux vs solving a rate network on the flux power"""
     spec = spectra.Spectra(num, base, None, None, savefile="lya_forest_spectra.hdf5", sf_neutral=False)
     #Get the mean flux scaling factor
@@ -72,10 +72,14 @@ def get_mean_flux_effect(num, base):
     #mean flux scaling is 1/UVB amp in photo-ion equilib.
     photo_factor = 1./fstat.mean_flux(spec.get_tau("H",1,1215),mean_flux_desired=mf)
     (kf, pkf) = spec.get_flux_power_1D(mean_flux_desired=mf)
+    sfile = "lya_forest_spectra_uvb"
+    if not collisional:
+        sfile += "_nocol"
+    sfile += ".hdf5"
     try:
-        rnspecph = RateNetworkSpectra(num, base, spec.cofm, spec.axis, savefile="lya_forest_spectra_uvb.hdf5", sf_neutral=False, reload_file=False, res=10.,photo_factor=photo_factor)
+        rnspecph = RateNetworkSpectra(num, base, spec.cofm, spec.axis, savefile=sfile, sf_neutral=False, reload_file=False, res=10.,photo_factor=photo_factor, collisional=collisional)
     except IOError:
-        rnspecph = RateNetworkSpectra(num, base, spec.cofm, spec.axis, savefile="lya_forest_spectra_uvb.hdf5", sf_neutral=False, reload_file=True, res=10.,photo_factor=photo_factor)
+        rnspecph = RateNetworkSpectra(num, base, spec.cofm, spec.axis, savefile=sfile, sf_neutral=False, reload_file=True, res=10.,photo_factor=photo_factor, collisional=collisional)
         rnspecph.get_tau("H", 1, 1215)
         rnspecph.save_file()
     #Get without mean flux rescaling
@@ -87,26 +91,34 @@ def get_mean_flux_effect(num, base):
     print("Redshift %g. Mean flux from UVB %g, rescaled %g. UVB factor %g." % (spec.red, mfph, mf, photo_factor))
     return kf, pkf/pkfph
 
-def mean_flux_effect_plot(base):
+def mean_flux_effect_plot(base, collisional=True):
     """Plot the effect of doing mean flux rescaling vs a UVB."""
-    (kf24, dpkf24) = get_mean_flux_effect(10, base)
-    (kf3, dpkf3) = get_mean_flux_effect(7, base)
+    (kf22, dpkf22) = get_mean_flux_effect(11, base, collisional=collisional)
+    (kf24, dpkf24) = get_mean_flux_effect(10, base, collisional=collisional)
+    (kf3, dpkf3) = get_mean_flux_effect(7, base, collisional=collisional)
+    (kf35, dpkf35) = get_mean_flux_effect(5, base, collisional=collisional)
 
-    plt.semilogx(kf24, dpkf24, ls="-", label=r"$z=2.4$")
-    plt.semilogx(kf3, dpkf3, ls="--", label=r"$z=3$")
+    plt.semilogx(kf22, dpkf22, ls="-", label=r"$z=2.2$")
+    plt.semilogx(kf24, dpkf24, ls="--", label=r"$z=2.4$")
+    plt.semilogx(kf3, dpkf3, ls=":", label=r"$z=3$")
+    plt.semilogx(kf35, dpkf35, ls="-.", label=r"$z=3.4$")
 
     plt.xlim(1.e-3, 0.1)
-    plt.axvspan(1.084e-3, 1.95e-2, facecolor='grey', alpha=0.3)
+    plt.axvspan(1.084e-3, 1.95e-2, facecolor='grey', alpha=0.2)
     plt.ylim(0.95,1.01)
     plt.xlabel(r'$k$ ($\mathrm{s}\,\mathrm{km}^{-1}$)')
     plt.ylabel(r'$P_\mathrm{F}(k, mean flux)/P_\mathrm{F}(k, UVB)$')
     plt.tight_layout()
     plt.legend(loc="lower left")
     #plt.title(r"Flux power spectru")
-    plt.savefig("plots/mean_flux_power.pdf")
+    if collisional:
+        plt.savefig("plots/mean_flux_power.pdf")
+    else:
+        plt.savefig("plots/mean_flux_power_nocolis.pdf")
     plt.clf()
 
 
 if __name__ == "__main__":
     filtering_effect_plot(10, "simulations/hires_s8_test/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output")
     mean_flux_effect_plot("simulations/hires_s8_test/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output")
+    mean_flux_effect_plot("simulations/hires_s8_test/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output", collisional=False)

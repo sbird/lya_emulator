@@ -43,9 +43,9 @@ def simplenh0frac(gridd, gridt, rates, helium=0.24):
     phfac = rates.recomb.alphaHp(temp) / rates.photo.gH0(rates.redshift) * (1 + 2 * yy)
     return nh * phfac
 
-def simpleplot(zz=3):
+def simpleplot(zz=3, collisional=True):
     """Plot the rate network neutral fraction against the simple rescaling formula."""
-    rates = RateNetwork(zz,selfshield=False, recomb="C92")
+    rates = RateNetwork(zz,selfshield=False, recomb="C92",collisional=collisional)
 
     def ratio(gridd, gridt):
         """Ratio of full neutral frac to simple formula."""
@@ -73,9 +73,9 @@ def hfracplot(zz=3):
     rates = RateNetwork(zz,selfshield=False, recomb="C92")
     make_cont_plot(rates.get_neutral_fraction, rates, title =r"$n_{H0}/n_{H+}$", levels=np.array([1e-5,1e-4,1e-3,1e-2]))
 
-def hefracplot(zz=3):
+def hefracplot(zz=3, collisional=True):
     """Plot the rate network electron density against a simple estimate with fully ionized helium."""
-    rates = RateNetwork(zz,selfshield=False, recomb="C92")
+    rates = RateNetwork(zz,selfshield=False, recomb="C92", collisional=collisional)
 
     def ratio(gridd, gridt, helium=0.24):
         """Ratio of full neutral frac to simple formula."""
@@ -86,7 +86,7 @@ def hefracplot(zz=3):
         nhepp = rates._nHepp(nh, temp, ne)
         return nhep/nhepp
 
-    make_cont_plot(ratio, rates, title =r"$n_{He+}/n_{He++}$", levels=np.array([0.1, 0.25, 0.5, 1]))
+    make_cont_plot(ratio, rates, title =r"$n_{He+}/n_{He++}$", levels=np.array([0.001, 0.01, 0.1, 1, 10,100]))
 
 if __name__ == "__main__":
     simpleplot(3)

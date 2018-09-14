@@ -91,34 +91,55 @@ def get_mean_flux_effect(num, base, collisional=True):
     print("Redshift %g. Mean flux from UVB %g, rescaled %g. UVB factor %g." % (spec.red, mfph, mf, photo_factor))
     return kf, pkf/pkfph
 
-def mean_flux_effect_plot(base, collisional=True):
+def mean_flux_effect_plot(base, collisional=True, name=""):
     """Plot the effect of doing mean flux rescaling vs a UVB."""
     (kf22, dpkf22) = get_mean_flux_effect(11, base, collisional=collisional)
     (kf24, dpkf24) = get_mean_flux_effect(10, base, collisional=collisional)
     (kf3, dpkf3) = get_mean_flux_effect(7, base, collisional=collisional)
     (kf35, dpkf35) = get_mean_flux_effect(5, base, collisional=collisional)
 
-    plt.semilogx(kf22, dpkf22, ls="-", label=r"$z=2.2$")
-    plt.semilogx(kf24, dpkf24, ls="--", label=r"$z=2.4$")
-    plt.semilogx(kf3, dpkf3, ls=":", label=r"$z=3$")
-    plt.semilogx(kf35, dpkf35, ls="-.", label=r"$z=3.4$")
+    plt.semilogx(kf22, dpkf22, ls="-", label=r"$z=2.2$", color="blue")
+    plt.semilogx(kf24, dpkf24, ls="--", label=r"$z=2.4$", color="red")
+    plt.semilogx(kf3, dpkf3, ls=":", label=r"$z=3$", color="black")
+    plt.semilogx(kf35, dpkf35, ls="-.", label=r"$z=3.4$", color="brown")
 
     plt.xlim(1.e-3, 0.1)
     plt.axvspan(1.084e-3, 1.95e-2, facecolor='grey', alpha=0.2)
     plt.ylim(0.95,1.01)
     plt.xlabel(r'$k$ ($\mathrm{s}\,\mathrm{km}^{-1}$)')
-    plt.ylabel(r'$P_\mathrm{F}(k, mean flux)/P_\mathrm{F}(k, UVB)$')
+    plt.ylabel(r'$P_\mathrm{F}(k)$ ratio')
     plt.tight_layout()
-    plt.legend(loc="lower left")
+    plt.legend(loc="lower right")
     #plt.title(r"Flux power spectru")
-    if collisional:
-        plt.savefig("plots/mean_flux_power.pdf")
-    else:
-        plt.savefig("plots/mean_flux_power_nocolis.pdf")
+    plt.savefig("plots/mean_flux_power"+name+".pdf")
+    plt.clf()
+
+def mean_flux_gamma_dep(base1, base2, collisional=True, name=""):
+    """Plot the effect of doing mean flux rescaling vs a UVB."""
+    (kf22, dpkf22) = get_mean_flux_effect(11, base1, collisional=collisional)
+    (kf222, dpkf222) = get_mean_flux_effect(11, base2, collisional=collisional)
+    (kf3, dpkf3) = get_mean_flux_effect(7, base1, collisional=collisional)
+    (kf23, dpkf23) = get_mean_flux_effect(7, base2, collisional=collisional)
+
+    plt.semilogx(kf22, dpkf22, ls="-", label=r"$z=2.2$, $\gamma = 1.6$", color="blue")
+    plt.semilogx(kf222, dpkf222, ls="--", label=r"$z=2.2$, $\gamma = 1.3$", color="blue")
+    plt.semilogx(kf3, dpkf3, ls="-.", label=r"$z=3$, $\gamma = 1.6$", color="black")
+    plt.semilogx(kf23, dpkf23, ls=":", label=r"$z=3$, $\gamma = 1.3$", color="black")
+
+    plt.xlim(1.e-3, 0.1)
+    plt.axvspan(1.084e-3, 1.95e-2, facecolor='grey', alpha=0.2)
+    plt.ylim(0.95,1.01)
+    plt.xlabel(r'$k$ ($\mathrm{s}\,\mathrm{km}^{-1}$)')
+    plt.ylabel(r'$P_\mathrm{F}(k)$ ratio')
+    plt.tight_layout()
+    plt.legend(loc="lower right")
+    #plt.title(r"Flux power spectru")
+    plt.savefig("plots/mean_flux_power_gamma"+name+".pdf")
     plt.clf()
 
 
 if __name__ == "__main__":
-    filtering_effect_plot(10, "simulations/hires_s8_test/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output")
+    #filtering_effect_plot(10, "simulations/hires_s8_test/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output")
     mean_flux_effect_plot("simulations/hires_s8_test/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output")
-    mean_flux_effect_plot("simulations/hires_s8_test/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output", collisional=False)
+    mean_flux_gamma_dep("simulations/hires_s8_test/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output", "simulations/hires_s8_quadratic/ns1.1As2.1e-09heat_slope-0.5heat_amp1hub0.7/output")
+    #mean_flux_effect_plot("simulations/hires_s8_test/ns0.97As2.2e-09heat_slope0.083heat_amp0.92hub0.69/output", collisional=False, name="_nocolis")

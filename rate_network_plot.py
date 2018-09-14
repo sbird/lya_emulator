@@ -57,7 +57,7 @@ def simpleplot(zz=3, collisional=True, maxie=2200, maxd=-3):
         nh0simple = simplenh0frac(gridd, gridt, rates)
         return nh0/nh0simple
 
-    make_cont_plot(ratio, rates, levels=np.array([0.8, 0.9, 0.95, 0.99, 1]), title =r"$n_{H0}$ (full) / $n_{H0}$ (simple formula)", maxie=maxie, maxd=maxd)
+    make_cont_plot(ratio, rates, levels=np.array([0.8, 0.9, 0.95, 0.99, 1]), maxie=maxie, maxd=maxd)
 
 def neplot(zz=3):
     """Plot the rate network electron density against a simple estimate with fully ionized helium."""

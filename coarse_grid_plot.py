@@ -62,18 +62,17 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
-    t0 = None
-    if mean_flux:
-        t0 = 1. #0.95
-    mf = mflux.ConstMeanFlux(value=t0) #In 'ConstMeanFlux' case: multiply tau_0_i[z] by t0 = 0.95
+    mf = mflux.ConstMeanFlux(None) #Just leave the UVB as it is
+    #We will use this to find the UVB factor range
     if mean_flux == 2:
-        mf = mflux.MeanFluxFactor() #In 'MeanFluxFactor' case: DON'T multiply tau_0_i[z] by t0 - because *emulate* t0[z]
-    params_test = coarse_grid.Emulator(testdir,mf=mf)
-    params_test.load()
+        mf = mflux.MeanFluxFactor()
+
     if emuclass is None:
-        params = coarse_grid.Emulator(emulatordir, mf=mf)
-    else:
-        params = emuclass(emulatordir, mf=mf)
+        emuclass = coarse_grid.Emulator
+
+    params_test = emuclass(testdir, mf=mf)
+    params_test.load()
+    params = emuclass(emulatordir, mf=mf)
     params.load()
     print('Beginning to generate emulator at', str(datetime.now()))
     gp = params.get_emulator(max_z=max_z)
@@ -93,15 +92,10 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         dd = params_test.get_outdir(pp)
         if not os.path.exists(dd):
             dd = params_test.get_outdir(pp, strsz=2)
-        if mean_flux == 2:
-            pp = np.concatenate([[t0,], pp]) #In 'MeanFluxFactor' case: choose t0 point for fair comparison
-        predicted,std = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: t0; cosmo.; thermal},]
+        predicted,std = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: uvb; cosmo.; thermal},]
 
         ps = myspec.get_snapshot_list(dd)
-        meanfluxes = None
-        if t0 is not None:
-            meanfluxes = np.exp(-t0*mflux.obs_mean_tau(myspec.zout))
-        exact = ps.get_power_native_binning(mean_fluxes = meanfluxes)
+        exact = ps.get_power_native_binning(mean_fluxes = None)
         okf = ps.get_kf_kms()
         nk = np.size(ps.kf)
         assert np.all(np.abs(gp.kf/ps.kf - 1) < 1e-5)

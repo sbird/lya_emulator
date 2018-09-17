@@ -3,7 +3,7 @@ for which the mean flux rescaling is not fully accurate, on the flux power spect
 import numpy as np
 from fake_spectra import spectra
 from fake_spectra import fluxstatistics as fstat
-from ratenetworkspectra import RateNetworkSpectra
+from fake_spectra.ratenetworkspectra import RateNetworkSpectra
 import matplotlib
 matplotlib.use("PDF")
 import matplotlib.pyplot as plt

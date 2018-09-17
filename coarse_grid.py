@@ -29,7 +29,7 @@ def get_latex(key):
 class Emulator(object):
     """Small wrapper class to store parameter names and limits, generate simulations and get an emulator.
     """
-    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None):
+    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, max_uvb=3., min_uvb=0.9, nuvb=10):
         if param_names is None:
             self.param_names = {'ns':0, 'As':1, 'heat_slope':2, 'heat_amp':3, 'hub':4}
         else:
@@ -42,10 +42,9 @@ class Emulator(object):
             self.kf = lyman_data.BOSSData().get_kf()
         else:
             self.kf = kf
-        if mf is None:
-            self.mf = ConstMeanFlux(None)
-        else:
-            self.mf = mf
+        self.dense_param_names = {'uvb':0 }
+        self.photo_factors = np.linspace(min_uvb, max_uvb, nuvb)
+        self.dense_param_limits = np.array([[min_uvb, max_uvb]])
         #We fix omega_m h^2 = 0.1199 (Planck best-fit) and vary omega_m and h^2 to match it.
         #h^2 itself has little effect on the forest.
         self.omegamh2 = 0.1199
@@ -72,12 +71,12 @@ class Emulator(object):
 
     def build_dirname(self,params, include_dense=False, strsz=3):
         """Make a directory name for a given set of parameter values"""
-        ndense = include_dense * len(self.mf.dense_param_names)
+        ndense = include_dense * len(self.dense_param_names)
         parts = ['',]*(len(self.param_names) + ndense)
         #Transform the dictionary into a list of string parts,
         #sorted in the same way as the parameter array.
         fstr = "%."+str(strsz)+"g"
-        for nn,val in self.mf.dense_param_names.items():
+        for nn,val in self.dense_param_names.items():
             parts[val] = nn+fstr % params[val]
         for nn,val in self.param_names.items():
             parts[ndense+val] = nn+fstr % params[ndense+val]
@@ -87,7 +86,7 @@ class Emulator(object):
     def print_pnames(self):
         """Get parameter names for printing"""
         n_latex = []
-        sort_names = sorted(list(self.mf.dense_param_names.items()), key=lambda k:(k[1],k[0]))
+        sort_names = sorted(list(self.dense_param_names.items()), key=lambda k:(k[1],k[0]))
         for key, _ in sort_names:
             n_latex.append((key, get_latex(key)))
         sort_names = sorted(list(self.param_names.items()), key=lambda k:(k[1],k[0]))
@@ -137,8 +136,6 @@ class Emulator(object):
             shutil.move(fdump, backup)
         #Arrays can't be serialised so convert them back and forth to lists
         self.really_arrays = []
-        mf = self.mf
-        self.mf = []
         for nn, val in self.__dict__.items():
             if isinstance(val, np.ndarray):
                 self.__dict__[nn] = val.tolist()
@@ -146,19 +143,16 @@ class Emulator(object):
         with open(fdump, 'w') as jsout:
             json.dump(self.__dict__, jsout)
         self._fromarray()
-        self.mf = mf
 
     def load(self,dumpfile="emulator_params.json"):
         """Load parameters from a textfile."""
         kf = self.kf
-        mf = self.mf
         real_basedir = self.basedir
         with open(os.path.join(real_basedir, dumpfile), 'r') as jsin:
             indict = json.load(jsin)
         self.__dict__ = indict
         self._fromarray()
         self.kf = kf
-        self.mf = mf
         self.basedir = real_basedir
         self.set_maxk()
 
@@ -215,13 +209,9 @@ class Emulator(object):
         """Get the reprocessed limits on the parameters for the likelihood."""
         if not include_dense:
             return self.param_limits
-        dlim = self.mf.get_limits()
-        if dlim is not None:
-            #Dense parameters go first as they are 'slow'
-            plimits = np.vstack([dlim, self.param_limits])
-            assert np.shape(plimits)[1] == 2
-            return plimits
-        return self.param_limits
+        plimits = np.vstack([self.dense_param_limits, self.param_limits])
+        assert np.shape(plimits)[1] == 2
+        return plimits
 
     def get_nsample_params(self):
         """Get the number of sparse parameters, those sampled by simulations."""
@@ -232,7 +222,7 @@ class Emulator(object):
         di = self.get_outdir(pp, strsz=3)
         if not os.path.exists(di):
             di = self.get_outdir(pp, strsz=2)
-        powerspectra = myspec.get_snapshot_list(params=pp, base=di)
+        powerspectra = myspec.get_snapshot_list(params=pp, base=di, photo_factors=self.photo_factors)
         return powerspectra
 
     def get_emulator(self, max_z=4.2):
@@ -252,25 +242,16 @@ class Emulator(object):
         nparams = np.shape(pvals)[1]
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z, max_k=self.maxk)
-        mean_fluxes = self.mf.get_mean_flux(myspec.zout)
         try:
-            aparams = pvals
-            #Note this gets tau_0 as a linear scale factor from the observed power law
-            dpvals = self.mf.get_params()
-            if dpvals is not None:
-                aparams = np.array([np.concatenate([dp,pv]) for dp in dpvals for pv in pvals])
+            aparams = np.array([np.concatenate([phf, pv]) for phf in self.photo_factors for pv in pvals])
             kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams)
         except (AssertionError, OSError):
-            powers = [self._get_fv(pp, myspec) for pp in pvals]
-            flux_vectors = np.array([ps.get_power_native_binning(mean_fluxes = mef) for mef in mean_fluxes for ps in powers])
+            powers = np.ravel([self._get_fv(pp, myspec) for pp in pvals])
+            flux_vectors = np.array([ps.get_power_native_binning(mean_fluxes = None) for ps in powers])
             #Get the parameters back again, with the mean flux added
-            dpvals = self.mf.get_params()
-            if dpvals is not None:
-                aparams = np.array([ps.get_params(dpval = dp) for dp in dpvals for ps in powers])
-            else:
-                aparams = np.array([ps.get_params() for ps in powers])
+            aparams = np.array([ps.get_params() for ps in powers])
             #'natively' binned k values in km/s units as a function of redshift
-            kfkms = [ps.get_kf_kms() for mef in mean_fluxes for ps in powers]
+            kfkms = [ps.get_kf_kms() for ps in powers]
             #Same in all boxes
             kfmpc = powers[0].kf
             assert np.all(np.abs(powers[0].kf/ powers[-1].kf-1) < 1e-6)

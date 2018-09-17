@@ -4,7 +4,7 @@ import argparse
 import os.path
 import scipy.interpolate
 import numpy as np
-from fake_spectra import spectra
+from fake_spectra.ratenetworkspectra import RateNetworkSpectra
 from fake_spectra import abstractsnapshot as absn
 
 def rebin_power_to_kms(kfkms, kfmpc, flux_powers, zbins, omega_m, omega_l = None):
@@ -41,10 +41,8 @@ class FluxPower(object):
         """Get the number of snapshots in the list"""
         return len(self.spectrae)
 
-    def get_params(self, dpval=None):
+    def get_params(self):
         """Get the parameters associated with this power spectrum."""
-        if dpval is not None:
-            return np.concatenate([dpval, self.params])
         return self.params
 
     def get_power(self, kf, mean_fluxes):
@@ -107,6 +105,18 @@ class FluxPower(object):
         for ss in self.spectrae:
             ss.tau[('H',1,1215)] = np.array([0])
 
+def find_snap(num, base, snappref="SPECTRA_"):
+    """Find a snapshot path, returning None if it does not exist"""
+    snapdir = os.path.join(base,snappref+str(num).rjust(3,'0'))
+    #We ran out of snapshots
+    if not os.path.exists(snapdir):
+        snapdir = os.path.join(base,"PART_"+str(num).rjust(3,'0'))
+        if not os.path.exists(snapdir):
+            snapdir = os.path.join(base, "snap_"+str(num).rjust(3,'0'))
+            if not os.path.exists(snapdir):
+                snapdir = None
+    return snapdir
+
 class MySpectra(object):
     """This class stores the randomly positioned sightlines once,
        so that they are the same for each emulator point.
@@ -153,12 +163,15 @@ class MySpectra(object):
             return 0
         return 1
 
-    def _get_spectra_snap(self, snap, base):
+    def _get_spectra_snap(self, snap, base, photo_factor=1.):
         """Get a snapshot with generated HI spectra"""
         #If savefile exists, reload. Otherwise do not.
+        savefile = "ph_%.2f_" % photo_factor
+        savefile += self.savefile
+
         def mkspec(snap, base, cofm, axis, rf):
             """Helper function"""
-            return spectra.Spectra(snap, base, cofm, axis, res=self.pix_res, savefile=self.savefile,spec_res = self.spec_res, reload_file=rf,sf_neutral=False,quiet=True, load_snapshot=rf)
+            return RateNetworkSpectra(snap, base, cofm, axis, res=self.pix_res, photo_factor=photo_factor, savefile=savefile,spec_res = self.spec_res, reload_file=rf,sf_neutral=False,quiet=True, load_snapshot=rf)
         #First try to get data from the savefile, and if we can't, try the snapshot.
         try:
             ss = mkspec(snap, base, None, None, rf=False)
@@ -183,34 +196,31 @@ class MySpectra(object):
             (self.cofm, self.axis) = (ss.cofm, ss.axis)
         return ss
 
-    def get_snapshot_list(self, base, params=None, snappref="SPECTRA_"):
+    def get_snapshot_list(self, base, params=None, photo_factors=1., snappref="SPECTRA_"):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
         #print('Looking for spectra in', base)
-        powerspectra = FluxPower(maxk=self.max_k, params=params)
-        for snap in range(30):
-            snapdir = os.path.join(base,snappref+str(snap).rjust(3,'0'))
-            #We ran out of snapshots
-            if not os.path.exists(snapdir):
-                snapdir = os.path.join(base,"PART_"+str(snap).rjust(3,'0'))
-                if not os.path.exists(snapdir):
-                    snapdir = os.path.join(base, "snap_"+str(snap).rjust(3,'0'))
-                    if not os.path.exists(snapdir):
-                        continue
-            #We have all we need
-            if powerspectra.len() == np.size(self.zout):
-                break
-            try:
-                ss = self._get_spectra_snap(snap, base)
-#                 print('Found spectra in', ss)
-                if ss is not None:
-                    powerspectra.add_snapshot(snap,ss)
-            except IOError:
-                print("Didn't find any spectra because of IOError")
-                continue
-        #Make sure we have enough outputs
-        if powerspectra.len() != np.size(self.zout):
-            raise ValueError("Found only",powerspectra.len(),"of",np.size(self.zout),"from snaps:",powerspectra.snaps)
+        if not np.iterable(photo_factors):
+            photo_factors = [photo_factors,]
+        powerspectra = [FluxPower(maxk=self.max_k, params=np.concatenate([phf, params])) for phf in photo_factors]
+        for power in powerspectra:
+            for nn in range(30):
+                snapdir = find_snap(nn, base, snappref=snappref)
+                if snapdir is None:
+                    continue
+                #We have all we need
+                if power.len() == np.size(self.zout):
+                    break
+                try:
+                    ss = self._get_spectra_snap(nn, base, photo_factor=power.get_params()[0])
+                    if ss is not None:
+                        power.add_snapshot(nn,ss)
+                except IOError:
+                    print("Didn't find any spectra because of IOError")
+                    continue
+            #Make sure we have enough outputs
+            if power.len() != np.size(self.zout):
+                raise ValueError("Found only",power.len(),"of",np.size(self.zout),"from snaps:",power.snaps)
         return powerspectra
 
 def _get_header_attr_from_snap(attr, num, base):

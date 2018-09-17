@@ -23,18 +23,19 @@ class MultiBinGP(object):
         print('Number of redshifts for emulator generation =', self.nz)
         self.gps = [gp(i) for i in range(self.nz)]
 
-    def predict(self,params, tau0_factors = None):
+    def predict(self,params, zbin=None):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         std = np.zeros([1,self.nk*self.nz])
         means = np.zeros([1,self.nk*self.nz])
-        for i, gp in enumerate(self.gps): #Looping over redshifts
-            #Adjust the slope of the mean flux for this bin
-            zparams = np.array(params)
-            if tau0_factors is not None:
-                zparams[0][0] *= tau0_factors[i] #Multiplying t0[z] by "tau0_factors"[z]
-            (m, s) = gp.predict(zparams)
-            means[0,i*self.nk:(i+1)*self.nk] = m
-            std[:,i*self.nk:(i+1)*self.nk] = s
+        if zbin is not None:
+            (m, s) = self.gps[zbin].predict(params)
+            means[0, :] = m
+            std[:, :] = s
+        else:
+            for i, gp in enumerate(self.gps): #Looping over redshifts
+                (m, s) = gp.predict(params)
+                means[0,i*self.nk:(i+1)*self.nk] = m
+                std[:,i*self.nk:(i+1)*self.nk] = s
         return means, std
 
 class SkLearnGP(object):
@@ -82,7 +83,7 @@ class SkLearnGP(object):
         #Try rational quadratic kernel
         #kernel += GPy.kern.RatQuad(nparams)
 
-        noutput = np.shape(normspectra)[1]
+        #noutput = np.shape(normspectra)[1]
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
 
         status = self.gp.optimize(messages=True) #True

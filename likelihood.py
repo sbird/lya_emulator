@@ -52,13 +52,13 @@ def load_data(datadir, *, kf, max_z=4.2):
     myspec = flux_power.MySpectra(max_z=max_z)
     pps = myspec.get_snapshot_list(datadir)
     #self.data_fluxpower is used in likelihood.
-    data_fluxpower = pps.get_power(kf=kf, mean_fluxes=np.exp(-mflux.obs_mean_tau(myspec.zout, amp=0)))
+    data_fluxpower = pps.get_power(kf=kf, mean_fluxes=None)
     assert np.size(data_fluxpower) % np.size(kf) == 0
     return data_fluxpower
 
 class LikelihoodClass(object):
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z = 4.2, emulator_class="standard", t0_training_value = 0.95):
+    def __init__(self, basedir, mean_flux='s', max_z = 4.2, emulator_class="standard"):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
 
         #Use the BOSS covariance matrix
@@ -73,22 +73,20 @@ class LikelihoodClass(object):
         self.BOSS_flux_power = self.sdss.pf.reshape(-1, self.kf.shape[0])[:self.zout.shape[0]][::-1] #km / s; n_z * n_k
 
         self.mf_slope = False
-        #Param limits on t0
-        t0_factor = np.array([0.75,1.25])
         #Get the emulator
         if mean_flux == 'c':
-            mf = mflux.ConstMeanFlux(value = t0_training_value)
+            mf = mflux.ConstMeanFlux(None)
         #As each redshift bin is independent, for redshift-dependent mean flux models
         #we just need to convert the input parameters to a list of mean flux scalings
         #in each redshift bin.
         #This is an example which parametrises the mean flux as an amplitude and slope.
         elif mean_flux == 's':
             #Add a slope to the parameter limits
-            t0_slope =  np.array([-0.25, 0.25])
+            max_slope =  0.25
             self.mf_slope = True
-            slopehigh = np.max(mflux.mean_flux_slope_to_factor(np.linspace(2.2, max_z, 11),0.25))
-            slopelow = np.min(mflux.mean_flux_slope_to_factor(np.linspace(2.2, max_z, 11),-0.25))
-            dense_limits = np.array([np.array(t0_factor) * np.array([slopelow, slopehigh])])
+            slopehigh = np.max(mflux.mean_flux_slope_to_factor(np.linspace(2.2, max_z, 11), max_slope))
+            slopelow = np.min(mflux.mean_flux_slope_to_factor(np.linspace(2.2, max_z, 11), -1*max_slope))
+            dense_limits = np.array([np.array([[0.75,1.25]]) * np.array([slopelow, slopehigh])])
             mf = mflux.MeanFluxFactor(dense_limits = dense_limits)
         else:
             mf = mflux.MeanFluxFactor()
@@ -104,30 +102,22 @@ class LikelihoodClass(object):
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
         if mean_flux == 's':
             #Add a slope to the parameter limits
-            self.param_limits = np.vstack([t0_slope, self.param_limits])
+            self.param_limits = np.vstack([np.array([-1*max_slope, max_slope]), self.param_limits])
             #Shrink param limits t0 so that even with
             #a slope they are within the emulator range
-            self.param_limits[1,:] = t0_factor
+            self.param_limits[1,:] = (self.param_limits[1,:] - np.mean(self.param_limits[1,:])) / np.max([3. - 2.2, (max_z - 3.)])**max_slope + np.mean(self.param_limits[1,:])
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
         print('Beginning to generate emulator at', str(datetime.now()))
         self.gpemu = self.emulator.get_emulator(max_z=max_z)
         print('Finished generating emulator at', str(datetime.now()))
 
-    def get_predicted(self, params):
+    def get_predicted(self, params, zbin=None):
         """Helper function to get the predicted flux power spectrum and error, rebinned to match the desired kbins."""
-        nparams = params
-        if self.mf_slope:
-            # tau_0_i[z] @dtau_0 / tau_0_i[z] @[dtau_0 = 0]
-            # Divided by lowest redshift case
-            tau0_fac = mflux.mean_flux_slope_to_factor(self.zout, params[0])
-            nparams = params[1:] #Keep only t0 sampling parameter (of mean flux parameters)
-        else: #Otherwise bug if choose mean_flux = 'c'
-            tau0_fac = None
         # .predict should take [{list of parameters: t0; cosmo.; thermal},]
         # Here: emulating @ cosmo.; thermal; sampled t0 * [tau0_fac from above]
-        predicted_nat, std_nat = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac)
-        omega_m = self.emulator.omegamh2/nparams[self.emulator.param_names['hub']]**2
+        predicted_nat, std_nat = self.gpemu.predict(np.array(params).reshape(1,-1), zbin=zbin)
+        omega_m = self.emulator.omegamh2/params[self.emulator.param_names['hub']]**2
         okf, predicted = flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=self.gpemu.kf, flux_powers = predicted_nat[0], zbins=self.zout, omega_m = omega_m)
         _, std= flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=self.gpemu.kf, flux_powers = std_nat[0], zbins=self.zout, omega_m = omega_m)
         return okf, predicted, std
@@ -140,22 +130,25 @@ class LikelihoodClass(object):
         parameters are estimated once per z bin."""
         if data_power is None:
             data_power = self.data_fluxpower
-        #Set parameter limits as the hull of the original emulator.
+        #Set parameter limits as the hull of the emulator.
         if np.any(params >= self.param_limits[:,1]) or np.any(params <= self.param_limits[:,0]):
             return -np.inf
 
-        okf, predicted, std = self.get_predicted(params)
-
-        diff = predicted-data_power
         nkf = len(self.kf)
-        nz = int(len(diff)/nkf)
+        nz = int(len(data_power)/nkf)
         #Likelihood using full covariance matrix
         chi2 = 0
 
         for bb in range(nz):
-            idp = np.where(self.kf >= okf[bb][0])
-            diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
-            std_bin = std[bb]
+            nparams = np.array(params)
+            #Adjust the parameters for this redshift bin
+            if self.mf_slope:
+                nparams[1] = params[1] * (self.zout[bb] / 3.)**params[0]
+                nparams = nparams[1:]
+            okf, predicted, std = self.get_predicted(nparams, zbin=bb)
+            idp = np.where(self.kf >= okf[0])
+            diff_bin = predicted - data_power[nkf*bb:nkf*(bb+1)][idp]
+            std_bin = std
             covar_bin = self.get_BOSS_error(bb)[idp,idp]
 
             assert np.shape(np.outer(std_bin,std_bin)) == np.shape(covar_bin)
@@ -252,7 +245,6 @@ class LikelihoodClass(object):
         #Fix maximum redshift bug
         sdssz = sdssz[sdssz <= self.max_z]
         nz = sdssz.size
-        nkf = len(self.kf)
         if include_emu:
             okf, _, std = self.get_predicted(params)
         detc = 1
@@ -310,9 +302,9 @@ class LikelihoodClass(object):
         """Make an error grid"""
         ndim = np.size(self.param_limits[:,0])
         rr = lambda x : np.random.rand(ndim)*(self.param_limits[:,1]-self.param_limits[:,0]) + self.param_limits[:,0]
-        rsamples = np.array([rr(i) for i in range(samples)])
+        rsamples = np.array([rr(ii) for ii in range(samples)])
         randscores = [self.refine_metric(rr) for rr in rsamples]
-        grid_x, grid_y = np.mgrid[0:1:200j, 0:1:200j]
+        grid_x, grid_y = np.mgrid[0:1:200J, 0:1:200J]
         grid_x = grid_x * (self.param_limits[i,1] - self.param_limits[i,0]) + self.param_limits[i,0]
         grid_y = grid_y * (self.param_limits[j,1] - self.param_limits[j,0]) + self.param_limits[j,0]
         grid = scipy.interpolate.griddata(rsamples[:,(i,j)], randscores,(grid_x,grid_y),fill_value = 0)

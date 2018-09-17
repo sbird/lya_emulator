@@ -5,6 +5,7 @@ import os.path
 import scipy.interpolate
 import numpy as np
 from fake_spectra.ratenetworkspectra import RateNetworkSpectra
+from fake_spectra import fluxstatistics as fstat
 from fake_spectra import abstractsnapshot as absn
 
 def rebin_power_to_kms(kfkms, kfmpc, flux_powers, zbins, omega_m, omega_l = None):
@@ -99,6 +100,27 @@ class FluxPower(object):
     def get_zout(self):
         """Get output redshifts"""
         return np.array([ss.red for ss in self.spectrae])
+
+    def get_uvb_range(self, mean_fluxes):
+        """Get the range in UVB that produces the desired mean fluxes."""
+        if mean_fluxes is None:
+            return np.array([1., 1.])
+
+        maxmf = np.max(mean_fluxes, axis=1)
+        minmf = np.min(mean_fluxes, axis=1)
+        maxuvb = 0.
+        minuvb = 100.
+        assert np.size(maxmf) == np.size(self.spectrae)
+        for (i,ss) in enumerate(self.spectrae):
+            tau = ss.get_tau("H", 1, 1215)
+            max_uvb_fact = fstat.mean_flux(tau, mean_flux_desired = maxmf[i])
+            min_uvb_fact = fstat.mean_flux(tau, mean_flux_desired = minmf[i])
+            if max_uvb_fact > maxuvb:
+                maxuvb = max_uvb_fact
+            if min_uvb_fact < minuvb:
+                minuvb = min_uvb_fact
+        self.drop_table()
+        return np.array([minuvb, maxuvb])
 
     def drop_table(self):
         """Reset the H1 tau array in all spectra, so it needs to be loaded from disc again."""

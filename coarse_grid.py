@@ -29,7 +29,7 @@ def get_latex(key):
 class Emulator(object):
     """Small wrapper class to store parameter names and limits, generate simulations and get an emulator.
     """
-    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, max_uvb=3., min_uvb=0.9, nuvb=10):
+    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, nuvb=10):
         if param_names is None:
             self.param_names = {'ns':0, 'As':1, 'heat_slope':2, 'heat_amp':3, 'hub':4}
         else:
@@ -42,9 +42,14 @@ class Emulator(object):
             self.kf = lyman_data.BOSSData().get_kf()
         else:
             self.kf = kf
+        if mf is None:
+            self.mf = ConstMeanFlux(None)
+        else:
+            self.mf = mf
         self.dense_param_names = {'uvb':0 }
-        self.photo_factors = np.linspace(min_uvb, max_uvb, nuvb)
-        self.dense_param_limits = np.array([[min_uvb, max_uvb]])
+        self.nuvb = nuvb
+        self.dense_param_limits = np.array([[1, 1]])
+        self.photo_factors = np.array([1.])
         #We fix omega_m h^2 = 0.1199 (Planck best-fit) and vary omega_m and h^2 to match it.
         #h^2 itself has little effect on the forest.
         self.omegamh2 = 0.1199
@@ -177,7 +182,7 @@ class Emulator(object):
 
     def gen_simulations(self, nsamples, npart=256.,box=40,samples=None):
         """Initialise the emulator by generating simulations for various parameters."""
-        if len(self.sample_params) == 0:
+        if np.size(self.sample_params) == 0:
             self.sample_params = self.build_params(nsamples)
         if samples is None:
             samples = self.sample_params
@@ -217,12 +222,12 @@ class Emulator(object):
         """Get the number of sparse parameters, those sampled by simulations."""
         return np.shape(self.param_limits)[0]
 
-    def _get_fv(self, pp,myspec):
+    def _get_fv(self, pp,myspec, photo_factors=1.):
         """Helper function to get a single flux vector."""
         di = self.get_outdir(pp, strsz=3)
         if not os.path.exists(di):
             di = self.get_outdir(pp, strsz=2)
-        powerspectra = myspec.get_snapshot_list(params=pp, base=di, photo_factors=self.photo_factors)
+        powerspectra = myspec.get_snapshot_list(params=pp, base=di, photo_factors=photo_factors)
         return powerspectra
 
     def get_emulator(self, max_z=4.2):
@@ -236,6 +241,21 @@ class Emulator(object):
         gp = self._get_custom_emulator(emuobj=gpemulator.MultiBinGP, max_z=max_z)
         return gp
 
+    def get_uvb_factor_range(self, max_z=4.2):
+        """Get the maximal desired UVB range"""
+        myspec = flux_power.MySpectra(max_z=max_z, max_k=self.maxk)
+        #Get a power spectrum with the default UVB.
+        powers = np.ravel([self._get_fv(pp, myspec, photo_factors = 1.) for pp in self.get_parameters()])
+        #Work out the largest and smallest needed mean flux.
+        mean_fluxes = self.mf.get_mean_flux(myspec.zout)
+        if mean_fluxes is None:
+            return np.array([1., 1.])
+        uvbs = np.vstack([pow.get_uvb_range(mean_fluxes) for pow in powers])
+        maxuvb = np.max(uvbs[:,1])
+        minuvb = np.min(uvbs[:,0])
+        assert maxuvb >= minuvb
+        return np.array([minuvb, maxuvb])
+
     def get_flux_vectors(self, max_z=4.2, kfunits="kms"):
         """Get the desired flux vectors and their parameters"""
         pvals = self.get_parameters()
@@ -246,7 +266,7 @@ class Emulator(object):
             aparams = np.array([np.concatenate([phf, pv]) for phf in self.photo_factors for pv in pvals])
             kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams)
         except (AssertionError, OSError):
-            powers = np.ravel([self._get_fv(pp, myspec) for pp in pvals])
+            powers = np.ravel([self._get_fv(pp, myspec, photo_factors = self.photo_factors) for pp in pvals])
             flux_vectors = np.array([ps.get_power_native_binning(mean_fluxes = None) for ps in powers])
             #Get the parameters back again, with the mean flux added
             aparams = np.array([ps.get_params() for ps in powers])
@@ -309,6 +329,12 @@ class Emulator(object):
 
     def _get_custom_emulator(self, *, emuobj, max_z=4.2):
         """Helper to allow supporting different emulators."""
+        uvblim = self.get_uvb_factor_range(max_z = max_z)
+        nuvb = 1.
+        if uvblim[1] > uvblim[0]:
+            nuvb = self.nuvb
+        self.photo_factors = np.linspace(uvblim[0], uvblim[1], nuvb)
+        self.dense_param_limits[self.dense_param_names['uvb']] = uvblim
         aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
         plimits = self.get_param_limits(include_dense=True)
         gp = emuobj(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits)
@@ -351,7 +377,7 @@ class MatterPowerEmulator(Emulator):
         super().load(dumpfile=dumpfile)
         self.kf = np.logspace(np.log10(3*math.pi/60.),np.log10(2*math.pi/60.*256),20)
 
-    def _get_fv(self, pp,myspec):
+    def _get_fv(self, pp,myspec, photo_factors=None):
         """Helper function to get a single matter power vector."""
         di = self.get_outdir(pp)
         (_,_) = myspec

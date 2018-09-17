@@ -25,11 +25,12 @@ def rebin_power_to_kms(kfkms, kfmpc, flux_powers, zbins, omega_m, omega_l = None
 
 class FluxPower(object):
     """Class stores the flux power spectrum."""
-    def __init__(self, maxk):
+    def __init__(self, maxk, params):
         self.spectrae = []
         self.snaps = []
         self.maxk = maxk
         self.kf = None
+        self.params = params
 
     def add_snapshot(self,snapshot, spec):
         """Add a power spectrum to the list."""
@@ -39,6 +40,12 @@ class FluxPower(object):
     def len(self):
         """Get the number of snapshots in the list"""
         return len(self.spectrae)
+
+    def get_params(self, dpval=None):
+        """Get the parameters associated with this power spectrum."""
+        if dpval is not None:
+            return np.concatenate([dpval, self.params])
+        return self.params
 
     def get_power(self, kf, mean_fluxes):
         """Generate a flux power spectrum rebinned to be like the flux power from BOSS.
@@ -176,11 +183,11 @@ class MySpectra(object):
             (self.cofm, self.axis) = (ss.cofm, ss.axis)
         return ss
 
-    def get_snapshot_list(self, base, snappref="SPECTRA_"):
+    def get_snapshot_list(self, base, params=None, snappref="SPECTRA_"):
         """Get the flux power spectrum in the format used by McDonald 2004
         for a snapshot set."""
         #print('Looking for spectra in', base)
-        powerspectra = FluxPower(maxk=self.max_k)
+        powerspectra = FluxPower(maxk=self.max_k, params=params)
         for snap in range(30):
             snapdir = os.path.join(base,snappref+str(snap).rjust(3,'0'))
             #We ran out of snapshots

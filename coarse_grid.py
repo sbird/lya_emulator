@@ -232,7 +232,7 @@ class Emulator(object):
         di = self.get_outdir(pp, strsz=3)
         if not os.path.exists(di):
             di = self.get_outdir(pp, strsz=2)
-        powerspectra = myspec.get_snapshot_list(base=di)
+        powerspectra = myspec.get_snapshot_list(params=pp, base=di)
         return powerspectra
 
     def get_emulator(self, max_z=4.2):
@@ -253,16 +253,22 @@ class Emulator(object):
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z, max_k=self.maxk)
         mean_fluxes = self.mf.get_mean_flux(myspec.zout)
-        aparams = pvals
-        #Note this gets tau_0 as a linear scale factor from the observed power law
-        dpvals = self.mf.get_params()
-        if dpvals is not None:
-            aparams = np.array([np.concatenate([dp,pv]) for dp in dpvals for pv in pvals])
         try:
+            aparams = pvals
+            #Note this gets tau_0 as a linear scale factor from the observed power law
+            dpvals = self.mf.get_params()
+            if dpvals is not None:
+                aparams = np.array([np.concatenate([dp,pv]) for dp in dpvals for pv in pvals])
             kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams)
         except (AssertionError, OSError):
             powers = [self._get_fv(pp, myspec) for pp in pvals]
             flux_vectors = np.array([ps.get_power_native_binning(mean_fluxes = mef) for mef in mean_fluxes for ps in powers])
+            #Get the parameters back again, with the mean flux added
+            dpvals = self.mf.get_params()
+            if dpvals is not None:
+                aparams = np.array([ps.get_params(dpval = dp) for dp in dpvals for ps in powers])
+            else:
+                aparams = np.array([ps.get_params() for ps in powers])
             #'natively' binned k values in km/s units as a function of redshift
             kfkms = [ps.get_kf_kms() for mef in mean_fluxes for ps in powers]
             #Same in all boxes

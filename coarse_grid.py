@@ -151,14 +151,14 @@ class Emulator(object):
 
     def load(self,dumpfile="emulator_params.json"):
         """Load parameters from a textfile."""
-        kf = self.kf
-        real_basedir = self.basedir
+        save_list = {"kf", "basedir", "dense_param_names", "dense_param_limits", "photo_factors", "nuvb"}
+        savedict = self.__dict__
         with open(os.path.join(real_basedir, dumpfile), 'r') as jsin:
             indict = json.load(jsin)
         self.__dict__ = indict
         self._fromarray()
-        self.kf = kf
-        self.basedir = real_basedir
+        for ent in save_list:
+            self.__dict__[ent] = savedict[ent]
         self.set_maxk()
 
     def get_outdir(self, pp, strsz=3):

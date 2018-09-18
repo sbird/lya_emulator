@@ -263,7 +263,7 @@ class Emulator(object):
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z, max_k=self.maxk)
         try:
-            aparams = np.array([np.concatenate([phf, pv]) for phf in self.photo_factors for pv in pvals])
+            aparams = np.array([np.concatenate([[phf,], pv]) for phf in self.photo_factors for pv in pvals])
             kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams)
         except (AssertionError, OSError):
             powers = np.ravel([self._get_fv(pp, myspec, photo_factors = self.photo_factors) for pp in pvals])

@@ -224,7 +224,7 @@ class MySpectra(object):
         #print('Looking for spectra in', base)
         if not np.iterable(photo_factors):
             photo_factors = [photo_factors,]
-        powerspectra = [FluxPower(maxk=self.max_k, params=np.concatenate([phf, params])) for phf in photo_factors]
+        powerspectra = [FluxPower(maxk=self.max_k, params=np.concatenate([[phf,], params])) for phf in photo_factors]
         for power in powerspectra:
             for nn in range(30):
                 snapdir = find_snap(nn, base, snappref=snappref)

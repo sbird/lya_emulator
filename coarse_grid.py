@@ -153,7 +153,7 @@ class Emulator(object):
         """Load parameters from a textfile."""
         save_list = {"kf", "basedir", "dense_param_names", "dense_param_limits", "photo_factors", "nuvb"}
         savedict = self.__dict__
-        with open(os.path.join(real_basedir, dumpfile), 'r') as jsin:
+        with open(os.path.join(self.basedir, dumpfile), 'r') as jsin:
             indict = json.load(jsin)
         self.__dict__ = indict
         self._fromarray()

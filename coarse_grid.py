@@ -331,7 +331,7 @@ class Emulator(object):
             submit.write("""#!/bin/bash\n#SBATCH --partition=short\n#SBATCH --job-name="""+pdir+"\n")
             submit.write("""#SBATCH --time=1:55:00\n#SBATCH --nodes=1\n#SBATCH --ntasks-per-node=1\n#SBATCH --cpus-per-task=32\n#SBATCH --mem-per-cpu=4G\n""")
             submit.write( """#SBATCH --mail-type=end\n#SBATCH --mail-user=sbird@ucr.edu\n""")
-            submit.write("python flux_power.py "+pdir+"/output --phf"+phfstr+"\n")
+            submit.write("python flux_power.py "+pdir+"/output --phf "+phfstr+"\n")
 
     def _get_custom_emulator(self, *, emuobj, max_z=4.2):
         """Helper to allow supporting different emulators."""

@@ -258,6 +258,7 @@ def _get_header_attr_from_snap(attr, num, base):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('base', type=str, help='Snapshot directory')
+    parser.add_argument('phf', type=float, nargs='*', help='List of photo ionization factors')
     args = parser.parse_args()
     myspec = MySpectra()
-    myspec.get_snapshot_list(args.base)
+    myspec.get_snapshot_list(args.base, photo_factors=np.array(args.phf))

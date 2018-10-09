@@ -106,8 +106,8 @@ class FluxPower(object):
         if mean_fluxes is None:
             return np.array([1., 1.])
 
-        maxmf = np.max(mean_fluxes, axis=1)
-        minmf = np.min(mean_fluxes, axis=1)
+        maxmf = np.max(mean_fluxes, axis=0)
+        minmf = np.min(mean_fluxes, axis=0)
         maxuvb = 0.
         minuvb = 100.
         assert np.size(maxmf) == np.size(self.spectrae)

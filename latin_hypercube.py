@@ -150,5 +150,7 @@ def map_to_unit_cube(param_vec, param_limits):
     param_vec[ii] = param_limits[ii,0]
     assert np.all(param_limits[:,0] <= param_limits[:,1])
     new_params = (param_vec-param_limits[:,0])/(param_limits[:,1] - param_limits[:,0])
+    #Case where lower == upper
+    new_params[np.where(np.isnan(new_params))] = 0.5
     assert np.all((new_params >= 0)*(new_params <= 1))
     return new_params

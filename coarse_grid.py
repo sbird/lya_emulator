@@ -248,7 +248,7 @@ class Emulator(object):
         powers = np.ravel([self._get_fv(pp, myspec, photo_factors = 1.) for pp in self.get_parameters()])
         #Work out the largest and smallest needed mean flux.
         mean_fluxes = self.mf.get_mean_flux(myspec.zout)
-        if mean_fluxes is None:
+        if mean_fluxes[0] is None:
             return np.array([1., 1.])
         uvbs = np.vstack([pow.get_uvb_range(mean_fluxes) for pow in powers])
         maxuvb = np.max(uvbs[:,1])

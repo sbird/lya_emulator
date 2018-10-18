@@ -94,7 +94,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
             dd = params_test.get_outdir(pp, strsz=2)
         predicted,std = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: uvb; cosmo.; thermal},]
 
-        ps = myspec.get_snapshot_list(dd)
+        ps = myspec.get_snapshot_list(dd)[0]
         exact = ps.get_power_native_binning(mean_fluxes = None)
         okf = ps.get_kf_kms()
         nk = np.size(ps.kf)

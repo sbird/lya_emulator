@@ -147,9 +147,9 @@ def sample_var_plot():
     mys = flux_power.MySpectra()
     sd = lyman_data.SDSSData()
     kf = sd.get_kf()
-    fp0 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7/output/")
-    fp1 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed1/output/")
-    fp2 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed2/output/")
+    fp0 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7/output/")[0]
+    fp1 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed1/output/")[0]
+    fp2 = mys.get_snapshot_list("simulations/hires_sample/ns1.1As2.1e-09heat_slope0heat_amp1hub0.7seed2/output/")[0]
     pk0 = fp0.get_power(kf,mean_fluxes=None)
     pk1 = fp1.get_power(kf,mean_fluxes=None)
     pk2 = fp2.get_power(kf,mean_fluxes=None)

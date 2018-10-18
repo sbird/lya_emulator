@@ -50,7 +50,7 @@ def load_data(datadir, *, kf, max_z=4.2):
     """Load and initialise a "fake data" flux power spectrum"""
     #Load the data directory
     myspec = flux_power.MySpectra(max_z=max_z)
-    pps = myspec.get_snapshot_list(datadir)
+    pps = myspec.get_snapshot_list(datadir)[0]
     #self.data_fluxpower is used in likelihood.
     data_fluxpower = pps.get_power(kf=kf, mean_fluxes=None)
     assert np.size(data_fluxpower) % np.size(kf) == 0

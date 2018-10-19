@@ -92,13 +92,14 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         dd = params_test.get_outdir(pp)
         if not os.path.exists(dd):
             dd = params_test.get_outdir(pp, strsz=2)
-        predicted,std = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: uvb; cosmo.; thermal},]
-
-        ps = myspec.get_snapshot_list(dd)[0]
+        ps = myspec.get_snapshot_list(dd, params=pp)[0]
         exact = ps.get_power_native_binning(mean_fluxes = None)
         okf = ps.get_kf_kms()
         nk = np.size(ps.kf)
         assert np.all(np.abs(gp.kf/ps.kf - 1) < 1e-5)
+
+        pnew = ps.get_params()
+        predicted,std = gp.predict(pnew.reshape(1,-1)) #.predict takes [{list of parameters: uvb; cosmo.; thermal},]
         ratio =  predicted[0]/exact
         upper =  (predicted[0] + std[0])/exact
         lower =  (predicted[0]-std[0])/exact
@@ -119,7 +120,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         #plt.yscale('log')
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
-        name = params_test.build_dirname(pp, include_dense=True)
+        name = params_test.build_dirname(pnew, include_dense=True)
 #         plt.title(name)
         plt.xlim(xmax=0.05)
         plt.legend(loc='right')

@@ -138,6 +138,7 @@ def map_to_unit_cube(param_vec, param_limits):
     Arguments:
     param_vec - the vector of parameters to map.
     param_limits - the limits of the allowed parameters.
+    Parameters with limits that span a zero width are removed.
     Returns:
     vector of parameters, all in [0,1].
     """
@@ -149,8 +150,9 @@ def map_to_unit_cube(param_vec, param_limits):
     ii = np.where(param_vec < param_limits[:,0])
     param_vec[ii] = param_limits[ii,0]
     assert np.all(param_limits[:,0] <= param_limits[:,1])
-    new_params = (param_vec-param_limits[:,0])/(param_limits[:,1] - param_limits[:,0])
     #Case where lower == upper
-    new_params[np.where(np.isnan(new_params))] = 0.5
+    zz = np.where(param_limits[:,1] != param_limits[:,0])
+    new_params = (param_vec-param_limits[:,0])/(param_limits[:,1] - param_limits[:,0])
+    new_params = new_params[zz]
     assert np.all((new_params >= 0)*(new_params <= 1))
     return new_params

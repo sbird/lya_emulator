@@ -60,8 +60,8 @@ class SkLearnGP(object):
     def _get_interp(self, flux_vectors):
         """Build the actual interpolator."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
-        nparams = np.shape(self.params)[1]
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
+        nparams = np.shape(params_cube)[1]
         #Check that we span the parameter space
         for i in range(nparams):
             assert np.max(params_cube[:,i]) > 0.9

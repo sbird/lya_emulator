@@ -49,6 +49,7 @@ class MeanFluxFactor(ConstMeanFlux):
             self.dense_param_limits = np.array([[0.75,1.25]]) * np.array([slopelow, slopehigh])
         else:
             self.dense_param_limits = dense_limits
+        assert np.shape(self.dense_param_limits)[1] == 2
         self.dense_samples = dense_samples
         self.dense_param_names = { 'tau0': 0, }
 

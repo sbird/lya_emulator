@@ -23,7 +23,7 @@ class MultiBinGP(object):
         print('Number of redshifts for emulator generation =', self.nz)
         self.gps = [gp(i) for i in range(self.nz)]
 
-    def predict(self,params, tau0_factors = None):
+    def predict(self,params, tau0_factors = None, use_updated_training_set=False):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         std = np.zeros([1,self.nk*self.nz])
         means = np.zeros([1,self.nk*self.nz])
@@ -32,10 +32,18 @@ class MultiBinGP(object):
             zparams = np.array(params)
             if tau0_factors is not None:
                 zparams[0][0] *= tau0_factors[i] #Multiplying t0[z] by "tau0_factors"[z]
-            (m, s) = gp.predict(zparams)
+            if not use_updated_training_set:
+                (m, s) = gp.predict(zparams)
+            else:
+                (m, s) = gp.predict_from_updated_training_set(zparams)
             means[0,i*self.nk:(i+1)*self.nk] = m
             std[:,i*self.nk:(i+1)*self.nk] = s
         return means, std
+
+    def add_to_training_set(self, new_params):
+        """Add to training set and update emulator (without re-training) -- for all redshifts"""
+        for i in range(self.nz): #Loop over redshifts
+            self.gps[i].add_to_training_set(new_params)
 
 class SkLearnGP(object):
     """An emulator wrapping a GP code.
@@ -52,6 +60,7 @@ class SkLearnGP(object):
         self._test_interp = False
         #Get the flux power and build an emulator
         self._get_interp(flux_vectors=powers)
+        self.gp_updated = None
         if self._test_interp:
             self._check_interp(powers)
             self._test_interp = False
@@ -102,14 +111,38 @@ class SkLearnGP(object):
                 print("Bad interpolation at:", np.where(worst > np.max(worst)*0.9), np.max(worst))
                 assert np.max(worst) < self.intol
 
-    def predict(self, params):
+    def add_to_training_set(self, new_params):
+        """Add to training set and update emulator (without re-training)"""
+        if self.gp_updated is None: #First time training set is updated
+            self.gp_updated = cp.deepcopy(self.gp)
+        mean_flux_training_samples = np.unique(self.gp.X[:, 0]).reshape(-1, 1)
+        mean_flux_samples_expand = np.repeat(mean_flux_training_samples, new_params.shape[0], axis=0)
+        new_params_unit_cube = map_to_unit_cube_list(new_params, self.param_limits[-1 * new_params.shape[0]:])
+        new_params_unit_cube_expand = np.tile(new_params_unit_cube, (mean_flux_training_samples.shape[0], 1))
+        new_params_unit_cube_mean_flux = np.hstack((mean_flux_samples_expand, new_params_unit_cube_expand))
+        #new_params_mean_flux = map_from_unit_cube_list(new_params_unit_cube_mean_flux, self.param_limits)
+        gp_updated_X_new = np.vstack((self.gp_updated.X, new_params_unit_cube_mean_flux))
+        gp_updated_Y_new = np.vstack((self.gp_updated.Y, self.gp.predict(new_params_unit_cube_mean_flux)[0]))
+        self.gp_updated.set_XY(X=gp_updated_X_new, Y=gp_updated_Y_new)
+
+    def _predict(self, params, GP_instance):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
-        flux_predict, var = self.gp.predict(params_cube)
+        flux_predict, var = GP_instance.predict(params_cube)
         mean = (flux_predict+1)*self.scalefactors
         std = np.sqrt(var) * self.scalefactors
         return mean, std
+
+    def predict(self, params):
+        """Get the predicted flux power spectrum (and error) at a parameter value
+        (or list of parameter values)."""
+        return self._predict(params, GP_instance=self.gp)
+
+    def predict_from_updated_training_set(self, params):
+        """Get the predicted flux power spectrum (and error) at a parameter value
+        (or list of parameter values) -- using updated training set"""
+        return self._predict(params, GP_instance=self.gp_updated)
 
     def get_predict_error(self, test_params, test_exact):
         """Get the difference between the predicted GP

@@ -8,6 +8,13 @@ We use rejection-sampled latin hypercubes.
 
 import numpy as np
 
+def convert_to_simulation_parameters(input_parameters, omegamh2=0.1199, omegab=0.0483):
+    """Convert latin hypercube parameters to input parameters for MP-Gadget"""
+    omegam = omegamh2 / (input_parameters[4] ** 2)
+    AsCLASS = input_parameters[1] * ((5.e-2 / (2. * np.pi / 8.)) ** (input_parameters[0] - 1.))
+    return {'Omega0': omegam, 'OmegaLambda': 1. - omegam, 'OmegaBaryon': omegab, 'HubbleParam': input_parameters[4], 'PrimordialIndex': input_parameters[0], 'PrimordialAmp': AsCLA
+S}
+
 def get_hypercube_samples(param_limits, nsamples, prior_points = None):
     """This function is the main wrapper. Given limits on a set of
     parameters (and optionally some prior points), it will generate a hypercube design."""

@@ -128,7 +128,7 @@ class SkLearnGP(object):
     def _predict(self, params, GP_instance):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
-        params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in params])
+        params_cube = map_to_unit_cube_list(pp, self.param_limits)
         flux_predict, var = GP_instance.predict(params_cube)
         mean = (flux_predict+1)*self.scalefactors
         std = np.sqrt(var) * self.scalefactors

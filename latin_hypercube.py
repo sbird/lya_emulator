@@ -12,8 +12,7 @@ def convert_to_simulation_parameters(input_parameters, omegamh2=0.1199, omegab=0
     """Convert latin hypercube parameters to input parameters for MP-Gadget"""
     omegam = omegamh2 / (input_parameters[4] ** 2)
     AsCLASS = input_parameters[1] * ((5.e-2 / (2. * np.pi / 8.)) ** (input_parameters[0] - 1.))
-    return {'Omega0': omegam, 'OmegaLambda': 1. - omegam, 'OmegaBaryon': omegab, 'HubbleParam': input_parameters[4], 'PrimordialIndex': input_parameters[0], 'PrimordialAmp': AsCLA
-S}
+    return {'Omega0': omegam, 'OmegaLambda': 1. - omegam, 'OmegaBaryon': omegab, 'HubbleParam': input_parameters[4], 'PrimordialIndex': input_parameters[0], 'PrimordialAmp': AsCLASS}
 
 def get_hypercube_samples(param_limits, nsamples, prior_points = None):
     """This function is the main wrapper. Given limits on a set of
@@ -159,3 +158,11 @@ def map_to_unit_cube(param_vec, param_limits):
     new_params = (param_vec-param_limits[:,0])/(param_limits[:,1] - param_limits[:,0])
     assert np.all((new_params >= 0)*(new_params <= 1))
     return new_params
+
+def map_to_unit_cube_list(param_vec_list, param_limits):
+    """Map multiple parameter vectors to the unit cube"""
+    return np.array([map_to_unit_cube(param_vec, param_limits) for param_vec in param_vec_list])
+
+def map_from_unit_cube_list(param_vec_list, param_limits):
+    """Map multiple parameter vectors back from the unit cube"""
+    return np.array([map_from_unit_cube(param_vec, param_limits) for param_vec in param_vec_list])

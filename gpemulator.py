@@ -1,14 +1,15 @@
 """Building a surrogate using a Gaussian Process."""
 # from datetime import datetime
+import copy as cp
 import numpy as np
-from latin_hypercube import map_to_unit_cube
+from latin_hypercube import map_to_unit_cube_list
 #Make sure that we don't accidentally
 #get another backend when we import GPy.
 import matplotlib
 matplotlib.use('PDF')
 import GPy
 
-class MultiBinGP(object):
+class MultiBinGP:
     """A wrapper around the emulator that constructs a separate emulator for each bin.
     Each one has a separate mean flux parameter.
     The t0 parameter fed to the emulator should be constant factors."""
@@ -45,7 +46,7 @@ class MultiBinGP(object):
         for i in range(self.nz): #Loop over redshifts
             self.gps[i].add_to_training_set(new_params)
 
-class SkLearnGP(object):
+class SkLearnGP:
     """An emulator wrapping a GP code.
        Parameters: params is a list of parameter vectors.
                    powers is a list of flux power spectra (same shape as params).
@@ -69,7 +70,7 @@ class SkLearnGP(object):
         """Build the actual interpolator."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         nparams = np.shape(self.params)[1]
-        params_cube = np.array([map_to_unit_cube(pp, self.param_limits) for pp in self.params])
+        params_cube = map_to_unit_cube_list(self.params, self.param_limits)
         #Check that we span the parameter space
         for i in range(nparams):
             assert np.max(params_cube[:,i]) > 0.9
@@ -91,7 +92,7 @@ class SkLearnGP(object):
         #Try rational quadratic kernel
         #kernel += GPy.kern.RatQuad(nparams)
 
-        noutput = np.shape(normspectra)[1]
+        #noutput = np.shape(normspectra)[1]
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
 
         status = self.gp.optimize(messages=True) #True
@@ -128,7 +129,7 @@ class SkLearnGP(object):
     def _predict(self, params, GP_instance):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
-        params_cube = map_to_unit_cube_list(pp, self.param_limits)
+        params_cube = map_to_unit_cube_list(params, self.param_limits)
         flux_predict, var = GP_instance.predict(params_cube)
         mean = (flux_predict+1)*self.scalefactors
         std = np.sqrt(var) * self.scalefactors

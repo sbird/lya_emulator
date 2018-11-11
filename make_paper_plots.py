@@ -121,12 +121,21 @@ def single_parameter_plot():
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
         plt.clf()
 
+def test_keirs8_plots():
+    """Plot emulator test-cases"""
+    testdir = path.expanduser("simulations/refinement_tight_validation")
+    emudir = path.expanduser("simulations/refinement_big")
+    gp_emu, _ = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"refinement_big"),mean_flux=2)
+    #gp_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"),mean_flux=2)
+    #quad_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
+    return gp_emu
+
 def test_s8_plots():
     """Plot emulator test-cases"""
     testdir = path.expanduser("simulations/hires_s8_test")
     quaddir = path.expanduser("simulations/hires_s8_quadratic")
     emudir = path.expanduser("simulations/hires_s8")
-    gp_emu, _ = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_s8"),mean_flux=1)
+    gp_emu, _ = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_s8"),mean_flux=2)
     gp_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"),mean_flux=2)
     quad_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
     return (gp_emu, gp_quad, quad_quad)
@@ -168,10 +177,11 @@ def sample_var_plot():
     plt.clf()
 
 if __name__ == "__main__":
-    gp_emu, gp_quad, gp_quad_quad = test_s8_plots()
-    single_parameter_plot()
-    pars = mean_flux_rescale()
-    hypercube_plot()
+    gp_emu = test_keirs8_plots()
+#     gp_emu, gp_quad, gp_quad_quad = test_s8_plots()
+#     single_parameter_plot()
+#     pars = mean_flux_rescale()
+#     hypercube_plot()
 #     sample_var_plot()
 #     test_knot_plots(mf=1)
 #     test_knot_plots(mf=2)

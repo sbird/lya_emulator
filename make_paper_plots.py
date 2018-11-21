@@ -121,23 +121,16 @@ def single_parameter_plot():
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
         plt.clf()
 
-def test_keirs8_plots():
-    """Plot emulator test-cases"""
-    testdir = path.expanduser("simulations/refinement_tight_validation")
-    emudir = path.expanduser("simulations/refinement_big")
-    gp_emu, _ = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"refinement_big"),mean_flux=2)
-    #gp_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"),mean_flux=2)
-    #quad_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
-    return gp_emu
-
 def test_s8_plots():
     """Plot emulator test-cases"""
     testdir = path.expanduser("simulations/hires_s8_test")
     quaddir = path.expanduser("simulations/hires_s8_quadratic")
     emudir = path.expanduser("simulations/hires_s8")
     gp_emu, _ = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_s8"),mean_flux=2)
+    #Also test with the quadratic emulator
+    coarse_grid_plot.plot_test_interpolate(emudir, quaddir,savedir=path.join(plotdir,"hires_s8"),mean_flux=2)
     gp_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"),mean_flux=2)
-    quad_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator)
+    quad_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator, mean_flux=2)
     return (gp_emu, gp_quad, quad_quad)
 
 def test_knot_plots(mf=1, testdir = None, emudir = None, plotdir = None, plotname="", max_z=4.2):
@@ -177,8 +170,7 @@ def sample_var_plot():
     plt.clf()
 
 if __name__ == "__main__":
-    gp_emu = test_keirs8_plots()
-#     gp_emu, gp_quad, gp_quad_quad = test_s8_plots()
+    gp_emu, gp_quad, gp_quad_quad = test_s8_plots()
 #     single_parameter_plot()
 #     pars = mean_flux_rescale()
 #     hypercube_plot()

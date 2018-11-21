@@ -166,9 +166,9 @@ class LikelihoodClass:
 
         okf, predicted, std = self.get_predicted(params, use_updated_training_set=use_updated_training_set)
 
-        diff = predicted-data_power
-        nkf = len(self.kf)
-        nz = int(len(diff)/nkf)
+        nkf = int(np.size(self.kf))
+        nz = np.shape(predicted)[0]
+        assert nz == int(np.size(data_power)/nkf)
         #Likelihood using full covariance matrix
         chi2 = 0
 

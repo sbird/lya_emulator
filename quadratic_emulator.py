@@ -65,7 +65,7 @@ class QuadraticPoly(SkLearnGP):
         #Compute change in parameters
         dparams  = params - self.bestpar[pind]
         #Find only those positions where this parameter changed.
-        ind = np.where(np.abs(dparams) > 1e-3*self.bestpar[pind])
+        ind = np.where(np.abs(dparams) > 1e-3*np.abs(self.bestpar[pind]))
         assert (pind < 5 and len(ind[0]) == 4) or len(ind[0]) == 9
         return (dfv[ind], dparams[ind])
 

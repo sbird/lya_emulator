@@ -176,7 +176,8 @@ class LikelihoodClass:
             idp = np.where(self.kf >= okf[bb][0])
             diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
             std_bin = std[bb]
-            covar_bin = self.get_BOSS_error(bb)[idp,idp]
+            bindx = np.min(idp)
+            covar_bin = self.get_BOSS_error(bb)[bindx:,bindx:]
 
             assert np.shape(np.outer(std_bin,std_bin)) == np.shape(covar_bin)
             if include_emu:

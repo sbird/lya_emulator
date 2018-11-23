@@ -15,15 +15,17 @@ class ConstMeanFlux(object):
         self.value = value
         self.dense_param_names = {}
 
-    def get_t0(self, zzs):
+    def get_t0(self, zzs, params=None):
         """Get mean optical depth."""
-        if self.value is None:
+        if params is None:
+            params = self.value
+        if params is None:
             return np.array([None,])
-        return np.array([self.value * obs_mean_tau(zzs),])
+        return np.array([params * obs_mean_tau(zzs),])
 
-    def get_mean_flux(self, zzs):
+    def get_mean_flux(self, zzs, params=None):
         """Get mean flux"""
-        t0 = self.get_t0(zzs)
+        t0 = self.get_t0(zzs, params=params)
         if t0[0] is None:
             return t0
         return np.exp(-1 * t0)
@@ -52,9 +54,11 @@ class MeanFluxFactor(ConstMeanFlux):
         self.dense_samples = dense_samples
         self.dense_param_names = { 'tau0': 0, }
 
-    def get_t0(self, zzs):
+    def get_t0(self, zzs, params=None):
         """Get the mean optical depth as a function of redshift for all parameters."""
-        return np.array([t0 * obs_mean_tau(zzs) for t0 in self.get_params()])
+        if params is None:
+            params = self.get_params()
+        return np.array([t0 * obs_mean_tau(zzs) for t0 in params])
 
     def get_params(self):
         """Returns a list of parameters where the mean flux is evaluated."""

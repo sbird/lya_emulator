@@ -250,21 +250,29 @@ class Emulator(object):
         """Get the desired flux vectors and their parameters"""
         pvals = self.get_parameters()
         nparams = np.shape(pvals)[1]
+        nsims = np.shape(pvals)[0]
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z, max_k=self.maxk)
-        mean_fluxes = self.mf.get_mean_flux(myspec.zout)
         aparams = pvals
         #Note this gets tau_0 as a linear scale factor from the observed power law
         dpvals = self.mf.get_params()
+        nuggets = np.zeros_like(pvals[:,0])
         if dpvals is not None:
-            aparams = np.array([np.concatenate([dp,pv]) for dp in dpvals for pv in pvals])
+            #Add a small offset to the mean flux in each simulation to improve support
+            nuggets = np.arange(nsims)/nsims * (dpvals[-1] - dpvals[0])/(np.size(dpvals)+1)
+            newdp = dpvals[0] + (dpvals-dpvals[0]) / (np.size(dpvals)+1) * np.size(dpvals)
+            #Make sure we don't overflow the parameter limits
+            assert (newdp[-1] + nuggets[-1] < dpvals[-1]) and (newdp[0] + nuggets[0] >= dpvals[0])
+            dpvals = newdp
+            aparams = np.array([np.concatenate([dp+nuggets[i],pvals[i]]) for dp in dpvals for i in range(nsims)])
         try:
             kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams)
         except (AssertionError, OSError):
             powers = [self._get_fv(pp, myspec) for pp in pvals]
-            flux_vectors = np.array([ps.get_power_native_binning(mean_fluxes = mef) for mef in mean_fluxes for ps in powers])
+            mef = lambda pp: self.mf.get_mean_flux(myspec.zout, params=pp)[0]
+            flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes = mef(dp+nuggets[i])) for dp in dpvals for i in range(nsims)])
             #'natively' binned k values in km/s units as a function of redshift
-            kfkms = [ps.get_kf_kms() for mef in mean_fluxes for ps in powers]
+            kfkms = [ps.get_kf_kms() for _ in dpvals for ps in powers]
             #Same in all boxes
             kfmpc = powers[0].kf
             assert np.all(np.abs(powers[0].kf/ powers[-1].kf-1) < 1e-6)

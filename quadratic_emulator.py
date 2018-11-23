@@ -132,19 +132,24 @@ class QuadraticEmulator(Emulator):
         assert nparams == len(self.param_names)
         myspec = flux_power.MySpectra(max_z=max_z, max_k=self.maxk)
         mean_fluxes = self.mf.get_mean_flux(myspec.zout)
+        #First get best fit
+        mfind = np.shape(mean_fluxes)[0]//2
+        medmf = mean_fluxes[mfind,:]
+        #List of indices that aren't the best-fit mean flux
+        nmfind = list(range(0,mfind))+list(range(mfind+1,np.shape(mean_fluxes)[0]))
+        mean_fluxes = mean_fluxes[nmfind]
         aparams = pvals
         #Note this gets tau_0 as a linear scale factor from the observed power law
         dpvals = self.mf.get_params()
         if dpvals is not None:
-            aparams = np.array([np.concatenate([dp,pv]) for dp in dpvals for pv in pvals])
+            aparams = [np.concatenate([dpvals[mfind],pvals[0]]),]
+            aparams += [np.concatenate([dp, pvals[0]]) for dp in dpvals[nmfind]]
+            aparams += [np.concatenate([dpvals[mfind], pv]) for pv in pvals[1:]]
+            aparams = np.array(aparams)
         try:
             kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams)
         except (AssertionError, OSError):
             powers = [self._get_fv(pp, myspec) for pp in pvals]
-            #First get best fit
-            mfind = np.shape(mean_fluxes)[0]//2
-            medmf = mean_fluxes[mfind,:]
-            mean_fluxes = mean_fluxes[list(range(0,mfind))+list(range(mfind+1,np.shape(mean_fluxes)[0]))]
             #First we want the best-fit
             flux_vectors = [powers[0].get_power_native_binning(mean_fluxes = medmf),]
             #Now best fit parameters, with varying mean flux values.

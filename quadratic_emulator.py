@@ -147,7 +147,7 @@ class QuadraticEmulator(Emulator):
             aparams += [np.concatenate([dpvals[mfind], pv]) for pv in pvals[1:]]
             aparams = np.array(aparams)
         try:
-            kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams)
+            kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams, savefile="quadratic_flux_vectors.hdf5")
         except (AssertionError, OSError):
             powers = [self._get_fv(pp, myspec) for pp in pvals]
             #First we want the best-fit
@@ -164,7 +164,7 @@ class QuadraticEmulator(Emulator):
             #Same in all boxes
             kfmpc = powers[0].kf
             assert np.all(np.abs(powers[0].kf/ powers[-1].kf-1) < 1e-6)
-            self.save_flux_vectors(aparams, kfmpc, kfkms, flux_vectors)
+            self.save_flux_vectors(aparams, kfmpc, kfkms, flux_vectors, savefile="quadratic_flux_vectors.hdf5")
         assert np.shape(flux_vectors)[0] == np.shape(aparams)[0]
         if kfunits == "kms":
             kf = kfkms

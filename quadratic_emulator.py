@@ -10,6 +10,7 @@ import math
 import numpy as np
 from coarse_grid import Emulator
 from gpemulator import SkLearnGP
+import flux_power
 
 def Hubble(zz, om, H0):
     """ Hubble parameter. Hubble(Redshift) """
@@ -29,12 +30,13 @@ class QuadraticPoly(SkLearnGP):
         super().__init__(*args, **kwargs)
         self.kf = kf
         self.intol = 1e-2
+        self.bfnum = 0
 
-    def _get_interp(self, flux_vectors, bfnum=0):
+    def _get_interp(self, flux_vectors):
         """Do the actual interpolation. Called in parent's __init__"""
         self.tables = {}
-        self.bestfv = flux_vectors[bfnum]
-        self.bestpar = self.params[bfnum,:]
+        self.bestfv = flux_vectors[self.bfnum]
+        self.bestpar = self.params[self.bfnum,:]
         for pp in range(np.shape(self.params)[1]):
             self.tables[pp] = self._calc_coeffs(flux_vectors,self.params[:,pp], pp)
 
@@ -121,3 +123,46 @@ class QuadraticEmulator(Emulator):
         """
         gp = self._get_custom_emulator(emuobj=QuadraticPoly, max_z=max_z)
         return gp
+
+    def get_flux_vectors(self, max_z=4.2, kfunits="kms"):
+        """Get the desired flux vectors and their parameters.
+        This is subclassed so that we only change the mean flux parameters around the best fit, central, model."""
+        pvals = self.get_parameters()
+        nparams = np.shape(pvals)[1]
+        assert nparams == len(self.param_names)
+        myspec = flux_power.MySpectra(max_z=max_z, max_k=self.maxk)
+        mean_fluxes = self.mf.get_mean_flux(myspec.zout)
+        aparams = pvals
+        #Note this gets tau_0 as a linear scale factor from the observed power law
+        dpvals = self.mf.get_params()
+        if dpvals is not None:
+            aparams = np.array([np.concatenate([dp,pv]) for dp in dpvals for pv in pvals])
+        try:
+            kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams)
+        except (AssertionError, OSError):
+            powers = [self._get_fv(pp, myspec) for pp in pvals]
+            #First get best fit
+            mfind = np.shape(mean_fluxes)[0]//2
+            medmf = mean_fluxes[mfind,:]
+            mean_fluxes = mean_fluxes[list(range(0,mfind))+list(range(mfind+1,np.shape(mean_fluxes)[0]))]
+            #First we want the best-fit
+            flux_vectors = [powers[0].get_power_native_binning(mean_fluxes = medmf),]
+            #Now best fit parameters, with varying mean flux values.
+            flux_vectors += [powers[0].get_power_native_binning(mean_fluxes = mef) for mef in mean_fluxes]
+            #Now the rest
+            flux_vectors += [ps.get_power_native_binning(mean_fluxes = medmf) for ps in powers[1:]]
+            flux_vectors = np.array(flux_vectors)
+            #'natively' binned k values in km/s units as a function of redshift
+            kfkms = [powers[0].get_kf_kms(),]
+            kfkms += [powers[0].get_kf_kms() for mef in mean_fluxes]
+            kfkms += [ps.get_kf_kms() for ps in powers[1:]]
+            #Same in all boxes
+            kfmpc = powers[0].kf
+            assert np.all(np.abs(powers[0].kf/ powers[-1].kf-1) < 1e-6)
+            self.save_flux_vectors(aparams, kfmpc, kfkms, flux_vectors)
+        assert np.shape(flux_vectors)[0] == np.shape(aparams)[0]
+        if kfunits == "kms":
+            kf = kfkms
+        else:
+            kf = kfmpc
+        return aparams, kf, flux_vectors

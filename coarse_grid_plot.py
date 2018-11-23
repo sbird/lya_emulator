@@ -64,7 +64,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         savedir = emulatordir
     t0 = None
     if mean_flux:
-        t0 = 1. #0.95
+        t0 = 0.95
     mf = mflux.ConstMeanFlux(value=t0) #In 'ConstMeanFlux' case: multiply tau_0_i[z] by t0 = 0.95
     if mean_flux == 2:
         mf = mflux.MeanFluxFactor() #In 'MeanFluxFactor' case: DON'T multiply tau_0_i[z] by t0 - because *emulate* t0[z]

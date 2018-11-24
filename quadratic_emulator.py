@@ -56,7 +56,7 @@ class QuadraticPoly(SkLearnGP):
         """Calculate the flux-derivative for a single parameter change"""
         assert np.size(pdif) == np.size(PFdif)
         mat=np.vstack([pdif**2, pdif] ).T
-        (derivs, _,_, _)=np.linalg.lstsq(mat, PFdif)
+        (derivs, _,_, _)=np.linalg.lstsq(mat, PFdif, rcond=None)
         return derivs
 
     def _get_changes(self, flux_vectors, params, pind):

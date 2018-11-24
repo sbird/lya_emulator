@@ -243,7 +243,7 @@ class Emulator(object):
             2. Each flux power spectrum in the set is rescaled to the same mean flux.
             3.
         """
-        gp = self._get_custom_emulator(emuobj=gpemulator.MultiBinGP, max_z=max_z)
+        gp = self._get_custom_emulator(emuobj=None, max_z=max_z)
         return gp
 
     def get_flux_vectors(self, max_z=4.2, kfunits="kms"):
@@ -332,7 +332,7 @@ class Emulator(object):
         """Helper to allow supporting different emulators."""
         aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
         plimits = self.get_param_limits(include_dense=True)
-        gp = emuobj(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits)
+        gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
         return gp
 
 class KnotEmulator(Emulator):

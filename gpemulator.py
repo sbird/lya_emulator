@@ -13,9 +13,11 @@ class MultiBinGP:
     """A wrapper around the emulator that constructs a separate emulator for each bin.
     Each one has a separate mean flux parameter.
     The t0 parameter fed to the emulator should be constant factors."""
-    def __init__(self, *, params, kf, powers, param_limits):
+    def __init__(self, *, params, kf, powers, param_limits, singleGP=None):
         #Build an emulator for each redshift separately. This means that the
         #mean flux for each bin can be separated.
+        if singleGP is None:
+            singleGP = SkLearnGP
         self.kf = kf
         self.nk = np.size(kf)
         assert np.shape(powers)[1] % self.nk == 0

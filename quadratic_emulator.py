@@ -26,10 +26,9 @@ class QuadraticPoly(SkLearnGP):
                      and then multiply to get the best fit.
                      The best fit used in each knot to compute the different coefficients need not be this simulation!
     """
-    def __init__(self, kf, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.bfnum = 0
         super().__init__(*args, **kwargs)
-        self.kf = kf
         self.intol = 1e-2
 
     def _get_interp(self, flux_vectors):

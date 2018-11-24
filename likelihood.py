@@ -1,6 +1,4 @@
 """Module for computing the likelihood function for the forest emulator."""
-import os
-import os.path
 import math
 from datetime import datetime
 import mpmath as mmh
@@ -238,7 +236,7 @@ class LikelihoodClass:
             covar_bin = self.sdss.get_covar(sdssz[zbin])
         return covar_bin
 
-    def do_sampling(self, savefile, datadir, nwalkers=100, burnin=1000, nsamples=3000, while_loop=True, include_emulator_error=True):
+    def do_sampling(self, savefile, datadir, nwalkers=150, burnin=1000, nsamples=3000, while_loop=True, include_emulator_error=True, maxsample=10):
         """Initialise and run emcee."""
         pnames = self.emulator.print_pnames()
         #Load the data directory
@@ -262,11 +260,13 @@ class LikelihoodClass:
         emcee_sampler.reset()
         self.cur_results = emcee_sampler
         gr = 10.
-        while np.any(gr > 1.01):
+        count = 0
+        while np.any(gr > 1.01) and count < maxsample:
             emcee_sampler.run_mcmc(pos, nsamples)
             gr = gelman_rubin(emcee_sampler.chain)
             print("Total samples:",nsamples," Gelman-Rubin: ",gr)
             np.savetxt(savefile, emcee_sampler.flatchain)
+            count += 1
             if while_loop is False:
                 break
         self.flatchain = emcee_sampler.flatchain
@@ -421,11 +421,3 @@ class LikelihoodClass:
         grid_y = grid_y * (self.param_limits[j,1] - self.param_limits[j,0]) + self.param_limits[j,0]
         grid = scipy.interpolate.griddata(rsamples[:,(i,j)], randscores,(grid_x,grid_y),fill_value = 0)
         return grid
-
-if __name__ == "__main__":
-#     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots_refine"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots_test/AA0.97BB1.3CC0.67DD1.3heat_slope0.083heat_amp0.92hub0.69/output"))
-    like = LikelihoodClass(basedir=os.path.expanduser("simulations/hires_s8"), )
-    testdata=os.path.expanduser("simulations/hires_s8_test/ns0.922As2.1e-09heat_slope-0.233heat_amp1.07hub0.675/output")
-    #Works very well!
-    #     like = LikelihoodClass(basedir=os.path.expanduser("~/data/Lya_Boss/hires_knots"), datadir=os.path.expanduser("~/data/Lya_Boss/hires_knots/AA0.96BB1.3CC1DD1.3heat_slope-5.6e-17heat_amp1.2hub0.66/output"))
-    output = like.do_sampling(os.path.expanduser("simulations/hires_s8_test/AA0.97BB1.3_chain.txt"), datadir=testdata)

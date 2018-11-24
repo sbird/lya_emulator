@@ -22,7 +22,7 @@ class MultiBinGP:
         self.nk = np.size(kf)
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = int(np.shape(powers)[1]/self.nk)
-        gp = lambda i: SkLearnGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits)
+        gp = lambda i: singleGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits)
         print('Number of redshifts for emulator generation =', self.nz)
         self.gps = [gp(i) for i in range(self.nz)]
 

@@ -6,6 +6,7 @@ import math as mh
 from datetime import datetime
 import numpy as np
 import distinct_colours_py3 as dc
+import lyman_data
 import likelihood as likeh
 import matplotlib
 matplotlib.use('PDF')
@@ -22,13 +23,16 @@ def get_k_z(likelihood_instance):
 
 def make_plot_flux_power_spectra(like, params, datadir, savefile):
     """Make a plot of the power spectra, with redshift, the BOSS power and the sigmas. Four plots stacked."""
-    k_los = like.gpemu.kf
+    sdss = lyman_data.BOSSData()
+    #'Data' now is a simulation
+    k_los = sdss.get_kf()
     n_k_los = k_los.size
     z = like.zout #Highest redshift first
     n_z = z.size
 
     data_fluxpower = likeh.load_data(datadir, kf=k_los)
     exact_flux_power = data_fluxpower.reshape(n_z, n_k_los)
+
     ekf, emulated_flux_power, emulated_flux_power_std = like.get_predicted(params)
 
     data_flux_power = like.sdss.pf.reshape(-1, n_k_los)[:n_z][::-1]
@@ -36,27 +40,29 @@ def make_plot_flux_power_spectra(like, params, datadir, savefile):
     figure, axes = plt.subplots(nrows=4, ncols=1, figsize=(6.4*2., 10.))
     distinct_colours = dc.get_distinct(n_z)
     for i in range(n_z):
+        idp = np.where(k_los >= ekf[i][0])
+
         scaling_factor = ekf[i]/ mh.pi
         data_flux_power_std_single_z = np.sqrt(like.sdss.get_covar(z[i]).diagonal())
         exact_flux_power_std_single_z = np.sqrt(np.diag(like.get_BOSS_error(i)))
 #         print('Diagonal elements of BOSS covariance matrix at single redshift:', data_flux_power_std_single_z)
 
         line_width = 0.5
-        axes[0].plot(ekf[i], exact_flux_power[i]*scaling_factor, color=distinct_colours[i], ls='-', lw=line_width, label=r'$z = %.1f$'%z[i])
+        axes[0].plot(ekf[i], exact_flux_power[i][idp]*scaling_factor, color=distinct_colours[i], ls='-', lw=line_width, label=r'$z = %.1f$'%z[i])
         axes[0].plot(ekf[i], emulated_flux_power[i]*scaling_factor, color=distinct_colours[i], ls='--', lw=line_width)
         axes[0].errorbar(ekf[i], emulated_flux_power[i]*scaling_factor, yerr=emulated_flux_power_std[i]*scaling_factor, ecolor=distinct_colours[i], ls='')
-
-        idp = np.where(k_los >= ekf[i][0])
 
         axes[1].plot(ekf[i], data_flux_power[i][idp]*scaling_factor, color=distinct_colours[i], lw=line_width)
         axes[1].errorbar(ekf[i], data_flux_power[i][idp]*scaling_factor, yerr=data_flux_power_std_single_z[idp]*scaling_factor, ecolor=distinct_colours[i], ls='')
 
-        axes[2].plot(ekf[i], exact_flux_power_std_single_z[idp] / exact_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
-        axes[2].plot(ekf[i], emulated_flux_power_std[i] / exact_flux_power[i], color=distinct_colours[i], ls='--',
+        axes[2].plot(ekf[i], exact_flux_power_std_single_z[idp] / exact_flux_power[i][idp], color=distinct_colours[i], ls='-', lw=line_width)
+        axes[2].plot(ekf[i], emulated_flux_power_std[i] / exact_flux_power[i][idp], color=distinct_colours[i], ls='--',
                      lw=line_width)
 
         #axes[3].plot(ekf[i], data_flux_power_std_single_z / data_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
-        axes[3].plot(ekf[i], emulated_flux_power[i] / exact_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
+        axes[3].plot(ekf[i], emulated_flux_power[i] / exact_flux_power[i][idp], color=distinct_colours[i], ls='-', lw=line_width)
+        print('z=',z[i],' Max frac overestimation of flux power =', np.max((emulated_flux_power[i] / exact_flux_power[i][idp]) - 1.))
+        print('z=',z[i],' Min frac underestimation of flux power =', np.min((emulated_flux_power[i] / exact_flux_power[i][idp]) - 1.))
 
     fontsize = 7.
     xlim = [1.e-3, 0.022]
@@ -98,8 +104,6 @@ def make_plot_flux_power_spectra(like, params, datadir, savefile):
     plt.show()
 
     print(datadir)
-    print('Maximum fractional overestimation of flux power spectrum =', np.max((emulated_flux_power / exact_flux_power) - 1.))
-    print('Maximum fractional underestimation of flux power spectrum =', np.min((emulated_flux_power / exact_flux_power) - 1.))
 
     #make_plot_emulator_error(emudir, '/home/keir/Plots/Emulator/emulator_error_hot_cold.pdf', likelihood_instance=like)
 

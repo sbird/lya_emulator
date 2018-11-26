@@ -14,7 +14,7 @@ testdata=os.path.join(args.testdir, "output")
 root, testdir = os.path.split(args.testdir)
 if testdir == '':
     testdir = os.path.split(root)
-savefile = testdir +".txt"
+savefile = "chain_"+testdir +".txt"
 if args.noemuerr:
     savefile += "-noemuerr"
 #Build the emulator

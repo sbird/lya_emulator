@@ -7,7 +7,6 @@ from datetime import datetime
 import numpy as np
 import distinct_colours_py3 as dc
 import likelihood as likeh
-from mean_flux import mean_flux_slope_to_factor
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
@@ -152,28 +151,33 @@ def get_simulation_parameters_s8(base, pivot=0.05):
 def run_likelihood_test(testdir, emudir, savedir=None, plot=True, mean_flux_label='s'):
     """Generate some likelihood samples"""
 
-    if savedir is None:
-        savedir=emudir
     #Find all subdirectories
     subdirs = glob.glob(testdir + "/*/")
     assert len(subdirs) > 1
 
     like = likeh.LikelihoodClass(basedir=emudir, mean_flux=mean_flux_label)
     for sdir in subdirs:
-        sname = os.path.basename(os.path.abspath(sdir))
-        chainfile = os.path.join(savedir, 'chain_' + sname + '.txt')
-        datadir = os.path.join(sdir, "output")
-        true_parameter_values = get_simulation_parameters_s8(sdir)
-        if plot is True:
-            fp_savefile = os.path.join(savedir, 'flux_power_'+sname + ".pdf")
-            make_plot_flux_power_spectra(like, true_parameter_values, datadir, savefile=fp_savefile)
-        print('Beginning to sample likelihood at', str(datetime.now()))
-        like.do_sampling(chainfile, datadir=datadir)
-        print('Done sampling likelihood at', str(datetime.now()))
-        if plot is True:
-            savefile = os.path.join(savedir, 'corner_'+sname + ".pdf")
-            make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
+        single_likelihood_plot(sdir, like, emudir=emudir, savedir=savedir, plot=plot)
     return like
+
+def single_likelihood_plot(sdir, like, emudir, savedir=None, plot=True):
+    """Make a likelihood and error plot for a single simulation."""
+    if savedir is None:
+        savedir=emudir
+    sname = os.path.basename(os.path.abspath(sdir))
+    chainfile = os.path.join(savedir, 'chain_' + sname + '.txt')
+    datadir = os.path.join(sdir, "output")
+    true_parameter_values = get_simulation_parameters_s8(sdir)
+    if plot is True:
+        fp_savefile = os.path.join(savedir, 'flux_power_'+sname + ".pdf")
+        make_plot_flux_power_spectra(like, true_parameter_values, datadir, savefile=fp_savefile)
+    print('Beginning to sample likelihood at', str(datetime.now()))
+    if not os.path.exists(chainfile):
+        like.do_sampling(chainfile, datadir=datadir)
+    print('Done sampling likelihood at', str(datetime.now()))
+    if plot is True:
+        savefile = os.path.join(savedir, 'corner_'+sname + ".pdf")
+        make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
 
 if __name__ == "__main__":
     sim_rootdir = "simulations"

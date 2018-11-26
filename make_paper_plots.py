@@ -12,6 +12,7 @@ matplotlib.use("PDF")
 import matplotlib.pyplot as plt
 from plot_latin_hypercube import plot_points_hypercube
 import coarse_grid_plot
+from plot_likelihood import make_plot, get_simulation_parameters_s8
 
 #plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
 #plotdir = '/home/keir/Plots/Emulator'
@@ -57,7 +58,7 @@ def dlogPfdt(spec, t1, t2):
 def show_t0_gradient(spec, tmin,tmax,steps=20):
     """Find the mean gradient of the flux power with tau0"""
     tt = np.linspace(tmin,tmax,steps)
-    df = [np.mean(dlogPfdlogF(spec, t,t-0.005)[1]) for t in tt]
+    df = [np.mean(dlogPfdt(spec, t,t-0.005)[1]) for t in tt]
     return tt, df
 
 def mean_flux_rescale():
@@ -169,11 +170,28 @@ def sample_var_plot():
     plt.savefig(path.join(plotdir, "sample_var.pdf"))
     plt.clf()
 
+def plot_likelihood_chains():
+    """Plot the chains we made from quadratic and GP emulators."""
+    cdir = "ns0.968As1.5e-09heat_slope-0.367heat_amp0.8hub0.692"
+    sdir = path.join("simulations/hires_s8_test", cdir)
+    true_parameter_values = get_simulation_parameters_s8(sdir)
+
+    chainfile = path.join("simulations/hires_s8", "chain_"+cdir+".txt")
+    savefile = path.join(plotdir, 'hires_s8/corner_'+cdir + ".pdf")
+    make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
+    chainfile = path.join("simulations/hires_s8", "chain_"+cdir+".txt-noemuerr")
+    savefile = path.join(plotdir, 'hires_s8/corner_'+cdir + "-noemuerr.pdf")
+    make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
+    chainfile = path.join("simulations/hires_s8_quadratic", "chain_"+cdir+".txt-noemuerr")
+    savefile = path.join(plotdir, 'hires_s8_quad_quad/corner_'+cdir + ".pdf")
+    make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
+
 if __name__ == "__main__":
+    plot_likelihood_chains()
     gp_emu, gp_quad, gp_quad_quad = test_s8_plots()
-#     single_parameter_plot()
+    single_parameter_plot()
 #     pars = mean_flux_rescale()
-#     hypercube_plot()
+    hypercube_plot()
 #     sample_var_plot()
 #     test_knot_plots(mf=1)
 #     test_knot_plots(mf=2)

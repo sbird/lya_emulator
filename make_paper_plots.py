@@ -182,7 +182,7 @@ def plot_likelihood_chains():
     chainfile = path.join("simulations/hires_s8", "chain_"+cdir+".txt-noemuerr")
     savefile = path.join(plotdir, 'hires_s8/corner_'+cdir + "-noemuerr.pdf")
     make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
-    chainfile = path.join("simulations/hires_s8_quadratic", "chain_"+cdir+".txt-noemuerr")
+    chainfile = path.join("simulations/hires_s8_quadratic", "chain_"+cdir+".txt")
     savefile = path.join(plotdir, 'hires_s8_quad_quad/corner_'+cdir + ".pdf")
     make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
 

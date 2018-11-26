@@ -236,7 +236,7 @@ class LikelihoodClass:
             covar_bin = self.sdss.get_covar(sdssz[zbin])
         return covar_bin
 
-    def do_sampling(self, savefile, datadir, nwalkers=150, burnin=1000, nsamples=3000, while_loop=True, include_emulator_error=True, maxsample=10):
+    def do_sampling(self, savefile, datadir, nwalkers=150, burnin=3000, nsamples=3000, while_loop=True, include_emulator_error=True, maxsample=20):
         """Initialise and run emcee."""
         pnames = self.emulator.print_pnames()
         #Load the data directory

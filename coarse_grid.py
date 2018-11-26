@@ -368,6 +368,39 @@ class KnotEmulator(Emulator):
         except RuntimeError as e:
             print(str(e), " while building: ",outdir)
 
+def get_simulation_parameters_knots(base):
+    """Get the parameters of a knot-based simulation from the SimulationICs JSON file."""
+    jsin = open(os.path.join(base, "SimulationICs.json"), 'r')
+    pp = json.load(jsin)
+    knv = pp["knot_val"]
+    #This will fail!
+    slope, amp = _therm_params(pp)
+    parvec = [0., 1., *knv, slope, amp, pp["hubble"]]
+    return parvec
+
+def _therm_params(pp):
+    """Helper to get thermal parameters from a json dictionary."""
+    try:
+        #Old-style emulator
+        assert pp["code_args"]["rescale_gamma"] is True
+        slope = pp["code_args"]["rescale_slope"]
+        amp = pp["code_args"]["rescale_amp"]
+    except KeyError:
+        assert pp["rescale_gamma"] is True
+        slope = pp["rescale_slope"]
+        amp = pp["rescale_amp"]
+    return slope, amp
+
+def get_simulation_parameters_s8(base, dt0=0, t0=1, pivot=0.05):
+    """Get the parameters of a sigma8-ns-based simulation from the SimulationICs JSON file."""
+    jsin = open(os.path.join(base, "SimulationICs.json"), 'r')
+    pp = json.load(jsin)
+    slope, amp = _therm_params(pp)
+    #Change the pivot value
+    As = pp['scalar_amp'] / (pivot/(2*np.pi/8.))**(pp['ns']-1.)
+    parvec = [dt0, t0, pp['ns'], As, slope, amp, pp["hubble"]]
+    return parvec
+
 class MatterPowerEmulator(Emulator):
     """Build an emulator based on the matter power spectrum instead of the flux power spectrum, for testing."""
     def load(self,dumpfile="emulator_params.json"):

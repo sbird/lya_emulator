@@ -1,5 +1,4 @@
 """Module for plotting generated likelihood chains"""
-import json
 import os
 import glob
 import math as mh

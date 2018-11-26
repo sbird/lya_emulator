@@ -257,6 +257,8 @@ class Emulator(object):
         #Note this gets tau_0 as a linear scale factor from the observed power law
         dpvals = self.mf.get_params()
         nuggets = np.zeros_like(pvals[:,0])
+        #Savefile prefix
+        mfc = "cc"
         if dpvals is not None:
             #Add a small offset to the mean flux in each simulation to improve support
             nuggets = np.arange(nsims)/nsims * (dpvals[-1] - dpvals[0])/(np.size(dpvals)+1)
@@ -265,8 +267,9 @@ class Emulator(object):
             assert (newdp[-1] + nuggets[-1] < dpvals[-1]) and (newdp[0] + nuggets[0] >= dpvals[0])
             dpvals = newdp
             aparams = np.array([np.concatenate([dp+nuggets[i],pvals[i]]) for dp in dpvals for i in range(nsims)])
+            mfc = "mf"
         try:
-            kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams)
+            kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams, mfc=mfc)
         except (AssertionError, OSError):
             powers = [self._get_fv(pp, myspec) for pp in pvals]
             mef = lambda pp: self.mf.get_mean_flux(myspec.zout, params=pp)[0]
@@ -276,7 +279,7 @@ class Emulator(object):
             #Same in all boxes
             kfmpc = powers[0].kf
             assert np.all(np.abs(powers[0].kf/ powers[-1].kf-1) < 1e-6)
-            self.save_flux_vectors(aparams, kfmpc, kfkms, flux_vectors)
+            self.save_flux_vectors(aparams, kfmpc, kfkms, flux_vectors, mfc=mfc)
         assert np.shape(flux_vectors)[0] == np.shape(aparams)[0]
         if kfunits == "kms":
             kf = kfkms
@@ -284,9 +287,9 @@ class Emulator(object):
             kf = kfmpc
         return aparams, kf, flux_vectors
 
-    def save_flux_vectors(self, aparams, kfmpc, kfkms, flux_vectors, savefile="emulator_flux_vectors.hdf5"):
+    def save_flux_vectors(self, aparams, kfmpc, kfkms, flux_vectors, mfc="mf", savefile="emulator_flux_vectors.hdf5"):
         """Save the flux vectors and parameters to a file, which is the only thing read on reload."""
-        save = h5py.File(os.path.join(self.basedir, savefile), 'w')
+        save = h5py.File(os.path.join(self.basedir, mfc+"_"+savefile), 'w')
         save.attrs["classname"] = str(self.__class__)
         save["params"] = aparams
         save["flux_vectors"] = flux_vectors
@@ -295,9 +298,9 @@ class Emulator(object):
         save["kfmpc"] = kfmpc
         save.close()
 
-    def load_flux_vectors(self, aparams, savefile="emulator_flux_vectors.hdf5"):
+    def load_flux_vectors(self, aparams, mfc="mf", savefile="emulator_flux_vectors.hdf5"):
         """Save the flux vectors and parameters to a file, which is the only thing read on reload."""
-        load = h5py.File(os.path.join(self.basedir, savefile), 'r')
+        load = h5py.File(os.path.join(self.basedir, mfc+"_"+savefile), 'r')
         inparams = np.array(load["params"])
         flux_vectors = np.array(load["flux_vectors"])
         kfkms = np.array(load["kfkms"])

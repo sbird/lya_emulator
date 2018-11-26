@@ -117,7 +117,7 @@ def single_parameter_plot():
             plt.semilogx(kfs[i][0], fp[0:np.size(kfs[i][0])], label=name+"=%.2g (z=2.4)" % tp)
             plt.semilogx(kfs[i][1], fp[np.size(kfs[i][0]):], label=name+"=%.2g (z=2.2)" % tp, ls="--")
         plt.xlim(1e-3,2e-2)
-        plt.ylim(ymin=0.6)
+        plt.ylim(bottom=0.8, top=1.1)
         plt.legend(loc="lower left", ncol=2,fontsize=8)
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
         plt.clf()

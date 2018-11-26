@@ -273,9 +273,14 @@ class Emulator(object):
         except (AssertionError, OSError):
             powers = [self._get_fv(pp, myspec) for pp in pvals]
             mef = lambda pp: self.mf.get_mean_flux(myspec.zout, params=pp)[0]
-            flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes = mef(dp+nuggets[i])) for dp in dpvals for i in range(nsims)])
-            #'natively' binned k values in km/s units as a function of redshift
-            kfkms = [ps.get_kf_kms() for _ in dpvals for ps in powers]
+            if dpvals is not None:
+                flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes = mef(dp+nuggets[i])) for dp in dpvals for i in range(nsims)])
+                #'natively' binned k values in km/s units as a function of redshift
+                kfkms = [ps.get_kf_kms() for _ in dpvals for ps in powers]
+            else:
+                flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes = mef(dpvals)) for i in range(nsims)])
+                #'natively' binned k values in km/s units as a function of redshift
+                kfkms = [ps.get_kf_kms() for ps in powers]
             #Same in all boxes
             kfmpc = powers[0].kf
             assert np.all(np.abs(powers[0].kf/ powers[-1].kf-1) < 1e-6)

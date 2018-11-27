@@ -141,6 +141,7 @@ def single_likelihood_plot(sdir, like, emudir, savedir=None, plot=True, t0=1.):
     if t0 != 1.0:
         sname = re.sub(r"\.","_", "tau0%.3g" % t0) + sname
     chainfile = os.path.join(savedir, 'chain_' + sname + '.txt')
+    sname = re.sub(r"\.", "_", sname)
     datadir = os.path.join(sdir, "output")
     true_parameter_values = get_simulation_parameters_s8(sdir, t0=t0)
     if plot is True:

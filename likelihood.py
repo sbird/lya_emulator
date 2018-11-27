@@ -145,7 +145,10 @@ class LikelihoodClass:
         # .predict should take [{list of parameters: t0; cosmo.; thermal},]
         # Here: emulating @ cosmo.; thermal; sampled t0 * [tau0_fac from above]
         predicted_nat, std_nat = self.gpemu.predict(np.array(nparams).reshape(1,-1), tau0_factors = tau0_fac, use_updated_training_set=use_updated_training_set)
-        omega_m = self.emulator.omegamh2/nparams[self.emulator.param_names['hub']]**2
+        ndense = len(self.emulator.mf.dense_param_names)
+        hindex = ndense + self.emulator.param_names["hub"]
+        assert 0.5 < nparams[hindex] < 1
+        omega_m = self.emulator.omegamh2/nparams[hindex]**2
         okf, predicted = flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=self.gpemu.kf, flux_powers = predicted_nat[0], zbins=self.zout, omega_m = omega_m)
         _, std= flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=self.gpemu.kf, flux_powers = std_nat[0], zbins=self.zout, omega_m = omega_m)
         return okf, predicted, std

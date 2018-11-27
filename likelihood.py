@@ -61,19 +61,19 @@ def invert_block_diagonal_covariance(full_covariance_matrix, n_blocks):
         inverse_covariance_matrix[start_index: end_index, start_index: end_index] = inverse_covariance_block
     return inverse_covariance_matrix
 
-def load_data(datadir, *, kf, max_z=4.2):
+def load_data(datadir, *, kf, max_z=4.2, t0=1.):
     """Load and initialise a "fake data" flux power spectrum"""
     #Load the data directory
     myspec = flux_power.MySpectra(max_z=max_z)
     pps = myspec.get_snapshot_list(datadir)
     #self.data_fluxpower is used in likelihood.
-    data_fluxpower = pps.get_power(kf=kf, mean_fluxes=np.exp(-mflux.obs_mean_tau(myspec.zout, amp=0)))
+    data_fluxpower = pps.get_power(kf=kf, mean_fluxes=np.exp(-t0*mflux.obs_mean_tau(myspec.zout, amp=0)))
     assert np.size(data_fluxpower) % np.size(kf) == 0
     return data_fluxpower
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z = 4.2, emulator_class="standard", t0_training_value = 0.95, optimise_GP=True, emulator_json_file='emulator_params.json'):
+    def __init__(self, basedir, mean_flux='s', max_z = 4.2, emulator_class="standard", t0_training_value = 1., optimise_GP=True, emulator_json_file='emulator_params.json'):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
 
         #Stored BOSS covariance matrix
@@ -86,6 +86,7 @@ class LikelihoodClass:
         self.zout = myspec.zout
         self.kf = self.sdss.get_kf()
 
+        self.t0_training_value = t0_training_value
         #Load BOSS data vector
         self.BOSS_flux_power = self.sdss.pf.reshape(-1, self.kf.shape[0])[:self.zout.shape[0]][::-1] #km / s; n_z * n_k
 
@@ -243,7 +244,7 @@ class LikelihoodClass:
         """Initialise and run emcee."""
         pnames = self.emulator.print_pnames()
         #Load the data directory
-        self.data_fluxpower = load_data(datadir, kf=self.kf)
+        self.data_fluxpower = load_data(datadir, kf=self.kf, t0=self.t0_training_value)
         #Set up mean flux
         if self.mf_slope:
             pnames = [('dtau0',r'd\tau_0'),]+pnames

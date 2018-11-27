@@ -1,5 +1,6 @@
 """Module for plotting generated likelihood chains"""
 import os
+import re
 import glob
 import math as mh
 from datetime import datetime
@@ -21,7 +22,7 @@ def get_k_z(likelihood_instance):
     n_z = z.size
     return k_los, z, n_k_los, n_z
 
-def make_plot_flux_power_spectra(like, params, datadir, savefile):
+def make_plot_flux_power_spectra(like, params, datadir, savefile, t0=1.):
     """Make a plot of the power spectra, with redshift, the BOSS power and the sigmas. Four plots stacked."""
     sdss = lyman_data.BOSSData()
     #'Data' now is a simulation
@@ -30,7 +31,8 @@ def make_plot_flux_power_spectra(like, params, datadir, savefile):
     z = like.zout #Highest redshift first
     n_z = z.size
 
-    data_fluxpower = likeh.load_data(datadir, kf=k_los)
+    assert params[1] == t0
+    data_fluxpower = likeh.load_data(datadir, kf=k_los, t0=t0)
     exact_flux_power = data_fluxpower.reshape(n_z, n_k_los)
 
     ekf, emulated_flux_power, emulated_flux_power_std = like.get_predicted(params)
@@ -119,29 +121,31 @@ def make_plot(chainfile, savefile, true_parameter_values=None):
     corner.corner(samples, labels=pnames, truths=true_parameter_values)
     plt.savefig(savefile)
 
-def run_likelihood_test(testdir, emudir, savedir=None, plot=True, mean_flux_label='s'):
+def run_likelihood_test(testdir, emudir, savedir=None, plot=True, mean_flux_label='s', t0_training_value=1.):
     """Generate some likelihood samples"""
 
     #Find all subdirectories
     subdirs = glob.glob(testdir + "/*/")
     assert len(subdirs) > 1
 
-    like = likeh.LikelihoodClass(basedir=emudir, mean_flux=mean_flux_label)
+    like = likeh.LikelihoodClass(basedir=emudir, mean_flux=mean_flux_label, t0_training_value = t0_training_value)
     for sdir in subdirs:
-        single_likelihood_plot(sdir, like, emudir=emudir, savedir=savedir, plot=plot)
+        single_likelihood_plot(sdir, like, emudir=emudir, savedir=savedir, plot=plot, t0=t0_training_value)
     return like
 
-def single_likelihood_plot(sdir, like, emudir, savedir=None, plot=True):
+def single_likelihood_plot(sdir, like, emudir, savedir=None, plot=True, t0=1.):
     """Make a likelihood and error plot for a single simulation."""
     if savedir is None:
         savedir=emudir
     sname = os.path.basename(os.path.abspath(sdir))
+    if t0 != 1.0:
+        sname = re.sub(r"\.","_", "tau0%.3g" % t0) + sname
     chainfile = os.path.join(savedir, 'chain_' + sname + '.txt')
     datadir = os.path.join(sdir, "output")
-    true_parameter_values = get_simulation_parameters_s8(sdir)
+    true_parameter_values = get_simulation_parameters_s8(sdir, t0=t0)
     if plot is True:
         fp_savefile = os.path.join(savedir, 'flux_power_'+sname + ".pdf")
-        make_plot_flux_power_spectra(like, true_parameter_values, datadir, savefile=fp_savefile)
+        make_plot_flux_power_spectra(like, true_parameter_values, datadir, savefile=fp_savefile, t0=t0)
     print('Beginning to sample likelihood at', str(datetime.now()))
     if not os.path.exists(chainfile):
         like.do_sampling(chainfile, datadir=datadir)

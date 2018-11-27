@@ -15,6 +15,8 @@ from plot_latin_hypercube import plot_points_hypercube
 import coarse_grid_plot
 from plot_likelihood import make_plot
 
+plt.style.use('anjalistyle')
+
 #plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
 #plotdir = '/home/keir/Plots/Emulator'
 plotdir = 'plots'
@@ -103,20 +105,32 @@ def mean_flux_rescale():
 def single_parameter_plot():
     """Plot change in each parameter of an emulator from direct simulations."""
     emulatordir = path.expanduser("simulations/hires_s8_quadratic")
-    mf = ConstMeanFlux(value=1.)
-    emu = coarse_grid.Emulator(emulatordir, mf=mf)
+    mf = MeanFluxFactor()
+    emu = QuadraticEmulator(emulatordir, mf=mf)
     emu.load()
-    par, kfs, flux_vectors = emu.get_flux_vectors(max_z=2.4)
-    params = emu.param_names
+    par, kfs, flux_vectors = emu.get_flux_vectors()
     defpar = par[0,:]
     deffv = flux_vectors[0]
-    for (name, index) in params.items():
+    for (name, index) in mf.dense_param_names.items():
         ind = np.where(par[:,index] != defpar[index])
         for i in np.ravel(ind):
             tp = par[i,index]
             fp = (flux_vectors[i]/deffv)
             plt.semilogx(kfs[i][0], fp[0:np.size(kfs[i][0])], label=name+"=%.2g (z=2.4)" % tp)
-            plt.semilogx(kfs[i][1], fp[np.size(kfs[i][0]):], label=name+"=%.2g (z=2.2)" % tp, ls="--")
+            plt.semilogx(kfs[i][1], fp[np.size(kfs[i][0]):2*np.size(kfs[i][0])], label=name+"=%.2g (z=2.2)" % tp, ls="--")
+        plt.xlim(1e-3,2e-2)
+        plt.ylim(bottom=0.5, top=1.5)
+        plt.legend(loc="lower left", ncol=2,fontsize=8)
+        plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
+        plt.clf()
+    for (name, index) in emu.param_names.items():
+        index += len(mf.dense_param_names)
+        ind = np.where(par[:,index] != defpar[index])
+        for i in np.ravel(ind):
+            tp = par[i,index]
+            fp = (flux_vectors[i]/deffv)
+            plt.semilogx(kfs[i][0], fp[0:np.size(kfs[i][0])], label=name+"=%.2g (z=2.4)" % tp)
+            plt.semilogx(kfs[i][1], fp[np.size(kfs[i][0]):2*np.size(kfs[i][0])], label=name+"=%.2g (z=2.2)" % tp, ls="--")
         plt.xlim(1e-3,2e-2)
         plt.ylim(bottom=0.8, top=1.1)
         plt.legend(loc="lower left", ncol=2,fontsize=8)
@@ -178,16 +192,16 @@ def plot_likelihood_chains(tau0=1.):
     true_parameter_values = coarse_grid.get_simulation_parameters_s8(sdir, t0=tau0)
     if tau0 != 1.0:
         cdir = "tau0%.3g"+cdir % tau0
-    cdir = re.sub(r"\.","_",cdir)
+    sdir = re.sub(r"\.","_",cdir)
 
     chainfile = path.join("simulations/hires_s8", "chain_"+cdir+".txt")
-    savefile = path.join(plotdir, 'hires_s8/corner_'+cdir + ".pdf")
+    savefile = path.join(plotdir, 'hires_s8/corner_'+sdir + ".pdf")
     make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
     chainfile = path.join("simulations/hires_s8", "chain_"+cdir+".txt-noemuerr")
-    savefile = path.join(plotdir, 'hires_s8/corner_'+cdir + "-noemuerr.pdf")
+    savefile = path.join(plotdir, 'hires_s8/corner_'+sdir + "-noemuerr.pdf")
     make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
     chainfile = path.join("simulations/hires_s8_quadratic", "chain_"+cdir+".txt")
-    savefile = path.join(plotdir, 'hires_s8_quad_quad/corner_'+cdir + ".pdf")
+    savefile = path.join(plotdir, 'hires_s8_quad_quad/corner_'+sdir + ".pdf")
     make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
 
 if __name__ == "__main__":

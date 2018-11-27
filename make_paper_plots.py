@@ -1,5 +1,6 @@
 """Make plots for the first emulator paper"""
 import os.path as path
+import re
 import numpy as np
 import latin_hypercube
 import coarse_grid
@@ -170,11 +171,13 @@ def sample_var_plot():
     plt.savefig(path.join(plotdir, "sample_var.pdf"))
     plt.clf()
 
-def plot_likelihood_chains():
+def plot_likelihood_chains(tau0=1.):
     """Plot the chains we made from quadratic and GP emulators."""
     cdir = "ns0.968As1.5e-09heat_slope-0.367heat_amp0.8hub0.692"
+    if tau0 != 1.0:
+        cdir = re.sub(r"\.","_", "tau0%.3g" % tau0) + cdir
     sdir = path.join("simulations/hires_s8_test", cdir)
-    true_parameter_values = coarse_grid.get_simulation_parameters_s8(sdir)
+    true_parameter_values = coarse_grid.get_simulation_parameters_s8(sdir, t0=tau0)
 
     chainfile = path.join("simulations/hires_s8", "chain_"+cdir+".txt")
     savefile = path.join(plotdir, 'hires_s8/corner_'+cdir + ".pdf")
@@ -187,6 +190,7 @@ def plot_likelihood_chains():
     make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
 
 if __name__ == "__main__":
+    plot_likelihood_chains(tau0=0.95)
     plot_likelihood_chains()
     gp_emu, gp_quad, gp_quad_quad = test_s8_plots()
     single_parameter_plot()

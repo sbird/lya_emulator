@@ -191,7 +191,7 @@ def plot_likelihood_chains(tau0=1.):
     sdir = path.join("simulations/hires_s8_test", cdir)
     true_parameter_values = coarse_grid.get_simulation_parameters_s8(sdir, t0=tau0)
     if tau0 != 1.0:
-        cdir = "tau0%.3g"+cdir % tau0
+        cdir = "tau0%.3g" % tau0 + cdir
     sdir = re.sub(r"\.","_",cdir)
 
     chainfile = path.join("simulations/hires_s8", "chain_"+cdir+".txt")

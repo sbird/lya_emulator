@@ -17,7 +17,7 @@ root, testdir = os.path.split(args.testdir)
 if testdir == '':
     testdir = os.path.split(root)
 if args.tau0 != 1.0:
-    testdir = re.sub(r"\.","_", "tau0%.3g" % args.tau0) + testdir
+    testdir = "tau0%.3g"+testdir % args.tau0
 savefile = "chain_"+testdir +".txt"
 if args.noemuerr:
     savefile += "-noemuerr"

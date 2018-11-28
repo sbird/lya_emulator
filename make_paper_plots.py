@@ -205,8 +205,6 @@ def plot_likelihood_chains(tau0=1.):
     make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
 
 if __name__ == "__main__":
-    plot_likelihood_chains(tau0=0.95)
-    plot_likelihood_chains()
     gp_emu, gp_quad, gp_quad_quad = test_s8_plots()
     single_parameter_plot()
 #     pars = mean_flux_rescale()
@@ -214,3 +212,6 @@ if __name__ == "__main__":
 #     sample_var_plot()
 #     test_knot_plots(mf=1)
 #     test_knot_plots(mf=2)
+# Must be at the end or corner screws up the font config
+    plot_likelihood_chains(tau0=0.9)
+    plot_likelihood_chains()

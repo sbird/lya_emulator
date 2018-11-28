@@ -162,5 +162,5 @@ if __name__ == "__main__":
     emud = os.path.join(sim_rootdir,'hires_s8')
     testdirs = os.path.join(sim_rootdir,'hires_s8_test')
 
-    like = run_likelihood_test(testdirs, emud, savedir=savedir, plot=True, t0=0.9)
+    like = run_likelihood_test(testdirs, emud, savedir=savedir, plot=True, t0_training_value=0.9)
     like = run_likelihood_test(testdirs, emud, savedir=savedir, plot=True)

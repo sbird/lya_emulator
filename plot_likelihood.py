@@ -157,7 +157,7 @@ if __name__ == "__main__":
     sim_rootdir = "simulations"
     plotdir = 'plots'
     gpsavedir=os.path.join(plotdir,"hires_s8")
-    quadsavedir = os.path.join(plotdir, "hires_s8_quadratic")
+    quadsavedir = os.path.join(plotdir, "hires_s8_quad_quad")
     emud = os.path.join(sim_rootdir,'hires_s8')
     quademud = os.path.join(sim_rootdir, "hires_s8_quadratic")
     testdirs = os.path.join(sim_rootdir,'hires_s8_test')

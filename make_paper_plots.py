@@ -6,7 +6,7 @@ import latin_hypercube
 import coarse_grid
 import flux_power
 from quadratic_emulator import QuadraticEmulator
-from mean_flux import ConstMeanFlux,MeanFluxFactor
+from mean_flux import MeanFluxFactor
 import lyman_data
 import matplotlib
 matplotlib.use("PDF")
@@ -17,11 +17,7 @@ from plot_likelihood import make_plot
 
 plt.style.use('anjalistyle')
 
-#plotdir = path.expanduser("~/papers/emulator_paper_1/plots")
-#plotdir = '/home/keir/Plots/Emulator'
-plotdir = 'plots'
-
-def hypercube_plot():
+def hypercube_plot(plotdir='plots'):
     """Make a plot of some hypercubes"""
     limits = np.array([[0,1],[0,1]])
     cut = np.linspace(0, 1, 8 + 1)
@@ -64,7 +60,7 @@ def show_t0_gradient(spec, tmin,tmax,steps=20):
     df = [np.mean(dlogPfdt(spec, t,t-0.005)[1]) for t in tt]
     return tt, df
 
-def mean_flux_rescale():
+def mean_flux_rescale(plotdir='plots'):
     """Plot the effect of changing the mean flux as a function of cosmology."""
     emulatordir = path.expanduser("simulations/hires_s8_quadratic")
     mf = MeanFluxFactor()
@@ -102,7 +98,7 @@ def mean_flux_rescale():
         plt.clf()
     return par
 
-def single_parameter_plot():
+def single_parameter_plot(plotdir='plots'):
     """Plot change in each parameter of an emulator from direct simulations."""
     emulatordir = path.expanduser("simulations/hires_s8_quadratic")
     mf = MeanFluxFactor()
@@ -137,11 +133,11 @@ def single_parameter_plot():
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
         plt.clf()
 
-def test_s8_plots():
+def test_s8_plots(simdir="simulations", plotdir='plots'):
     """Plot emulator test-cases"""
-    testdir = path.expanduser("simulations/hires_s8_test")
-    quaddir = path.expanduser("simulations/hires_s8_quadratic")
-    emudir = path.expanduser("simulations/hires_s8")
+    testdir = path.join(simdir, "hires_s8_test")
+    quaddir = path.join(simdir, "hires_s8_quadratic")
+    emudir = path.join(simdir, "hires_s8")
     gp_emu, _ = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=path.join(plotdir,"hires_s8"),mean_flux=2)
     #Also test with the quadratic emulator
     coarse_grid_plot.plot_test_interpolate(emudir, quaddir,savedir=path.join(plotdir,"hires_s8"),mean_flux=2)
@@ -160,7 +156,7 @@ def test_knot_plots(mf=1, testdir = None, emudir = None, plotdir = None, plotnam
     gp_emu,_ = coarse_grid_plot.plot_test_interpolate(emudir, testdir,savedir=plotdir+str(mf),plotname=plotname,mean_flux=mf,max_z=max_z)
     return gp_emu
 
-def sample_var_plot():
+def sample_var_plot(plotdir='plots'):
     """Check the effect of sample variance"""
     mys = flux_power.MySpectra()
     sd = lyman_data.SDSSData()
@@ -185,7 +181,7 @@ def sample_var_plot():
     plt.savefig(path.join(plotdir, "sample_var.pdf"))
     plt.clf()
 
-def plot_likelihood_chains(tau0=1.):
+def plot_likelihood_chains(tau0=1., plotdir='plots'):
     """Plot the chains we made from quadratic and GP emulators."""
     cdir = "ns0.968As1.5e-09heat_slope-0.367heat_amp0.8hub0.692"
     sdir = path.join("simulations/hires_s8_test", cdir)
@@ -205,7 +201,8 @@ def plot_likelihood_chains(tau0=1.):
     make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
 
 if __name__ == "__main__":
-    gp_emu, gp_quad, gp_quad_quad = test_s8_plots()
+    s2_emu, s2_quad, s2_quad_quad = test_s8_plots(simdir="simulations2", plotdir="plots/simulations2")
+    s1_emu, s1_quad, s1_quad_quad = test_s8_plots()
     single_parameter_plot()
 #     pars = mean_flux_rescale()
     hypercube_plot()

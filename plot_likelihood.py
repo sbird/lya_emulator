@@ -63,8 +63,8 @@ def make_plot_flux_power_spectra(like, params, datadir, savefile, t0=1.):
 
         #axes[3].plot(ekf[i], data_flux_power_std_single_z / data_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
         axes[3].plot(ekf[i], emulated_flux_power[i] / exact_flux_power[i][idp], color=distinct_colours[i], ls='-', lw=line_width)
-        print('z=',z[i],' Max frac overestimation of flux power =', np.max((emulated_flux_power[i] / exact_flux_power[i][idp]) - 1.))
-        print('z=',z[i],' Min frac underestimation of flux power =', np.min((emulated_flux_power[i] / exact_flux_power[i][idp]) - 1.))
+        print('z=%.2g Max frac overestimation of P_F =' % z[i], np.max((emulated_flux_power[i] / exact_flux_power[i][idp]) - 1.))
+        print('z=%.2g Min frac underestimation of P_F =' % z[i] , np.min((emulated_flux_power[i] / exact_flux_power[i][idp]) - 1.))
 
     fontsize = 7.
     xlim = [1.e-3, 0.022]

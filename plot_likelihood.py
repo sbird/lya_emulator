@@ -121,22 +121,20 @@ def make_plot(chainfile, savefile, true_parameter_values=None):
     corner.corner(samples, labels=pnames, truths=true_parameter_values)
     plt.savefig(savefile)
 
-def run_likelihood_test(testdir, emudir, savedir=None, plot=True, mean_flux_label='s', t0_training_value=1.):
+def run_likelihood_test(testdir, emudir, savedir=None, plot=True, mean_flux_label='s', t0_training_value=1., emulator_class="standard"):
     """Generate some likelihood samples"""
 
     #Find all subdirectories
     subdirs = glob.glob(testdir + "/*/")
     assert len(subdirs) > 1
 
-    like = likeh.LikelihoodClass(basedir=emudir, mean_flux=mean_flux_label, t0_training_value = t0_training_value)
+    like = likeh.LikelihoodClass(basedir=emudir, mean_flux=mean_flux_label, t0_training_value = t0_training_value, emulator_class=emulator_class)
     for sdir in subdirs:
-        single_likelihood_plot(sdir, like, emudir=emudir, savedir=savedir, plot=plot, t0=t0_training_value)
+        single_likelihood_plot(sdir, like, savedir=savedir, plot=plot, t0=t0_training_value)
     return like
 
-def single_likelihood_plot(sdir, like, emudir, savedir=None, plot=True, t0=1.):
+def single_likelihood_plot(sdir, like, savedir, plot=True, t0=1.):
     """Make a likelihood and error plot for a single simulation."""
-    if savedir is None:
-        savedir=emudir
     sname = os.path.basename(os.path.abspath(sdir))
     if t0 != 1.0:
         sname = re.sub(r"\.","_", "tau0%.3g" % t0) + sname
@@ -158,9 +156,13 @@ def single_likelihood_plot(sdir, like, emudir, savedir=None, plot=True, t0=1.):
 if __name__ == "__main__":
     sim_rootdir = "simulations"
     plotdir = 'plots'
-    savedir=os.path.join(plotdir,"hires_s8")
+    gpsavedir=os.path.join(plotdir,"hires_s8")
+    quadsavedir = os.path.join(plotdir, "hires_s8_quadratic")
     emud = os.path.join(sim_rootdir,'hires_s8')
+    quademud = os.path.join(sim_rootdir, "hires_s8_quadratic")
     testdirs = os.path.join(sim_rootdir,'hires_s8_test')
 
-    like = run_likelihood_test(testdirs, emud, savedir=savedir, plot=True, t0_training_value=0.9)
-    like = run_likelihood_test(testdirs, emud, savedir=savedir, plot=True)
+    gplike09 = run_likelihood_test(testdirs, emud, savedir=gpsavedir, plot=True, t0_training_value=0.9)
+    gplike = run_likelihood_test(testdirs, emud, savedir=gpsavedir, plot=True)
+    quadlike09 = run_likelihood_test(testdirs, quademud, savedir=quadsavedir, plot=True, t0_training_value=0.9, emulator_class="quadratic")
+    quadlike = run_likelihood_test(testdirs, quademud, savedir=quadsavedir, plot=True, emulator_class="quadratic")

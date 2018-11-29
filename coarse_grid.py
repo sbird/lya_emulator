@@ -208,6 +208,9 @@ class Emulator(object):
         ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, rescale_gamma=True, rescale_slope = rescale_slope, redend=2.2, rescale_amp = rescale_amp, hubble=hub, omega0=self.omegamh2/hub**2, omegab=0.0483,unitary=True)
         try:
             ss.make_simulation()
+            fpfile = os.path.join(os.path.dirname(__file__),"flux_power.py")
+            shutil.copy(fpfile, os.path.join(outdir, "flux_power.py"))
+            ss._cluster.generate_spectra_submit(outdir)
         except RuntimeError as e:
             print(str(e), " while building: ",outdir)
 
@@ -316,25 +319,6 @@ class Emulator(object):
         assert np.shape(inparams) == np.shape(aparams)
         assert np.all(inparams - aparams < 1e-3)
         return kfmpc, kfkms, flux_vectors
-
-    def get_flux_vectors_batch(self):
-        """Launch a set of batch scripts into the queue to compute the lyman alpha spectra and their flux vectors."""
-        pvals = self.get_parameters()
-        for pp in pvals:
-            di = os.path.join(self.basedir, self.build_dirname(pp, strsz=3))
-            if not os.path.exists(di):
-                di = os.path.join(self.basedir, self.build_dirname(pp, strsz=2))
-            self.batch_script(di)
-
-    def batch_script(self, pdir):
-        """The batch script to use. For biocluster."""
-        fpfile = os.path.join(os.path.dirname(__file__),"flux_power.py")
-        shutil.copy(fpfile, os.path.join(pdir, "flux_power.py"))
-        with open(os.path.join(pdir, "spectra_submit"),'w') as submit:
-            submit.write("""#!/bin/bash\n#SBATCH --partition=short\n#SBATCH --job-name="""+pdir+"\n")
-            submit.write("""#SBATCH --time=1:55:00\n#SBATCH --nodes=1\n#SBATCH --ntasks-per-node=1\n#SBATCH --cpus-per-task=32\n#SBATCH --mem-per-cpu=4G\n""")
-            submit.write( """#SBATCH --mail-type=end\n#SBATCH --mail-user=sbird@ucr.edu\n""")
-            submit.write("python flux_power.py "+pdir+"/output\n")
 
     def _get_custom_emulator(self, *, emuobj, max_z=4.2):
         """Helper to allow supporting different emulators."""

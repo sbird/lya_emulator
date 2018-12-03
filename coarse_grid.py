@@ -35,7 +35,7 @@ class Emulator(object):
         else:
             self.param_names = param_names
         if param_limits is None:
-            self.param_limits = np.array([[0.9, 0.99], [1.4e-09, 2.6e-09], [-0.7, 0.1], [0.6, 1.4], [0.65, 0.75]])
+            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [-0.7, 0.1], [0.4, 1.4], [0.65, 0.75]])
         else:
             self.param_limits = param_limits
         if kf is None:

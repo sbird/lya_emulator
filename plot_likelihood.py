@@ -154,8 +154,8 @@ def single_likelihood_plot(sdir, like, savedir, plot=True, t0=1.):
         make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
 
 if __name__ == "__main__":
-    sim_rootdir = "simulations"
-    plotdir = 'plots'
+    sim_rootdir = "simulations2"
+    plotdir = 'plots/simulations2'
     gpsavedir=os.path.join(plotdir,"hires_s8")
     quadsavedir = os.path.join(plotdir, "hires_s8_quad_quad")
     emud = os.path.join(sim_rootdir,'hires_s8')
@@ -163,6 +163,6 @@ if __name__ == "__main__":
     testdirs = os.path.join(sim_rootdir,'hires_s8_test')
 
     gplike09 = run_likelihood_test(testdirs, emud, savedir=gpsavedir, plot=True, t0_training_value=0.9)
-    gplike = run_likelihood_test(testdirs, emud, savedir=gpsavedir, plot=True)
+#     gplike = run_likelihood_test(testdirs, emud, savedir=gpsavedir, plot=True)
     quadlike09 = run_likelihood_test(testdirs, quademud, savedir=quadsavedir, plot=True, t0_training_value=0.9, emulator_class="quadratic")
-    quadlike = run_likelihood_test(testdirs, quademud, savedir=quadsavedir, plot=True, emulator_class="quadratic")
+#     quadlike = run_likelihood_test(testdirs, quademud, savedir=quadsavedir, plot=True, emulator_class="quadratic")

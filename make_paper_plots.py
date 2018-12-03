@@ -181,22 +181,22 @@ def sample_var_plot(plotdir='plots'):
     plt.savefig(path.join(plotdir, "sample_var.pdf"))
     plt.clf()
 
-def plot_likelihood_chains(tau0=1., plotdir='plots'):
+def plot_likelihood_chains(tau0=1., simdir="simulations", plotdir='plots'):
     """Plot the chains we made from quadratic and GP emulators."""
     cdir = "ns0.968As1.5e-09heat_slope-0.367heat_amp0.8hub0.692"
-    sdir = path.join("simulations/hires_s8_test", cdir)
+    sdir = path.join(path.join(simdir, "hires_s8_test"), cdir)
     true_parameter_values = coarse_grid.get_simulation_parameters_s8(sdir, t0=tau0)
     if tau0 != 1.0:
         cdir = "tau0%.3g" % tau0 + cdir
     sdir = re.sub(r"\.","_",cdir)
 
-    chainfile = path.join("simulations/hires_s8", "chain_"+cdir+".txt")
+    chainfile = path.join(path.join(simdir, "hires_s8"), "chain_"+cdir+".txt")
     savefile = path.join(plotdir, 'hires_s8/corner_'+sdir + ".pdf")
     make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
-    chainfile = path.join("simulations/hires_s8", "chain_"+cdir+".txt-noemuerr")
+    chainfile = path.join(path.join(simdir,"hires_s8"), "chain_"+cdir+".txt-noemuerr")
     savefile = path.join(plotdir, 'hires_s8/corner_'+sdir + "-noemuerr.pdf")
     make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
-    chainfile = path.join("simulations/hires_s8_quadratic", "chain_"+cdir+".txt")
+    chainfile = path.join(path.join(simdir,"hires_s8_quadratic"), "chain_"+cdir+".txt")
     savefile = path.join(plotdir, 'hires_s8_quad_quad/corner_'+sdir + ".pdf")
     make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
 
@@ -210,5 +210,6 @@ if __name__ == "__main__":
 #     test_knot_plots(mf=1)
 #     test_knot_plots(mf=2)
 # Must be at the end or corner screws up the font config
+    plot_likelihood_chains(tau0=0.9, plotdir="plots/simulations2")
     plot_likelihood_chains(tau0=0.9)
     plot_likelihood_chains()

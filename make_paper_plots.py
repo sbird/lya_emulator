@@ -20,29 +20,33 @@ plt.style.use('anjalistyle')
 def hypercube_plot(plotdir='plots'):
     """Make a plot of some hypercubes"""
     limits = np.array([[0,1],[0,1]])
-    cut = np.linspace(0, 1, 8 + 1)
+    cut = np.linspace(0, 1, 5 + 1)
     # Fill points uniformly in each interval
-    a = cut[:8]
-    b = cut[1:8 + 1]
+    a = cut[:5]
+    b = cut[1:5 + 1]
     #Get list of central values
     xval = (a + b)/2
     plot_points_hypercube(xval, xval)
     plt.savefig(path.join(plotdir,"latin_hypercube_bad.pdf"))
     plt.clf()
     xval = (a + b)/2
-    xval_quad = np.concatenate([xval, np.repeat(xval[3],8)])
-    yval_quad = np.concatenate([np.repeat(xval[3],8),xval])
-    ndivision = 8
+    xval_quad = np.concatenate([xval, np.repeat(xval[2],5)])
+    yval_quad = np.concatenate([np.repeat(xval[2],5),xval])
+    ndivision = 5
     xticks = np.linspace(0,1,ndivision+1)
     plt.scatter(xval_quad, yval_quad, marker='o', s=300, color="blue")
     plt.grid(b=True, which='major')
-    plt.xticks(xticks)
-    plt.yticks(xticks)
+    ticklbl = [str(np.round(x, 2)) for x in xticks]
+    plt.xticks(xticks, ticklbl)
+    plt.yticks(xticks, ticklbl)
     plt.xlim(0,1)
     plt.ylim(0,1)
+    plt.xlabel("x")
+    plt.ylabel("y")
     plt.savefig(path.join(plotdir,"latin_hypercube_quadratic.pdf"))
+    plt.tight_layout()
     plt.clf()
-    samples = latin_hypercube.get_hypercube_samples(limits, 8)
+    samples = latin_hypercube.get_hypercube_samples(limits, 5)
     plot_points_hypercube(samples[:,0], samples[:,1])
     plt.savefig(path.join(plotdir,"latin_hypercube_good.pdf"))
     plt.clf()
@@ -206,9 +210,6 @@ if __name__ == "__main__":
     single_parameter_plot()
 #     pars = mean_flux_rescale()
     hypercube_plot()
-#     sample_var_plot()
-#     test_knot_plots(mf=1)
-#     test_knot_plots(mf=2)
 # Must be at the end or corner screws up the font config
     plot_likelihood_chains(tau0=0.9, plotdir="plots/simulations2")
     plot_likelihood_chains(tau0=0.9)

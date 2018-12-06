@@ -104,7 +104,7 @@ def mean_flux_rescale(plotdir='plots'):
 
 def single_parameter_plot(plotdir='plots'):
     """Plot change in each parameter of an emulator from direct simulations."""
-    emulatordir = path.expanduser("simulations/hires_s8_quadratic")
+    emulatordir = path.expanduser("simulations2/hires_s8_quadratic")
     mf = MeanFluxFactor()
     emu = QuadraticEmulator(emulatordir, mf=mf)
     emu.load()
@@ -146,7 +146,7 @@ def test_s8_plots(simdir="simulations", plotdir='plots'):
     #Also test with the quadratic emulator
     coarse_grid_plot.plot_test_interpolate(emudir, quaddir,savedir=path.join(plotdir,"hires_s8"),mean_flux=2)
     gp_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quadratic"),mean_flux=2)
-    quad_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator, mean_flux=2)
+    quad_quad, _ = coarse_grid_plot.plot_test_interpolate(quaddir, testdir,savedir=path.join(plotdir,"hires_s8_quad_quad"),emuclass=QuadraticEmulator, mean_flux=2,showerr=False)
     return (gp_emu, gp_quad, quad_quad)
 
 def test_knot_plots(mf=1, testdir = None, emudir = None, plotdir = None, plotname="", max_z=4.2):
@@ -206,11 +206,11 @@ def plot_likelihood_chains(tau0=1., simdir="simulations", plotdir='plots'):
 
 if __name__ == "__main__":
     s2_emu, s2_quad, s2_quad_quad = test_s8_plots(simdir="simulations2", plotdir="plots/simulations2")
-    s1_emu, s1_quad, s1_quad_quad = test_s8_plots()
+#     s1_emu, s1_quad, s1_quad_quad = test_s8_plots()
     single_parameter_plot()
 #     pars = mean_flux_rescale()
     hypercube_plot()
 # Must be at the end or corner screws up the font config
     plot_likelihood_chains(tau0=0.9, plotdir="plots/simulations2")
-    plot_likelihood_chains(tau0=0.9)
-    plot_likelihood_chains()
+#     plot_likelihood_chains(tau0=0.9)
+#     plot_likelihood_chains()

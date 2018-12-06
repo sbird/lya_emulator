@@ -56,7 +56,7 @@ def _plot_unit_Gaussians(xx, axis=None):
         axis = plt
     axis.plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), ls="-", color="black", label=r"Unit Gaussian")
 
-def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_flux=1, max_z=4.2, emuclass=None):
+def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_flux=1, max_z=4.2, emuclass=None, showerr=True):
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
@@ -112,7 +112,8 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         low = np.concatenate([[low[0],], low])
         upp = np.max(upper, axis=0)
         upp = np.concatenate([[upp[0],], upp])
-        plt.fill_between(np.concatenate([[okf[0][0],], okf[-1]]),low, upp,alpha=0.3, color="grey")
+        if showerr:
+            plt.fill_between(np.concatenate([[okf[0][0],], okf[-1]]),low, upp,alpha=0.3, color="grey")
         #plt.yscale('log')
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")

@@ -33,7 +33,7 @@ def _plot_error_histogram(savedir, plotname, err_norm, axis=None, xlim=6., nbins
     if axis is None:
         plt.hist(err_norm, bins=nbins, density=True)
         xx = np.arange(-6, 6, 0.01)
-        np.savetxt(os.path.join(savedir, "table_errhist" + plotname + ".txt"), err_norm)
+#         np.savetxt(os.path.join(savedir, "table_errhist" + plotname + ".txt"), err_norm)
         _plot_unit_Gaussians(xx)
         plt.xlabel(xlabel)
         plt.xlim(-1. * xlim, xlim)
@@ -78,7 +78,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     print('Beginning to generate emulator at', str(datetime.now()))
     gp = params.get_emulator(max_z=max_z)
     print('Finished generating emulator at', str(datetime.now()))
-    kf = params.kf
     myspec = flux_power.MySpectra(max_z=max_z, max_k=params.maxk)
     del params
     errlist = np.array([])
@@ -86,7 +85,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
 
     # Save output
     nred = len(myspec.zout)
-    nkf = kf.size
     #print("Number of validation points =", params_test.get_parameters().shape[0])
 
     for pp in params_test.get_parameters():
@@ -100,7 +98,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         ps = myspec.get_snapshot_list(dd)
         meanfluxes = None
         if t0 is not None:
-            meanfluxes = np.exp(-t0*mflux.obs_mean_tau(myspec.zout))
+            meanfluxes = np.exp(-1*t0*mflux.obs_mean_tau(myspec.zout))
         exact = ps.get_power_native_binning(mean_fluxes = meanfluxes)
         okf = ps.get_kf_kms()
         nk = np.size(ps.kf)
@@ -110,15 +108,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         lower =  (predicted[0]-std[0])/exact
         errrr =  (predicted[0]-exact)/std[0]
         errlist = np.concatenate([errlist, errrr])
-        #REMOVE
-        plt.hist(errrr,bins=100 , density=True) #No 'density' property in Matplotlib v1
-        xx = np.arange(-6, 6, 0.01)
-        plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
-        plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
-        plt.xlim(-6,6)
-        plt.savefig(os.path.join(savedir, "errhist_"+str(np.size(errlist))+plotname+".pdf"))
-        plt.clf()
-        #DONE
         for i in range(nred):
             plt.semilogx(okf[i],ratio[i*nk:(i+1)*nk],label=round(myspec.zout[i],1))
             plt.fill_between(okf[i],lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk],alpha=0.3, color="grey")
@@ -137,6 +126,8 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.savefig(os.path.join(savedir, name))
         print(name)
         plt.clf()
+        #Make plot of errors
+        _plot_error_histogram(savedir, plotname, errrr, xlim=5., nbins=100)
 
         #Save output
         array_savename = os.path.join(savedir, name[:-4] + '.npy')
@@ -144,14 +135,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
 
     #Plot the distribution of errors, compared to a Gaussian
     if np.all(np.isfinite(errlist)):
-        #plt.hist(errlist,bins=100, density=True)
-        #xx = np.arange(-6, 6, 0.01)
-        #plt.plot(xx, np.exp(-xx**2/2)/np.sqrt(2*np.pi), ls="-", color="black")
-        #plt.plot(xx, np.exp(-xx**2/2/2**2)/np.sqrt(2*np.pi*2**2), ls="--", color="grey")
-        #plt.xlim(-6,6)
-        #plt.savefig(os.path.join(savedir, "errhist"+plotname+".pdf"))
-        #plt.clf()
-        _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=250) #, xlabel=r"(Predicted - Exact) / $1 \sigma$ [BOSS error]")
+        _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=250)
 
     return gp, myspec.zout
 

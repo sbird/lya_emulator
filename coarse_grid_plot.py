@@ -101,21 +101,26 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         nk = np.size(ps.kf)
         assert np.all(np.abs(gp.kf/ps.kf - 1) < 1e-5)
         ratio =  predicted[0]/exact
-        upper =  ((predicted[0] + std[0])/exact
-        lower =  (predicted[0]-std[0])/exact
+        upper =  ((predicted[0] + std[0])/exact).reshape(-1, nk)
+        lower =  ((predicted[0]-std[0])/exact).reshape(-1, nk)
         errrr =  (predicted[0]-exact)/std[0]
         errlist = np.concatenate([errlist, errrr])
         for i in range(nred):
             plt.semilogx(okf[i],ratio[i*nk:(i+1)*nk],label=round(myspec.zout[i],1), color=dist_col[i])
-            plt.fill_between(okf[i],lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk],alpha=0.3, color="grey")
+
+        low = np.min(lower, axis=0)
+        low = np.concatenate([[low[0],], low])
+        upp = np.max(upper, axis=0)
+        upp = np.concatenate([[upp[0],], upp])
+        plt.fill_between(np.concatenate([[okf[0][0],], okf[-1]]),low, upp,alpha=0.3, color="grey")
         #plt.yscale('log')
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
         plt.ylim(0.95,1.05)
-        plt.xticks([1e-3, 1e-2, 0.05])
+        plt.xticks([1e-3, 1e-2, 0.05],[r"$10^{-3}$",r"$10^{-2}$","0.05"])
         name = params_test.build_dirname(pp, include_dense=True)
 #         plt.title(name)
-        plt.xlim(1e-3, 0.05)
+        plt.xlim(1e-3, 0.052)
         if np.max(ratio) > 1.035:
             plt.legend(loc='lower left', ncol=4)
         else:

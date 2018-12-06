@@ -12,6 +12,7 @@ import mean_flux as mflux
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
+import distinct_colours_py3 as dc
 
 def _plot_by_redshift_bins(savedir, plotname, z_labs, all_power_array_all_kf):
     """Plot the different redshift bins on different plots"""
@@ -39,7 +40,7 @@ def _plot_error_histogram(savedir, plotname, err_norm, axis=None, xlim=6., nbins
         plt.xlim(-1. * xlim, xlim)
         plt.legend()
         plt.tight_layout()
-        plt.savefig(os.path.join(savedir, "errhist" + plotname + ".pdf"))
+        plt.savefig(os.path.join(savedir, "errhist_" + plotname))
         plt.clf()
     else:
         axis.hist(err_norm, bins=nbins, density=True, label=plotname)
@@ -52,11 +53,8 @@ def _plot_error_histogram(savedir, plotname, err_norm, axis=None, xlim=6., nbins
 def _plot_unit_Gaussians(xx, axis=None):
     """Plot a unit gaussian and a 2-unit gaussian"""
     if axis is None:
-        plt.plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), ls="-", color="black", label=r"Unit Gaussian")
-        plt.plot(xx, np.exp(-xx ** 2 / 2 / 2 ** 2) / np.sqrt(2 * np.pi * 2 ** 2), ls="--", color="grey")
-    else:
-        axis.plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), ls="-", color="black", label=r"Unit Gaussian")
-        axis.plot(xx, np.exp(-xx ** 2 / 2 / 2 ** 2) / np.sqrt(2 * np.pi * 2 ** 2), ls="--", color="grey")
+        axis = plt
+    axis.plot(xx, np.exp(-xx ** 2 / 2) / np.sqrt(2 * np.pi), ls="-", color="black", label=r"Unit Gaussian")
 
 def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_flux=1, max_z=4.2, emuclass=None):
     """Make a plot showing the interpolation error."""
@@ -64,7 +62,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         savedir = emulatordir
     t0 = None
     if mean_flux:
-        t0 = 0.95
+        t0 = 0.9
     mf = mflux.ConstMeanFlux(value=t0) #In 'ConstMeanFlux' case: multiply tau_0_i[z] by t0 = 0.95
     if mean_flux == 2:
         mf = mflux.MeanFluxFactor() #In 'MeanFluxFactor' case: DON'T multiply tau_0_i[z] by t0 - because *emulate* t0[z]
@@ -81,10 +79,9 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     myspec = flux_power.MySpectra(max_z=max_z, max_k=params.maxk)
     del params
     errlist = np.array([])
-    #Constant mean flux.
 
-    # Save output
     nred = len(myspec.zout)
+    dist_col = dc.get_distinct(nred)
     #print("Number of validation points =", params_test.get_parameters().shape[0])
 
     for pp in params_test.get_parameters():
@@ -104,30 +101,34 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         nk = np.size(ps.kf)
         assert np.all(np.abs(gp.kf/ps.kf - 1) < 1e-5)
         ratio =  predicted[0]/exact
-        upper =  (predicted[0] + std[0])/exact
+        upper =  ((predicted[0] + std[0])/exact
         lower =  (predicted[0]-std[0])/exact
         errrr =  (predicted[0]-exact)/std[0]
         errlist = np.concatenate([errlist, errrr])
         for i in range(nred):
-            plt.semilogx(okf[i],ratio[i*nk:(i+1)*nk],label=round(myspec.zout[i],1))
+            plt.semilogx(okf[i],ratio[i*nk:(i+1)*nk],label=round(myspec.zout[i],1), color=dist_col[i])
             plt.fill_between(okf[i],lower[i*nk:(i+1)*nk], upper[i*nk:(i+1)*nk],alpha=0.3, color="grey")
         #plt.yscale('log')
         plt.xlabel(r"$k_F$ (s/km)")
         plt.ylabel(r"Predicted/Exact")
+        plt.ylim(0.95,1.05)
+        plt.xticks([1e-3, 1e-2, 0.05])
         name = params_test.build_dirname(pp, include_dense=True)
 #         plt.title(name)
-        plt.xlim(xmax=0.05)
-        plt.legend(loc='right')
+        plt.xlim(1e-3, 0.05)
+        if np.max(ratio) > 1.035:
+            plt.legend(loc='lower left', ncol=4)
+        else:
+            plt.legend(loc='upper left', ncol=4)
         plt.tight_layout()
-        plt.show()
         name_ending = ".pdf"
         name = re.sub(r"\.","_",str(name))+plotname+name_ending
         #So we can use it in a latex document
         plt.savefig(os.path.join(savedir, name))
-        print(name)
         plt.clf()
         #Make plot of errors
-        _plot_error_histogram(savedir, plotname, errrr, xlim=5., nbins=100)
+        _plot_error_histogram(savedir, name, errrr, xlim=5., nbins=50)
+        print(name)
 
         #Save output
         array_savename = os.path.join(savedir, name[:-4] + '.npy')
@@ -135,7 +136,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
 
     #Plot the distribution of errors, compared to a Gaussian
     if np.all(np.isfinite(errlist)):
-        _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=250)
+        _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=100)
 
     return gp, myspec.zout
 

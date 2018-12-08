@@ -12,7 +12,8 @@ from coarse_grid import get_simulation_parameters_s8
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
-import corner
+import getdist as gd
+import getdist.plots as gdp
 
 def get_k_z(likelihood_instance):
     """Get k and z bins"""
@@ -112,13 +113,30 @@ def make_plot_flux_power_spectra(like, params, datadir, savefile, t0=1.):
     return like
 
 def make_plot(chainfile, savefile, true_parameter_values=None):
-    """Make a plot of parameter posterior values"""
+    """Make a getdist plot"""
     with open(chainfile+"_names.txt") as ff:
         names = ff.read().split('\n')
     pnames = [i.split(' ')[0] for i in names if len(i) > 0]
     samples = np.loadtxt(chainfile)
-    plt.rc('font', family='serif', size=15.)
-    corner.corner(samples, labels=pnames, truths=true_parameter_values)
+    posterior_MCsamples = gd.MCSamples(samples=samples, names=pnames, labels=pnames, label='')
+
+    subplot_instance = gdp.getSubplotPlotter()
+    subplot_instance.triangle_plot([posterior_MCsamples], filled=True)
+#     colour_array = np.array(['black', 'red', 'magenta', 'green', 'green', 'purple', 'turquoise', 'gray', 'red', 'blue'])
+
+    for pi in range(samples.shape[1]):
+        for pi2 in range(pi + 1):
+            #Place horizontal and vertical lines for the true point
+            ax = subplot_instance.subplots[pi, pi2]
+            ax.axvline(true_parameter_values[pi2], color='gray', ls='--', lw=0.75)
+            if pi2 < pi:
+                ax.axhline(true_parameter_values[pi], color='gray', ls='--', lw=0.75)
+                #Plot the emulator points
+#                 if parameter_index > 1:
+#                     ax.scatter(simulation_parameters_latin[:, parameter_index2 - 2], simulation_parameters_latin[:, parameter_index - 2], s=54, color=colour_array[-1], marker='+')
+
+#     legend_labels = ['+ Initial Latin hypercube']
+#     subplot_instance.add_legend(legend_labels, legend_loc='upper right', colored_text=True, figure=True)
     plt.savefig(savefile)
 
 def run_likelihood_test(testdir, emudir, savedir=None, plot=True, mean_flux_label='s', t0_training_value=1., emulator_class="standard"):

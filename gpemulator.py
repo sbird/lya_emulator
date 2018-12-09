@@ -97,12 +97,13 @@ class SkLearnGP:
         #noutput = np.shape(normspectra)[1]
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
 
-        status = self.gp.optimize(messages=True) #True
+        status = self.gp.optimize(messages=False) #True
         #print('Gradients of model hyperparameters [after optimisation] =', self.gp.gradient)
         #Let's check that hyperparameter optimisation is converged
         if status.status != 'Converged':
+            print("Restarting optimization")
             self.gp.optimize_restarts(num_restarts=10)
-        print(self.gp)
+        #print(self.gp)
         #print('Gradients of model hyperparameters [after second optimisation (x 10)] =', self.gp.gradient)
 
     def _check_interp(self, flux_vectors):

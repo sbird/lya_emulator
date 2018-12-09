@@ -64,8 +64,8 @@ def make_plot_flux_power_spectra(like, params, datadir, savefile, t0=1.):
 
         #axes[3].plot(ekf[i], data_flux_power_std_single_z / data_flux_power[i], color=distinct_colours[i], ls='-', lw=line_width)
         axes[3].plot(ekf[i], emulated_flux_power[i] / exact_flux_power[i][idp], color=distinct_colours[i], ls='-', lw=line_width)
-        print('z=%.2g Max frac overestimation of P_F =' % z[i], np.max((emulated_flux_power[i] / exact_flux_power[i][idp]) - 1.))
-        print('z=%.2g Min frac underestimation of P_F =' % z[i] , np.min((emulated_flux_power[i] / exact_flux_power[i][idp]) - 1.))
+    print('z=%.2g Max frac overestimation of P_F =' % z[i], np.max((emulated_flux_power[i] / exact_flux_power[i][idp]) - 1.))
+    print('z=%.2g Min frac underestimation of P_F =' % z[i] , np.min((emulated_flux_power[i] / exact_flux_power[i][idp]) - 1.))
 
     fontsize = 7.
     xlim = [1.e-3, 0.022]
@@ -108,18 +108,29 @@ def make_plot_flux_power_spectra(like, params, datadir, savefile, t0=1.):
 
     print(datadir)
 
-    #make_plot_emulator_error(emudir, '/home/keir/Plots/Emulator/emulator_error_hot_cold.pdf', likelihood_instance=like)
-
     return like
 
-def make_plot(chainfile, savefile, true_parameter_values=None):
+def make_plot(chainfile, savefile, true_parameter_values=None, pnames=None, ranges=None):
     """Make a getdist plot"""
-    with open(chainfile+"_names.txt") as ff:
-        names = ff.read().split('\n')
-    pnames = [i.split(' ')[0] for i in names if len(i) > 0]
     samples = np.loadtxt(chainfile)
-    posterior_MCsamples = gd.MCSamples(samples=samples, names=pnames, labels=pnames, label='')
+    ticks = {}
+    if pnames is None:
+        #Default emulator parameters
+        pnames = [r"d\tau_0", r"\tau_0", r"n_s", r"A_\mathrm{P} \times 10^9", r"H_S", r"H_A", r"h"]
+        samples[:,3] *= 1e9
+        #Ticks we want to show for each parameter
+        ticks = {pnames[3]: [1.5, 2.0, 2.5], pnames[4]: [-0.6,-0.3, 0.], pnames[5]: [0.5,0.7,1.0,1.3], pnames[6]: [0.66, 0.70, 0.74]}
+    if ranges is not None:
+        prange = {pnames[i] : ranges[i] for i in range(len(pnames))}
+    posterior_MCsamples = gd.MCSamples(samples=samples, names=pnames, labels=pnames, label='', ranges=prange)
 
+    print("Sim=",savefile)
+    #Get and print the confidence limits
+    for i in range(len(pnames)):
+        strr = pnames[i]+" 1-sigma, 2-sigma: "
+        for j in (0.16, 1-0.16, 0.025, 1-0.025):
+            strr += str(round(posterior_MCsamples.confidence(i, j),5)) + " "
+        print(strr)
     subplot_instance = gdp.getSubplotPlotter()
     subplot_instance.triangle_plot([posterior_MCsamples], filled=True)
 #     colour_array = np.array(['black', 'red', 'magenta', 'green', 'green', 'purple', 'turquoise', 'gray', 'red', 'blue'])
@@ -128,6 +139,12 @@ def make_plot(chainfile, savefile, true_parameter_values=None):
         for pi2 in range(pi + 1):
             #Place horizontal and vertical lines for the true point
             ax = subplot_instance.subplots[pi, pi2]
+            ax.yaxis.label.set_size(14)
+            ax.xaxis.label.set_size(14)
+            if pi == samples.shape[1]-1 and pnames[pi2] in ticks:
+                ax.set_xticks(ticks[pnames[pi2]])
+            if pi2 == 0 and pnames[pi] in ticks:
+                ax.set_yticks(ticks[pnames[pi]])
             ax.axvline(true_parameter_values[pi2], color='gray', ls='--', lw=0.75)
             if pi2 < pi:
                 ax.axhline(true_parameter_values[pi], color='gray', ls='--', lw=0.75)
@@ -163,13 +180,13 @@ def single_likelihood_plot(sdir, like, savedir, plot=True, t0=1.):
     if plot is True:
         fp_savefile = os.path.join(savedir, 'flux_power_'+sname + ".pdf")
         make_plot_flux_power_spectra(like, true_parameter_values, datadir, savefile=fp_savefile, t0=t0)
-    print('Beginning to sample likelihood at', str(datetime.now()))
     if not os.path.exists(chainfile):
+        print('Beginning to sample likelihood at', str(datetime.now()))
         like.do_sampling(chainfile, datadir=datadir)
-    print('Done sampling likelihood at', str(datetime.now()))
+        print('Done sampling likelihood at', str(datetime.now()))
     if plot is True:
         savefile = os.path.join(savedir, 'corner_'+sname + ".pdf")
-        make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
+        make_plot(chainfile, savefile, true_parameter_values=true_parameter_values, ranges=like.param_limits)
 
 if __name__ == "__main__":
     sim_rootdir = "simulations2"

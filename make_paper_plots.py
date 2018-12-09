@@ -123,10 +123,11 @@ def single_parameter_plot(plotdir='plots'):
             plt.semilogx(kfs[i][0], fp[0:np.size(kfs[i][0])], label=name+"=%.2g (z=4.2)" % tp, color=dist_col[i])
             plt.semilogx(kfs[i][-1], fp[np.size(kfs[i][-1]):2*np.size(kfs[i][-1])], label=name+"=%.2g (z=2.2)" % tp, ls="--", color=dist_col[i+1])
         plt.xlim(1e-3,2e-2)
-        plt.ylim(bottom=0.2, top=1.5)
+        plt.ylim(bottom=0.2, top=1.3)
         plt.xlabel(r"$k_F$")
         plt.ylabel(r"$\Delta P_F(k)$")
-        plt.legend(loc="lower left", ncol=3,fontsize=8)
+        plt.legend(loc="lower left", ncol=2,fontsize=10)
+        plt.tight_layout()
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
         plt.clf()
     for (name, index) in emu.param_names.items():
@@ -138,12 +139,13 @@ def single_parameter_plot(plotdir='plots'):
             fp = (flux_vectors[i]/deffv)
             plt.semilogx(kfs[i][0], fp[0:np.size(kfs[i][0])], label=name+"=%.2g (z=4.2)" % tp, color=dist_col[2*cc])
             plt.semilogx(kfs[i][-1], fp[np.size(kfs[i][-1]):2*np.size(kfs[i][-1])], label=name+"=%.2g (z=2.2)" % tp, ls="--", color=dist_col[2*cc+1])
-        cc+=1
+            cc+=1
         plt.xlim(1e-3,2e-2)
         plt.ylim(bottom=0.8, top=1.1)
         plt.xlabel(r"$k_F$")
         plt.ylabel(r"$\Delta P_F(k)$")
-        plt.legend(loc="lower left", ncol=2,fontsize=8)
+        plt.legend(loc="lower left", ncol=2,fontsize=10)
+        plt.tight_layout()
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
         plt.clf()
 

@@ -120,6 +120,7 @@ def make_plot(chainfile, savefile, true_parameter_values=None, pnames=None, rang
         samples[:,3] *= 1e9
         #Ticks we want to show for each parameter
         ticks = {pnames[3]: [1.5, 2.0, 2.5], pnames[4]: [-0.6,-0.3, 0.], pnames[5]: [0.5,0.7,1.0,1.3], pnames[6]: [0.66, 0.70, 0.74]}
+    prange = None
     if ranges is not None:
         prange = {pnames[i] : ranges[i] for i in range(len(pnames))}
     posterior_MCsamples = gd.MCSamples(samples=samples, names=pnames, labels=pnames, label='', ranges=prange)

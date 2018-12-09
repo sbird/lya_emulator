@@ -8,6 +8,7 @@ import flux_power
 from quadratic_emulator import QuadraticEmulator
 from mean_flux import MeanFluxFactor
 import lyman_data
+import distinct_colours_py3 as dc
 import matplotlib
 matplotlib.use("PDF")
 import matplotlib.pyplot as plt
@@ -106,6 +107,7 @@ def single_parameter_plot(plotdir='plots'):
     """Plot change in each parameter of an emulator from direct simulations."""
     emulatordir = path.expanduser("simulations2/hires_s8_quadratic")
     mf = MeanFluxFactor()
+    dist_col = dc.get_distinct(12)
     emu = QuadraticEmulator(emulatordir, mf=mf)
     emu.load()
     par, kfs, flux_vectors = emu.get_flux_vectors()
@@ -114,25 +116,33 @@ def single_parameter_plot(plotdir='plots'):
     for (name, index) in mf.dense_param_names.items():
         ind = np.where(par[:,index] != defpar[index])
         for i in np.ravel(ind):
+            if i % 2 == 0 or i > 7:
+                continue
             tp = par[i,index]
             fp = (flux_vectors[i]/deffv)
-            plt.semilogx(kfs[i][0], fp[0:np.size(kfs[i][0])], label=name+"=%.2g (z=2.4)" % tp)
-            plt.semilogx(kfs[i][1], fp[np.size(kfs[i][0]):2*np.size(kfs[i][0])], label=name+"=%.2g (z=2.2)" % tp, ls="--")
+            plt.semilogx(kfs[i][0], fp[0:np.size(kfs[i][0])], label=name+"=%.2g (z=4.2)" % tp, color=dist_col[i])
+            plt.semilogx(kfs[i][-1], fp[np.size(kfs[i][-1]):2*np.size(kfs[i][-1])], label=name+"=%.2g (z=2.2)" % tp, ls="--", color=dist_col[i+1])
         plt.xlim(1e-3,2e-2)
-        plt.ylim(bottom=0.5, top=1.5)
-        plt.legend(loc="lower left", ncol=2,fontsize=8)
+        plt.ylim(bottom=0.2, top=1.5)
+        plt.xlabel(r"$k_F$")
+        plt.ylabel(r"$\Delta P_F(k)$")
+        plt.legend(loc="lower left", ncol=3,fontsize=8)
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
         plt.clf()
     for (name, index) in emu.param_names.items():
         index += len(mf.dense_param_names)
         ind = np.where(par[:,index] != defpar[index])
+        cc = 0
         for i in np.ravel(ind):
             tp = par[i,index]
             fp = (flux_vectors[i]/deffv)
-            plt.semilogx(kfs[i][0], fp[0:np.size(kfs[i][0])], label=name+"=%.2g (z=2.4)" % tp)
-            plt.semilogx(kfs[i][1], fp[np.size(kfs[i][0]):2*np.size(kfs[i][0])], label=name+"=%.2g (z=2.2)" % tp, ls="--")
+            plt.semilogx(kfs[i][0], fp[0:np.size(kfs[i][0])], label=name+"=%.2g (z=4.2)" % tp, color=dist_col[2*cc])
+            plt.semilogx(kfs[i][-1], fp[np.size(kfs[i][-1]):2*np.size(kfs[i][-1])], label=name+"=%.2g (z=2.2)" % tp, ls="--", color=dist_col[2*cc+1])
+        cc+=1
         plt.xlim(1e-3,2e-2)
         plt.ylim(bottom=0.8, top=1.1)
+        plt.xlabel(r"$k_F$")
+        plt.ylabel(r"$\Delta P_F(k)$")
         plt.legend(loc="lower left", ncol=2,fontsize=8)
         plt.savefig(path.join(plotdir,"single_param_"+name+".pdf"))
         plt.clf()

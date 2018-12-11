@@ -118,6 +118,7 @@ def make_plot(chainfile, savefile, true_parameter_values=None, pnames=None, rang
         #Default emulator parameters
         pnames = [r"d\tau_0", r"\tau_0", r"n_s", r"A_\mathrm{P} \times 10^9", r"H_S", r"H_A", r"h"]
         samples[:,3] *= 1e9
+        true_parameter_values[3] *= 1e9
         #Ticks we want to show for each parameter
         ticks = {pnames[3]: [1.5, 2.0, 2.5], pnames[4]: [-0.6,-0.3, 0.], pnames[5]: [0.5,0.7,1.0,1.3], pnames[6]: [0.66, 0.70, 0.74]}
     prange = None
@@ -140,15 +141,15 @@ def make_plot(chainfile, savefile, true_parameter_values=None, pnames=None, rang
         for pi2 in range(pi + 1):
             #Place horizontal and vertical lines for the true point
             ax = subplot_instance.subplots[pi, pi2]
-            ax.yaxis.label.set_size(14)
-            ax.xaxis.label.set_size(14)
+            ax.yaxis.label.set_size(16)
+            ax.xaxis.label.set_size(16)
             if pi == samples.shape[1]-1 and pnames[pi2] in ticks:
                 ax.set_xticks(ticks[pnames[pi2]])
             if pi2 == 0 and pnames[pi] in ticks:
                 ax.set_yticks(ticks[pnames[pi]])
-            ax.axvline(true_parameter_values[pi2], color='gray', ls='--', lw=0.75)
+            ax.axvline(true_parameter_values[pi2], color='gray', ls='--', lw=2)
             if pi2 < pi:
-                ax.axhline(true_parameter_values[pi], color='gray', ls='--', lw=0.75)
+                ax.axhline(true_parameter_values[pi], color='gray', ls='--', lw=2)
                 #Plot the emulator points
 #                 if parameter_index > 1:
 #                     ax.scatter(simulation_parameters_latin[:, parameter_index2 - 2], simulation_parameters_latin[:, parameter_index - 2], s=54, color=colour_array[-1], marker='+')

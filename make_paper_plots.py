@@ -16,7 +16,7 @@ from plot_latin_hypercube import plot_points_hypercube
 import coarse_grid_plot
 from plot_likelihood import make_plot
 
-plt.style.use('anjalistyle')
+plt.style.use('hiranyastyle')
 
 def hypercube_plot(plotdir='plots'):
     """Make a plot of some hypercubes"""
@@ -225,6 +225,6 @@ if __name__ == "__main__":
 #     pars = mean_flux_rescale()
     hypercube_plot()
 # Must be at the end or corner screws up the font config
-    plot_likelihood_chains(tau0=0.9, plotdir="plots/simulations2")
+#     plot_likelihood_chains(tau0=0.9, plotdir="plots/simulations2")
 #     plot_likelihood_chains(tau0=0.9)
 #     plot_likelihood_chains()

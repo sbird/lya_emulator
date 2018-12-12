@@ -2,7 +2,7 @@
 import os.path
 import re
 import argparse
-from likelihood import LikelihoodClass
+from lyaemu.likelihood import LikelihoodClass
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--quadratic', action='store_true', help='Use the quadratic emulator class')

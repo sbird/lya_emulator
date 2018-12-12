@@ -5,10 +5,10 @@ import glob
 import math as mh
 from datetime import datetime
 import numpy as np
-import distinct_colours_py3 as dc
-import lyman_data
-import likelihood as likeh
-from coarse_grid import get_simulation_parameters_s8
+import lyaemu.distinct_colours_py3 as dc
+import lyaemu.lyman_data as lyman_data
+import lyaemu.likelihood as likeh
+from lyaemu.coarse_grid import get_simulation_parameters_s8
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt

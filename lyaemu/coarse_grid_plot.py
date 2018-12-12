@@ -6,6 +6,7 @@ import math
 from datetime import datetime
 import numpy as np
 import coarse_grid
+import matter_power
 import flux_power
 import matter_power
 import mean_flux as mflux
@@ -152,10 +153,10 @@ def plot_test_matter_interpolate(emulatordir,testdir, savedir=None, redshift=3.)
         savedir = testdir
     savename = testdir+"/matter_power.pdf"
 
-    params = coarse_grid.MatterPowerEmulator(emulatordir)
+    params = matter_power.MatterPowerEmulator(emulatordir)
     params.load()
     gp = params.get_emulator()
-    params_test = coarse_grid.MatterPowerEmulator(testdir)
+    params_test = matter_power.MatterPowerEmulator(testdir)
     params_test.load()
     for pp in params_test.get_parameters():
         dd = params_test.get_outdir(pp)

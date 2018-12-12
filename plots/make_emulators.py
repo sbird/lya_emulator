@@ -1,7 +1,7 @@
 """Script containing details of the emulators I ran."""
 
-import coarse_grid
-from quadratic_emulator import QuadraticEmulator
+import lyaemu.coarse_grid
+from lyaemu.quadratic_emulator import QuadraticEmulator
 
 #Initial narrow limits
 param_limits_3 = np.array([[0.9, 0.99], [1.4e-09, 2.6e-09], [-0.7, 0.1], [0.6, 1.4], [0.65, 0.75]])

@@ -2,19 +2,19 @@
 import os.path as path
 import re
 import numpy as np
-import latin_hypercube
-import coarse_grid
-import flux_power
-from quadratic_emulator import QuadraticEmulator
-from mean_flux import MeanFluxFactor
-import lyman_data
-import distinct_colours_py3 as dc
+import lyaemu.latin_hypercube as latin_hypercube
+import lyaemu.coarse_grid as coarse_grid
+import lyaemu.flux_power as flux_power
+from lyaemu.quadratic_emulator import QuadraticEmulator
+from lyaemu.mean_flux import MeanFluxFactor
+import lyaemu.lyman_data as lyman_data
+import lyaemu.distinct_colours_py3 as dc
 import matplotlib
 matplotlib.use("PDF")
 import matplotlib.pyplot as plt
-from plot_latin_hypercube import plot_points_hypercube
-import coarse_grid_plot
-from plot_likelihood import make_plot
+from lyaemu.plot_latin_hypercube import plot_points_hypercube
+import lyaemu.coarse_grid_plot as coarse_grid_plot
+from lyaemu.plot_likelihood import make_plot
 
 plt.style.use('hiranyastyle')
 

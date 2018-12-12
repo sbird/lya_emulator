@@ -12,7 +12,6 @@ import h5py
 from SimulationRunner import lyasimulation
 import latin_hypercube
 import flux_power
-import matter_power
 import lyman_data
 import gpemulator
 from mean_flux import ConstMeanFlux
@@ -389,17 +388,3 @@ def get_simulation_parameters_s8(base, dt0=0, t0=1, pivot=0.05):
     As = pp['scalar_amp'] / (pivot/(2*np.pi/8.))**(pp['ns']-1.)
     parvec = [dt0, t0, pp['ns'], As, slope, amp, pp["hubble"]]
     return parvec
-
-class MatterPowerEmulator(Emulator):
-    """Build an emulator based on the matter power spectrum instead of the flux power spectrum, for testing."""
-    def load(self,dumpfile="emulator_params.json"):
-        """Load parameters from a textfile. Reset the k values to something sensible for matter power."""
-        super().load(dumpfile=dumpfile)
-        self.kf = np.logspace(np.log10(3*math.pi/60.),np.log10(2*math.pi/60.*256),20)
-
-    def _get_fv(self, pp,myspec):
-        """Helper function to get a single matter power vector."""
-        di = self.get_outdir(pp)
-        (_,_) = myspec
-        fv = matter_power.get_matter_power(di,kk=self.kf, redshift = 3.)
-        return fv

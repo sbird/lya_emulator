@@ -1,8 +1,23 @@
-"""Modules to get the matter power spectrum from a simulation box."""
+"""Modules to get the matter power spectrum from a simulation box and build a simple test emulator."""
 from __future__ import print_function
 import os.path
 import numpy as np
 import scipy.interpolate
+from coarse_grid import Emulator
+
+class MatterPowerEmulator(Emulator):
+    """Build an emulator based on the matter power spectrum instead of the flux power spectrum, for testing."""
+    def load(self,dumpfile="emulator_params.json"):
+        """Load parameters from a textfile. Reset the k values to something sensible for matter power."""
+        super().load(dumpfile=dumpfile)
+        self.kf = np.logspace(np.log10(3*math.pi/60.),np.log10(2*math.pi/60.*256),20)
+
+    def _get_fv(self, pp,myspec):
+        """Helper function to get a single matter power vector."""
+        di = self.get_outdir(pp)
+        (_,_) = myspec
+        fv = get_matter_power(di,kk=self.kf, redshift = 3.)
+        return fv
 
 def get_matter_power(base, kk, redshift = 3.):
     """Gets the matter power spectrum at a single redshift, rebinned onto the given k."""

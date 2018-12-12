@@ -2,7 +2,7 @@
 
 import scipy.optimize as spo
 
-from latin_hypercube import *
+from latin_hypercube import map_from_unit_cube
 
 def optimise_acquisition_function_parallel(arguments):
     """Version of optimise_acquisition_function for multiprocessing. Sits in separate file so we can use interactive Python environments"""
@@ -18,6 +18,3 @@ def acquisition_function_parallel(arguments):
     parameter_vector, likelihood_class_instance, nu, exploitation_weight, integration_bounds = arguments
     acquisition_function = lambda parameters: likelihood_class_instance.acquisition_function_GP_UCB_marginalised_mean_flux(parameters[2:], nu=nu, exploitation_weight=exploitation_weight, integration_bounds=integration_bounds)
     return acquisition_function(parameter_vector)
-
-def test_multiprocessing_map(arguments):
-    return arguments

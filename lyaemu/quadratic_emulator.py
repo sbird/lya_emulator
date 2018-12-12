@@ -8,9 +8,9 @@ Fits the change in the flux power spectrum with a quadratic function.
 
 import math
 import numpy as np
-from coarse_grid import Emulator
-from gpemulator import SkLearnGP
-import flux_power
+from .coarse_grid import Emulator
+from .gpemulator import SkLearnGP
+from . import flux_power
 
 def Hubble(zz, om, H0):
     """ Hubble parameter. Hubble(Redshift) """

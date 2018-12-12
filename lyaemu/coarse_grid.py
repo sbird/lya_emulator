@@ -10,11 +10,11 @@ import json
 import numpy as np
 import h5py
 from SimulationRunner import lyasimulation
-import latin_hypercube
-import flux_power
-import lyman_data
-import gpemulator
-from mean_flux import ConstMeanFlux
+from . import latin_hypercube
+from . import flux_power
+from . import lyman_data
+from . import gpemulator
+from .mean_flux import ConstMeanFlux
 
 def get_latex(key):
     """Get a latex name if it exists, otherwise return the key."""
@@ -25,7 +25,7 @@ def get_latex(key):
     except KeyError:
         return key
 
-class Emulator(object):
+class Emulator:
     """Small wrapper class to store parameter names and limits, generate simulations and get an emulator.
     """
     def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None):

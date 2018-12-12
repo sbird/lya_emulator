@@ -1,7 +1,7 @@
 """Tests for the latin hypercube module."""
 
 import numpy as np
-import latin_hypercube
+from lyaemu import latin_hypercube
 
 def test_from_and_to_unit_cube():
     """Check we can map to and from the unit cube correctly."""

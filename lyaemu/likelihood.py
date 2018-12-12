@@ -9,12 +9,12 @@ import numpy.testing as npt
 import scipy.optimize as spo
 import scipy.interpolate
 import emcee
-import coarse_grid
-import flux_power
-import lyman_data
-import mean_flux as mflux
-from latin_hypercube import map_to_unit_cube, map_from_unit_cube
-from quadratic_emulator import QuadraticEmulator
+from . import coarse_grid
+from . import flux_power
+from . import lyman_data
+from . import mean_flux as mflux
+from .latin_hypercube import map_to_unit_cube, map_from_unit_cube
+from .quadratic_emulator import QuadraticEmulator
 
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""

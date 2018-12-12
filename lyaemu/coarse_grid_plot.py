@@ -5,15 +5,14 @@ import re
 import math
 from datetime import datetime
 import numpy as np
-import coarse_grid
-import matter_power
-import flux_power
-import matter_power
-import mean_flux as mflux
+from . import coarse_grid
+from . import matter_power
+from . import flux_power
+from . import mean_flux as mflux
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
-import distinct_colours_py3 as dc
+from . import distinct_colours_py3 as dc
 
 def _plot_by_redshift_bins(savedir, plotname, z_labs, all_power_array_all_kf):
     """Plot the different redshift bins on different plots"""

@@ -2,7 +2,7 @@
 # from datetime import datetime
 import copy as cp
 import numpy as np
-from latin_hypercube import map_to_unit_cube_list
+from .latin_hypercube import map_to_unit_cube_list
 #Make sure that we don't accidentally
 #get another backend when we import GPy.
 import matplotlib

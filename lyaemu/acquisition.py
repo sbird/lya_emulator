@@ -2,7 +2,7 @@
 
 import scipy.optimize as spo
 
-from latin_hypercube import map_from_unit_cube
+from .latin_hypercube import map_from_unit_cube
 
 def optimise_acquisition_function_parallel(arguments):
     """Version of optimise_acquisition_function for multiprocessing. Sits in separate file so we can use interactive Python environments"""

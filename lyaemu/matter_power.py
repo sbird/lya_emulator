@@ -3,7 +3,7 @@ from __future__ import print_function
 import os.path
 import numpy as np
 import scipy.interpolate
-from coarse_grid import Emulator
+from .coarse_grid import Emulator
 
 class MatterPowerEmulator(Emulator):
     """Build an emulator based on the matter power spectrum instead of the flux power spectrum, for testing."""

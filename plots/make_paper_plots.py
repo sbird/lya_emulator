@@ -14,7 +14,7 @@ matplotlib.use("PDF")
 import matplotlib.pyplot as plt
 from lyaemu.plot_latin_hypercube import plot_points_hypercube
 import lyaemu.coarse_grid_plot as coarse_grid_plot
-from lyaemu.plot_likelihood import make_plot
+from plot_likelihood import make_plot
 
 plt.style.use('hiranyastyle')
 

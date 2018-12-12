@@ -1,6 +1,5 @@
 """Script to generate the chains for the likelihoods."""
 import os.path
-import re
 import argparse
 from lyaemu.likelihood import LikelihoodClass
 

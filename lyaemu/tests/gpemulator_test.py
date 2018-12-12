@@ -2,7 +2,7 @@
 for the data."""
 
 import numpy as np
-import gpemulator
+from lyaemu import gpemulator
 
 class Power(object):
     """Mock power object"""

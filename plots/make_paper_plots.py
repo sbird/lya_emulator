@@ -105,7 +105,7 @@ def mean_flux_rescale(plotdir='plots'):
 
 def single_parameter_plot(plotdir='plots'):
     """Plot change in each parameter of an emulator from direct simulations."""
-    emulatordir = path.expanduser("simulations2/hires_s8_quadratic")
+    emulatordir = path.join(path.dirname(__file__), "emulator_training/hires_s8_quadratic")
     mf = MeanFluxFactor()
     dist_col = dc.get_distinct(12)
     emu = QuadraticEmulator(emulatordir, mf=mf)
@@ -219,12 +219,13 @@ def plot_likelihood_chains(tau0=1., simdir="simulations", plotdir='plots'):
     make_plot(chainfile, savefile, true_parameter_values=true_parameter_values)
 
 if __name__ == "__main__":
-    s2_emu, s2_quad, s2_quad_quad = test_s8_plots(simdir="simulations2", plotdir="plots/simulations2")
+    simdir = path.join(path.dirname(__file__), "emulator_training")
+    s2_emu, s2_quad, s2_quad_quad = test_s8_plots(simdir=simdir, plotdir="plots/simulations2")
 #     s1_emu, s1_quad, s1_quad_quad = test_s8_plots()
     single_parameter_plot()
 #     pars = mean_flux_rescale()
     hypercube_plot()
 # Must be at the end or corner screws up the font config
-#     plot_likelihood_chains(tau0=0.9, plotdir="plots/simulations2")
+    plot_likelihood_chains(tau0=0.9, simdir=simdir, plotdir="plots/simulations2")
 #     plot_likelihood_chains(tau0=0.9)
 #     plot_likelihood_chains()

@@ -273,6 +273,7 @@ class Emulator:
         try:
             kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams, mfc=mfc)
         except (AssertionError, OSError):
+            print("Could not load flux vectors, regenerating from disc")
             powers = [self._get_fv(pp, myspec) for pp in pvals]
             mef = lambda pp: self.mf.get_mean_flux(myspec.zout, params=pp)[0]
             if dpvals is not None:
@@ -314,7 +315,7 @@ class Emulator:
         kfmpc = np.array(load["kfmpc"])
         name = str(load.attrs["classname"])
         load.close()
-        assert name == str(self.__class__)
+        assert name.split(".")[-1] == str(self.__class__).split(".")[-1]
         assert np.shape(inparams) == np.shape(aparams)
         assert np.all(inparams - aparams < 1e-3)
         return kfmpc, kfkms, flux_vectors

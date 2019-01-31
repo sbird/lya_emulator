@@ -83,7 +83,6 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     gp = params.get_emulator(max_z=max_z)
     print('Finished generating emulator at', str(datetime.now()))
     myspec = flux_power.MySpectra(max_z=max_z, max_k=params.maxk)
-    del params
     errlist = np.array([])
 
     nred = len(myspec.zout)
@@ -117,7 +116,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
         plt.ylabel(r"Predicted/Exact")
         plt.ylim(0.95,1.05)
         plt.xticks([1e-3, 1e-2, 0.05],[r"$10^{-3}$",r"$10^{-2}$","0.05"])
-        name = params_test.build_dirname(pp, include_dense=True)
+        name = params.build_dirname(pp, include_dense=True)
 #         plt.title(name)
         plt.xlim(1e-3, 0.052)
         if np.max(ratio) > 1.035:

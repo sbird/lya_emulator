@@ -67,10 +67,12 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     t0 = None
     if mean_flux:
         t0 = 0.9
-    mf = mflux.ConstMeanFlux(value=t0) #In 'ConstMeanFlux' case: multiply tau_0_i[z] by t0 = 0.95
+    mftest = mflux.ConstMeanFlux(value=t0) #In 'ConstMeanFlux' case: multiply tau_0_i[z] by t0 = 0.95
     if mean_flux == 2:
         mf = mflux.MeanFluxFactor() #In 'MeanFluxFactor' case: DON'T multiply tau_0_i[z] by t0 - because *emulate* t0[z]
-    params_test = coarse_grid.Emulator(testdir,mf=mf)
+    else:
+        mf = mftest
+    params_test = coarse_grid.Emulator(testdir,mf=mftest)
     params_test.load()
     if emuclass is None:
         params = coarse_grid.Emulator(emulatordir, mf=mf)
@@ -87,31 +89,23 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     nred = len(myspec.zout)
     dist_col = dc.get_distinct(nred)
     #print("Number of validation points =", params_test.get_parameters().shape[0])
+    test_par, test_kf, test_flux = params_test.get_flux_vectors()
 
-    for pp in params_test.get_parameters():
-        dd = params_test.get_outdir(pp)
-        if not os.path.exists(dd):
-            dd = params_test.get_outdir(pp, strsz=2)
+    for pp, okf, exact in zip(test_par, test_kf, test_flux):
         if mean_flux == 2:
             pp = np.concatenate([[t0,], pp]) #In 'MeanFluxFactor' case: choose t0 point for fair comparison
         predicted,std = gp.predict(pp.reshape(1,-1)) #.predict takes [{list of parameters: t0; cosmo.; thermal},]
 
-        ps = myspec.get_snapshot_list(dd)
-        meanfluxes = None
-        if t0 is not None:
-            meanfluxes = np.exp(-1*t0*mflux.obs_mean_tau(myspec.zout))
-        exact = ps.get_power_native_binning(mean_fluxes = meanfluxes)
-        okf = ps.get_kf_kms()
-        nk = np.size(ps.kf)
-        assert np.all(np.abs(gp.kf/ps.kf - 1) < 1e-5)
+        #assert np.all(np.abs(gp.kf/okf - 1) < 1e-5)
         ratio =  predicted[0]/exact
-        upper =  ((predicted[0] + std[0])/exact).reshape(-1, nk)
-        lower =  ((predicted[0]-std[0])/exact).reshape(-1, nk)
         errrr =  (predicted[0]-exact)/std[0]
         errlist = np.concatenate([errlist, errrr])
         for i in range(nred):
+            nk = np.size(okf[i])
             plt.semilogx(okf[i],ratio[i*nk:(i+1)*nk],label=round(myspec.zout[i],1), color=dist_col[i])
 
+        upper =  ((predicted[0] + std[0])/exact).reshape(-1, nk)
+        lower =  ((predicted[0]-std[0])/exact).reshape(-1, nk)
         low = np.min(lower, axis=0)
         low = np.concatenate([[low[0],], low])
         upp = np.max(upper, axis=0)

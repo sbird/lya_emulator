@@ -1,5 +1,6 @@
 """Generate a test plot for an emulator"""
 from __future__ import print_function
+import os
 import os.path
 import re
 import math
@@ -37,6 +38,7 @@ def _plot_error_histogram(savedir, plotname, err_norm, axis=None, xlim=6., nbins
 #         np.savetxt(os.path.join(savedir, "table_errhist" + plotname + ".txt"), err_norm)
         _plot_unit_Gaussians(xx)
         plt.xlabel(xlabel)
+        plt.ylabel("PDF")
         plt.xlim(-1. * xlim, xlim)
         plt.legend()
         plt.tight_layout()
@@ -60,6 +62,8 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
     """Make a plot showing the interpolation error."""
     if savedir is None:
         savedir = emulatordir
+    if not os.path.exists(savedir):
+        os.makedirs(savedir)
     t0 = None
     if mean_flux:
         t0 = 0.9

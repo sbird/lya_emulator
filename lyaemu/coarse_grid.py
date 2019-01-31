@@ -9,7 +9,7 @@ import math
 import json
 import numpy as np
 import h5py
-from SimulationRunner import lyasimulation
+from .SimulationRunner.SimulationRunner import lyasimulation
 from . import latin_hypercube
 from . import flux_power
 from . import lyman_data

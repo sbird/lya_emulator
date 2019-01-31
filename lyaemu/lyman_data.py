@@ -58,7 +58,13 @@ class SDSSData(object):
 
 class BOSSData(SDSSData):
     """A class to store the flux power and corresponding covariance matrix from BOSS."""
-    def __init__(self, datafile=os.path.expanduser("data/boss_dr9_data/table4a.dat"), covardir=os.path.expanduser("data/boss_dr9_data")):
+    def __init__(self, datafile=None, covardir=None):
+
+        cdir = os.path.dirname(__file__)
+        if datafile is None:
+            datafile = os.path.join(cdir,"data/boss_dr9_data/table4a.dat")
+        if covardir is None:
+            covardir = os.path.join(cdir, "data/boss_dr9_data")
         # Read SDSS best-fit data.
         # Contains the redshift wavenumber from SDSS
         # See Readme file.

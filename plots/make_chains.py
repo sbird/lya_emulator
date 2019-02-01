@@ -23,10 +23,10 @@ if args.noemuerr:
 #Build the emulator
 if args.quadratic:
     savefile = os.path.join("simulations2/hires_s8_quadratic", savefile)
-    like = LikelihoodClass(basedir=os.path.expanduser("simulations2/hires_s8_quadratic"), emulator_class="quadratic",t0_training_value=args.tau0)
+    like = LikelihoodClass(basedir=os.path.join(os.path.dirname(__file__), "emulator_training/hires_s8_quadratic"), emulator_class="quadratic",t0_training_value=args.tau0)
 else:
     savefile = os.path.join("simulations2/hires_s8", savefile)
-    like = LikelihoodClass(basedir=os.path.join("simulations2/hires_s8"), t0_training_value=args.tau0)
+    like = LikelihoodClass(basedir=os.path.join(os.path.dirname(__file__), "emulator_training/hires_s8"), t0_training_value=args.tau0)
 
 print("Save to", savefile)
 output = like.do_sampling(savefile, datadir=testdata, include_emulator_error = not args.noemuerr)

@@ -1,5 +1,6 @@
 """Make plots for the first emulator paper"""
 import os.path as path
+import math
 import re
 import numpy as np
 import lyaemu.latin_hypercube as latin_hypercube
@@ -9,6 +10,7 @@ from lyaemu.quadratic_emulator import QuadraticEmulator
 from lyaemu.mean_flux import MeanFluxFactor
 import lyaemu.lyman_data as lyman_data
 import lyaemu.distinct_colours_py3 as dc
+import lyaemu.likelihood as likeh
 import matplotlib
 matplotlib.use("PDF")
 import matplotlib.pyplot as plt
@@ -199,6 +201,35 @@ def sample_var_plot(plotdir='plots'):
     plt.savefig(path.join(plotdir, "sample_var.pdf"))
     plt.clf()
 
+def plot_test_flux(testdirs, max_z=4.2, plotdir="plots"):
+    """Plot the test flux power spectrum."""
+    t0 = 0.9
+    for sdir in testdirs:
+        sname = path.basename(path.abspath(sdir))
+        if t0 != 1.0:
+            sname = re.sub(r"\.","_", "fpk_tau0%.3g" % t0) + sname
+        sname = re.sub(r"\.", "_", sname)
+        datadir = path.join(sdir, "output")
+        sdss = lyman_data.BOSSData()
+        #'Data' now is a simulation
+        k_los = np.concatenate([sdss.get_kf(), np.linspace(0.02,0.2, 20)])
+        n_k_los = k_los.size
+        z = np.arange(max_z,2.1,-0.2)
+        n_z = z.size
+        data_fluxpower = likeh.load_data(datadir, kf=k_los, t0=t0)
+        exact_flux_power = data_fluxpower.reshape(n_z, n_k_los)
+        distinct_colours = dc.get_distinct(n_z)
+        for i in range(n_z):
+            plt.loglog(k_los, exact_flux_power[i]*k_los/math.pi, color=distinct_colours[i], ls='-', label=r'$z = %.1f$'%z[i])
+        plt.xlim([1.e-3, 0.052])
+        plt.axvspan(sdss.get_kf()[0], sdss.get_kf()[-1], alpha=0.2, color="grey")
+        plt.xlabel(r"$k_F$ (s/km)")
+        plt.xticks([1e-3, 1e-2, 0.05],[r"$10^{-3}$",r"$10^{-2}$","0.05"])
+        plt.ylabel(r'$k P(k) / \pi$')
+        plt.legend(loc="lower right", ncol=3)
+        plt.savefig(path.join(plotdir,sname+".pdf"))
+        plt.clf()
+
 def plot_likelihood_chains(tau0=1., simdir="simulations", plotdir='plots'):
     """Plot the chains we made from quadratic and GP emulators."""
     cdir = "ns0.968As1.5e-09heat_slope-0.367heat_amp0.8hub0.692"
@@ -220,6 +251,8 @@ def plot_likelihood_chains(tau0=1., simdir="simulations", plotdir='plots'):
 
 if __name__ == "__main__":
     simdir = path.join(path.dirname(__file__), "emulator_training")
+    plot_test_flux([path.join(simdir, "hires_s8_test/ns0.907As1.7e-09heat_slope-0.633heat_amp0.933hub0.742"), path.join(simdir, "hires_s8_test/ns0.982As2.5e-09heat_slope-0.1heat_amp0.667hub0.658")], plotdir="plots/simulations2")
+    raise Exception
     s2_emu, s2_quad, s2_quad_quad = test_s8_plots(simdir=simdir, plotdir="plots/simulations2")
 #     s1_emu, s1_quad, s1_quad_quad = test_s8_plots()
     single_parameter_plot()

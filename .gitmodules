@@ -1,0 +1,6 @@
+[submodule "lyaemu/SimulationRunner"]
+	path = lyaemu/SimulationRunner
+	url = https://github.com/sbird/SimulationRunner.git
+[submodule "plots/emulator_training"]
+	path = plots/emulator_training
+	url = https://github.com/sbird/lya_emulator_training.git

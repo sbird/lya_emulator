@@ -112,8 +112,8 @@ class Emulator:
         ev[pn['ns']] = sics["ns"]
         wmap = sics["scalar_amp"]
         #Convert pivot of the scalar amplitude from amplitude
-        #at 8 Mpc (k = 0.78) to pivot scale of 0.05
-        conv = (0.05/(2*math.pi/8.))**(sics["ns"]-1.)
+        #at k = 0.5 (~13 Mpc) to pivot scale of 0.05
+        conv = (0.05/(0.5))**(sics["ns"]-1.)
         ev[pn['As']] = wmap / conv
         return ev
 
@@ -201,9 +201,9 @@ class Emulator:
         rescale_amp = ev[pn['heat_amp']]
         hub = ev[pn['hub']]
         #Convert pivot of the scalar amplitude from amplitude
-        #at 8 Mpc (k = 0.78) to pivot scale of 0.05
+        #at k = 0.5 h/Mpc (~13 Mpc) to pivot scale of 0.05
         ns = ev[pn['ns']]
-        wmap = (0.05/(2*math.pi/8.))**(ns-1.) * ev[pn['As']]
+        wmap = (0.05/0.5)**(ns-1.) * ev[pn['As']]
         ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, rescale_gamma=True, rescale_slope = rescale_slope, redend=2.2, rescale_amp = rescale_amp, hubble=hub, omega0=self.omegamh2/hub**2, omegab=0.0483,unitary=True)
         try:
             ss.make_simulation()

@@ -29,21 +29,21 @@ class Emulator:
     """
     def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None):
         if param_names is None:
-            self.param_names = {'ns':0, 'As':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5} #, 'omegamh2':6}
+            self.param_names = {'ns':0, 'As':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6}
         else:
             self.param_names = param_names
         #Parameters: ns: 0.8 - 0.995. Notice that this is not ns at the CMB scale!
         # As: amplitude of power spectrum at 0.5 h/Mpc scales (note slightly larger than last paper!
         # herei: redshift at which helium reionization starts.
-        #4.0 is default, we use a linear history with 3.5-4.5
+        # 4.0 is default, we use a linear history with 3.5-4.5
         # heref: redshift at which helium reionization finishes. 2.8 is default.
-        #Thermal history suggests late, HeII Lyman alpha suggests earlier.
+        # Thermal history suggests late, HeII Lyman alpha suggests earlier.
         # hub: hubble constant (also changes omega_M)
         # alphaq: quasar spectral index. 1 - 2.5 Controls IGM temperature.
-        #We fix omega_m h^2 = 0.143+-0.001 (Planck best-fit) and vary omega_m and h^2 to match it.
-        #h^2 itself has little effect on the forest.
+        # omegam h^2: We fix omega_m h^2 = 0.143+-0.001 (Planck 2018 best-fit) and vary omega_m and h^2 to match it.
+        # h^2 itself has little effect on the forest.
         if param_limits is None:
-            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [3.5, 4.5], [2.5, 3.2], [0.65, 0.75], [1., 2.5] ]) #, [0.14, 0.146]])
+            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [3.5, 4.5], [2.5, 3.2], [0.65, 0.75], [1., 2.5], [0.14, 0.146]])
         else:
             self.param_limits = param_limits
         if kf is None:
@@ -54,13 +54,11 @@ class Emulator:
             self.mf = ConstMeanFlux(None)
         else:
             self.mf = mf
-        #We fix omega_m h^2 = 0.1199 (Planck best-fit) and vary omega_m and h^2 to match it.
-        #h^2 itself has little effect on the forest.
-        self.omegamh2 = 0.1199
-        #Corresponds to omega_m = (0.23, 0.31) which should be enough.
 
         self.set_maxk()
-
+        #This is the Planck best-fit value. We do not have to change it because
+        #it is a) very well measured and b) mostly degenerate with the mean flux.
+        self.omegabh2 = 0.0224
         self.sample_params = []
         self.basedir = os.path.expanduser(basedir)
         if not os.path.exists(basedir):
@@ -68,11 +66,10 @@ class Emulator:
 
     def set_maxk(self):
         """Get the maximum k in Mpc/h that we will need."""
-        #Corresponds to omega_m = (0.23, 0.31) which should be enough.
-
         #Maximal velfactor: the h dependence cancels but there is an omegam
         minhub = self.param_limits[self.param_names['hub'],0]
-        velfac = lambda a: a * 100.0* np.sqrt(self.omegamh2/minhub**2/a**3 + (1 - self.omegamh2/minhub))
+        omgah2 = self.param_limits[self.param_names['omegamh2'],1]
+        velfac = lambda a: a * 100.0* np.sqrt(omgah2/minhub**2/a**3 + (1 - omgah2/minhub))
         #Maximum k value to use in comoving Mpc/h.
         #Comes out to k ~ 5, which is a bit larger than strictly necessary.
         self.maxk = np.max(self.kf) * velfac(1/(1+4.4)) * 2
@@ -214,8 +211,10 @@ class Emulator:
         #Convert pivot of the scalar amplitude from amplitude
         #at k = 0.5 h/Mpc (~13 Mpc) to pivot scale of 0.05
         ns = ev[pn['ns']]
+        om0 = ev[pn['omegamh2']]/hub**2
+        omb = self.omegabh2 / hub**2
         wmap = (0.05/0.5)**(ns-1.) * ev[pn['As']]
-        ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.2, here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=self.omegamh2/hub**2, omegab=0.0483,unitary=True)
+        ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.2, here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,unitary=True)
         try:
             ss.make_simulation()
             fpfile = os.path.join(os.path.dirname(__file__),"flux_power.py")
@@ -363,7 +362,9 @@ class KnotEmulator(Emulator):
         hei = ev[pn['herei']]
         hef = ev[pn['heref']]
         hub = ev[pn['hub']]
-        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, redend=2.2, here_f = hef, here_i = hei, alpha_q = aq, omega0=self.omegamh2/hub**2, omegab=0.0483,unitary=True)
+        om0 = ev[pn['omegamh2']]/hub**2
+        omb = self.omegabh2 / hub**2
+        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, redend=2.2, here_f = hef, here_i = hei, alpha_q = aq, omega0=om0, omegab=omb, unitary=True)
         try:
             ss.make_simulation()
         except RuntimeError as e:

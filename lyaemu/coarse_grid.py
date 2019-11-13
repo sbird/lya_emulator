@@ -214,7 +214,7 @@ class Emulator:
         om0 = ev[pn['omegamh2']]/hub**2
         omb = self.omegabh2 / hub**2
         wmap = (0.05/0.5)**(ns-1.) * ev[pn['As']]
-        ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.2, here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,unitary=True)
+        ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.2, here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,unitary=True, seed=422317)
         try:
             ss.make_simulation()
             fpfile = os.path.join(os.path.dirname(__file__),"flux_power.py")
@@ -364,7 +364,7 @@ class KnotEmulator(Emulator):
         hub = ev[pn['hub']]
         om0 = ev[pn['omegamh2']]/hub**2
         omb = self.omegabh2 / hub**2
-        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, redend=2.2, here_f = hef, here_i = hei, alpha_q = aq, omega0=om0, omegab=omb, unitary=True)
+        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, redend=2.2, here_f = hef, here_i = hei, alpha_q = aq, omega0=om0, omegab=omb, unitary=True, seed=422317)
         try:
             ss.make_simulation()
         except RuntimeError as e:

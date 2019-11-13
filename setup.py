@@ -7,10 +7,10 @@ setup(
     author_email="spb@ias.edu",
     url="http://github.com/sbird/lya_emulator",
     description="Module for easily generating emulators for the lyman alpha forest from simulations",
-    packages = ['lyaemu', 'lyaemu.tests'],
+    packages = ['lyaemu', 'lyaemu.tests', 'lyaemu.SimulationRunner.SimulationRunner'],
     requires=['numpy', 'fake_spectra','scipy', "GPy", "emcee", "h5py"],
     package_data = {
-            'lyaemu': ['data/*',],
+            'lyaemu': ['data/boss_dr9_data/*.dat','data/*'],
            },
     classifiers = ["Development Status :: 4 - Beta",
                    "Intended Audience :: Developers",

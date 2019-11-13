@@ -5,7 +5,6 @@ import os.path
 import shutil
 import glob
 import string
-import math
 import json
 import numpy as np
 import h5py
@@ -19,7 +18,7 @@ from .mean_flux import ConstMeanFlux
 def get_latex(key):
     """Get a latex name if it exists, otherwise return the key."""
     #Names for pretty-printing some parameters in Latex
-    print_names = { 'ns': r'n_\mathrm{s}', 'As': r'A_\mathrm{s}', 'heat_slope': r'H_\mathrm{S}', 'heat_amp': r'H_\mathrm{A}', 'hub':'h', 'tau0':r'\tau_0', 'dtau0':r'd\tau_0'}
+    print_names = { 'ns': r'n_\mathrm{s}', 'As': r'A_\mathrm{s}', 'herei': r'z_\mathrm{He i}', 'heref': r'z_\mathrm{He f}', 'hub':'h', 'tau0':r'\tau_0', 'dtau0':r'd\tau_0'}
     try:
         return print_names[key]
     except KeyError:
@@ -30,11 +29,21 @@ class Emulator:
     """
     def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None):
         if param_names is None:
-            self.param_names = {'ns':0, 'As':1, 'heat_slope':2, 'heat_amp':3, 'hub':4}
+            self.param_names = {'ns':0, 'As':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5} #, 'omegamh2':6}
         else:
             self.param_names = param_names
+        #Parameters: ns: 0.8 - 0.995. Notice that this is not ns at the CMB scale!
+        # As: amplitude of power spectrum at 0.5 h/Mpc scales (note slightly larger than last paper!
+        # herei: redshift at which helium reionization starts.
+        #4.0 is default, we use a linear history with 3.5-4.5
+        # heref: redshift at which helium reionization finishes. 2.8 is default.
+        #Thermal history suggests late, HeII Lyman alpha suggests earlier.
+        # hub: hubble constant (also changes omega_M)
+        # alphaq: quasar spectral index. 1 - 2.5 Controls IGM temperature.
+        #We fix omega_m h^2 = 0.143+-0.001 (Planck best-fit) and vary omega_m and h^2 to match it.
+        #h^2 itself has little effect on the forest.
         if param_limits is None:
-            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [-0.7, 0.1], [0.4, 1.4], [0.65, 0.75]])
+            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [3.5, 4.5], [2.5, 3.2], [0.65, 0.75], [1., 2.5] ]) #, [0.14, 0.146]])
         else:
             self.param_limits = param_limits
         if kf is None:
@@ -106,8 +115,9 @@ class Emulator:
             sics = json.load(jsin)
         ev = np.zeros_like(self.param_limits[:,0])
         pn = self.param_names
-        ev[pn['heat_slope']] = sics["rescale_slope"]
-        ev[pn['heat_amp']] = sics["rescale_amp"]
+        ev[pn['heref']] = sics["here_f"]
+        ev[pn['herei']] = sics["here_i"]
+        ev[pn['alphaq']] = sics["alpha_q"]
         ev[pn['hub']] = sics["hubble"]
         ev[pn['ns']] = sics["ns"]
         wmap = sics["scalar_amp"]
@@ -197,14 +207,15 @@ class Emulator:
         """Do the actual IC generation."""
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
         pn = self.param_names
-        rescale_slope = ev[pn['heat_slope']]
-        rescale_amp = ev[pn['heat_amp']]
+        href = ev[pn['heref']]
+        hrei = ev[pn['herei']]
+        aq = ev[pn['alphaq']]
         hub = ev[pn['hub']]
         #Convert pivot of the scalar amplitude from amplitude
         #at k = 0.5 h/Mpc (~13 Mpc) to pivot scale of 0.05
         ns = ev[pn['ns']]
         wmap = (0.05/0.5)**(ns-1.) * ev[pn['As']]
-        ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, rescale_gamma=True, rescale_slope = rescale_slope, redend=2.2, rescale_amp = rescale_amp, hubble=hub, omega0=self.omegamh2/hub**2, omegab=0.0483,unitary=True)
+        ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.2, here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=self.omegamh2/hub**2, omegab=0.0483,unitary=True)
         try:
             ss.make_simulation()
             fpfile = os.path.join(os.path.dirname(__file__),"flux_power.py")
@@ -331,12 +342,12 @@ class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.
     Thermal parameters turned off."""
     def __init__(self, basedir, nknots=4, kf=None, mf=None):
-        param_names = {'heat_slope':nknots, 'heat_amp':nknots+1, 'hub':nknots+2}
+        param_names = {'herei':nknots, 'heref':nknots+1, 'alphaq': nknots+2, 'hub':nknots+3}
         #Assign names like AA, BB, etc.
         for i in range(nknots):
             param_names[string.ascii_uppercase[i]*2] = i
         self.nknots = nknots
-        param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),nknots,axis=0),[[-0.5, 0.5],[0.5,1.5],[0.65,0.75]],axis=0)
+        param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),nknots,axis=0),[[2.5,3.2],[3.5,4.5],[0.65,0.75]],axis=0)
         super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits, kf=kf, mf=mf)
         #Linearly spaced knots in k space:
         #these do not quite hit the edges of the forest region, because we want some coverage over them.
@@ -348,10 +359,11 @@ class KnotEmulator(Emulator):
         """Do the actual IC generation."""
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
         pn = self.param_names
-        rescale_slope = ev[pn['heat_slope']]
-        rescale_amp = ev[pn['heat_amp']]
+        aq = ev[pn['alpha_q']]
+        hei = ev[pn['herei']]
+        hef = ev[pn['heref']]
         hub = ev[pn['hub']]
-        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, rescale_gamma=True, redend=2.2, rescale_slope = rescale_slope, rescale_amp = rescale_amp, omega0=self.omegamh2/hub**2, omegab=0.0483,unitary=True)
+        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, redend=2.2, here_f = hef, here_i = hei, alpha_q = aq, omega0=self.omegamh2/hub**2, omegab=0.0483,unitary=True)
         try:
             ss.make_simulation()
         except RuntimeError as e:
@@ -363,29 +375,14 @@ def get_simulation_parameters_knots(base):
     pp = json.load(jsin)
     knv = pp["knot_val"]
     #This will fail!
-    slope, amp = _therm_params(pp)
-    parvec = [0., 1., *knv, slope, amp, pp["hubble"]]
+    parvec = [0., 1., *knv, pp['herei'], pp['heref'],pp['alphaq'], pp["hubble"]]
     return parvec
-
-def _therm_params(pp):
-    """Helper to get thermal parameters from a json dictionary."""
-    try:
-        #Old-style emulator
-        assert pp["code_args"]["rescale_gamma"] is True
-        slope = pp["code_args"]["rescale_slope"]
-        amp = pp["code_args"]["rescale_amp"]
-    except KeyError:
-        assert pp["rescale_gamma"] is True
-        slope = pp["rescale_slope"]
-        amp = pp["rescale_amp"]
-    return slope, amp
 
 def get_simulation_parameters_s8(base, dt0=0, t0=1, pivot=0.05):
     """Get the parameters of a sigma8-ns-based simulation from the SimulationICs JSON file."""
     jsin = open(os.path.join(base, "SimulationICs.json"), 'r')
     pp = json.load(jsin)
-    slope, amp = _therm_params(pp)
     #Change the pivot value
-    As = pp['scalar_amp'] / (pivot/(2*np.pi/8.))**(pp['ns']-1.)
-    parvec = [dt0, t0, pp['ns'], As, slope, amp, pp["hubble"]]
+    As = pp['scalar_amp'] / (pivot/0.5)**(pp['ns']-1.)
+    parvec = [dt0, t0, pp['ns'], As, pp['herei'], pp['heref'],pp['alphaq'], pp["hubble"]]
     return parvec

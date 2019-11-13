@@ -43,7 +43,7 @@ class Emulator:
         # omegam h^2: We fix omega_m h^2 = 0.143+-0.001 (Planck 2018 best-fit) and vary omega_m and h^2 to match it.
         # h^2 itself has little effect on the forest.
         if param_limits is None:
-            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [3.5, 4.5], [2.5, 3.2], [0.65, 0.75], [1., 2.5], [0.14, 0.146]])
+            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [3.5, 4.5], [2.5, 3.2], [1., 2.5], [0.65, 0.75], [0.14, 0.146]])
         else:
             self.param_limits = param_limits
         if kf is None:
@@ -341,12 +341,12 @@ class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.
     Thermal parameters turned off."""
     def __init__(self, basedir, nknots=4, kf=None, mf=None):
-        param_names = {'herei':nknots, 'heref':nknots+1, 'alphaq': nknots+2, 'hub':nknots+3}
+        param_names = {'herei':nknots, 'heref':nknots+1, 'alphaq': nknots+2, 'hub':nknots+3, 'omegamh2':nknots+4}
         #Assign names like AA, BB, etc.
         for i in range(nknots):
             param_names[string.ascii_uppercase[i]*2] = i
         self.nknots = nknots
-        param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),nknots,axis=0),[[2.5,3.2],[3.5,4.5],[0.65,0.75]],axis=0)
+        param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),nknots,axis=0),[[3.5,4.5],[2.5,3.2],[0.65,0.75],[0.14,0.146]],axis=0)
         super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits, kf=kf, mf=mf)
         #Linearly spaced knots in k space:
         #these do not quite hit the edges of the forest region, because we want some coverage over them.

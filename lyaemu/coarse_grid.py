@@ -26,8 +26,16 @@ def get_latex(key):
 
 class Emulator:
     """Small wrapper class to store parameter names and limits, generate simulations and get an emulator.
+    Parameters:
+    - basedir: directory to load or create emulator
+    - param_names: dictionary containing names of the parameters as well as a unique integer list of positions
+    - param_limits: Nx2 array containing upper and lower limits of each parameter, in the order given
+                    by the integer stored in param_names
+    - kf: k bins to use when getting spectra
+    - mf: mean flux object, which takes mean flux parameters and outputs the mean flux in each redshift bin
+    - limitfac: factor to uniformly grow the parameter limits by.
     """
-    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None):
+    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1):
         if param_names is None:
             self.param_names = {'ns':0, 'As':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6}
         else:
@@ -46,6 +54,11 @@ class Emulator:
             self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [3.5, 4.5], [2.5, 3.2], [1., 2.5], [0.65, 0.75], [0.14, 0.146]])
         else:
             self.param_limits = param_limits
+        if limitfac != 1:
+            param_cent = (self.param_limits[:,0] + self.param_limits[:,1])/2.
+            param_width = (- self.param_limits[:,0] + self.param_limits[:,1])/2.
+            self.param_limits[:,0] = param_cent - param_width * limitfac
+            self.param_limits[:,1] = param_cent + param_width * limitfac
         if kf is None:
             self.kf = lyman_data.BOSSData().get_kf()
         else:

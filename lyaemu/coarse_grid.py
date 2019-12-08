@@ -80,8 +80,8 @@ class Emulator:
     def set_maxk(self):
         """Get the maximum k in Mpc/h that we will need."""
         #Maximal velfactor: the h dependence cancels but there is an omegam
-        minhub = self.param_limits[self.param_names['hub'],0]
-        omgah2 = self.param_limits[self.param_names['omegamh2'],1]
+        minhub = 0.65 #self.param_limits[self.param_names['hub'],0]
+        omgah2 = 0.146 # self.param_limits[self.param_names['omegamh2'],1]
         velfac = lambda a: a * 100.0* np.sqrt(omgah2/minhub**2/a**3 + (1 - omgah2/minhub))
         #Maximum k value to use in comoving Mpc/h.
         #Comes out to k ~ 5, which is a bit larger than strictly necessary.

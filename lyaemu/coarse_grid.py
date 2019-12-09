@@ -51,7 +51,7 @@ class Emulator:
         # omegam h^2: We fix omega_m h^2 = 0.143+-0.001 (Planck 2018 best-fit) and vary omega_m and h^2 to match it.
         # h^2 itself has little effect on the forest.
         if param_limits is None:
-            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [4.0, 4.5], [2.5, 3.2], [1.6, 2.5], [0.65, 0.75], [0.14, 0.146]])
+            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [4.0, 4.5], [2.6, 3.2], [1.4, 2.5], [0.65, 0.75], [0.14, 0.146]])
         else:
             self.param_limits = param_limits
         if limitfac != 1:

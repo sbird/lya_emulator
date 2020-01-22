@@ -189,21 +189,20 @@ class Emulator:
         """Get the list of parameter vectors in this emulator."""
         return self.sample_params
 
-    def build_params(self, nsamples,limits = None, use_existing=False):
+    def build_params(self, nsamples,limits = None):
         """Build a list of directories and parameters from a hypercube sample"""
         if limits is None:
             limits = self.param_limits
         #Consider only prior points inside the limits
         prior_points = None
-        if use_existing:
+        if np.size(self.sample_params) != 0:
             ii = np.where(np.all(self.sample_params > limits[:,0],axis=1)*np.all(self.sample_params < limits[:,1],axis=1))
             prior_points = self.sample_params[ii]
         return latin_hypercube.get_hypercube_samples(limits, nsamples,prior_points=prior_points)
 
     def gen_simulations(self, nsamples, npart=256.,box=40,samples=None):
         """Initialise the emulator by generating simulations for various parameters."""
-        if len(self.sample_params) == 0:
-            self.sample_params = self.build_params(nsamples)
+        self.sample_params = self.build_params(nsamples)
         if samples is None:
             samples = self.sample_params
         else:
@@ -216,6 +215,8 @@ class Emulator:
     def _do_ic_generation(self,ev,npart,box):
         """Do the actual IC generation."""
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
+        if os.path.exists(outdir):
+            return
         pn = self.param_names
         href = ev[pn['heref']]
         hrei = ev[pn['herei']]
@@ -370,6 +371,8 @@ class KnotEmulator(Emulator):
     def _do_ic_generation(self,ev,npart,box):
         """Do the actual IC generation."""
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
+        if os.path.exists(outdir):
+            return
         pn = self.param_names
         aq = ev[pn['alpha_q']]
         hei = ev[pn['herei']]

@@ -253,6 +253,14 @@ class Emulator:
         """Get the number of sparse parameters, those sampled by simulations."""
         return np.shape(self.param_limits)[0]
 
+    def _get_pv(self, pp, myspec):
+        """ Helper function to get a single pdf vector """
+        di = self.get_outdir(pp, strz=3)
+        if not os.path.exists(di):
+            di = self.get_outdir(pp, strz=2)
+        flux_pdf = myspec.get_snapshot_list(base=di)
+        return flux_pdf
+
     def _get_fv(self, pp,myspec):
         """Helper function to get a single flux vector."""
         di = self.get_outdir(pp, strsz=3)
@@ -271,6 +279,52 @@ class Emulator:
         """
         gp = self._get_custom_emulator(emuobj=None, max_z=max_z)
         return gp
+    
+    def get_pdf_vectors(self):
+        """ Get the flux pdfs and their parameters"""
+        
+        pvals = self.get_parameters()
+        nparams = np.shape(pvals)[1]
+        nsims = np.shape(pvals)[0]
+        assert nparams == len(self.param_names)
+        myspec = flux_pdf.MySpectra()
+        aparams = pvals
+        
+        ## No mean field calculations for flux_pdf
+        try :
+            deltaF_bins, pdf_vectors = self.load_pdf_vectors(aparams = aparams)
+        except(AssertionError, OSError):
+            print("Could not load pdf vectors, regenerating from disc")
+            pdfs = [self._get_pv(pp, myspec) for pp in pvals]
+            # No mean flux calculations
+            pdf_vectors = np.array([pdfs[i].get_flux_pdf() for i in range(nsims)])
+            deltaF_bins = pdfs[0].bins
+            assert np.all(np.abs(pdfs[0].bins/pdfs[-1].bins-1) < 10e-6)
+            self.save_pdf_vectors(aparams, deltaF_bins, pdf_vectors)
+        
+        return deltaF_bins, pdf_vectors
+
+    def save_pdf_vectors(self, aparams, deltaF_bins, pdf_vectors, savefile="emulator_pdf_vectors.hdf5"):
+        """ Save the pdf vecotrs to a file, which is the only thing read on reload """
+        save_Dir = "/work/06536/qezlou/stampede2/Spectra" 
+        save = h5py.File(os.path.join(save_Dir, savefile), 'w')
+        save.attrs["classname"] = str(self.__class__)
+        save["params"] = aparams
+        save["pdfs"] = pdf_vectors
+        save["bins"] = deltaF_bins
+        save.close()
+
+    def laod_pdf_vectors(self, aparams, savefile="emulator_pdf_vectors.hdf5"):
+        """Load flux pdf vectors from file    """
+        save_Dir = "/work/06536/qezlou/stampede2/Spectra"
+        load = h5py.File(os.path.join(save_Dir, savefile), 'r')
+        inparams= np.array(load["params"])
+        pdf_vectors = np.array(load["pdf_vectors"])
+        bins = np.array(load["bins"])
+        load.close()
+        assert np.shape(inparams) == np.shape(aparams)
+        assert np.all(inparams - aparams < 1e-3)
+        return bins, pdf_vectors
 
     def get_flux_vectors(self, max_z=4.2, kfunits="kms"):
         """Get the desired flux vectors and their parameters"""

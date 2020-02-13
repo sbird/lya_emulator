@@ -13,23 +13,23 @@ class MultiBinGP:
     """A wrapper around the emulator that constructs a separate emulator for each bin.
     Each one has a separate mean flux parameter.
     The t0 parameter fed to the emulator should be constant factors."""
-    def __init__(self, *, params, kf, powers, param_limits, singleGP=None):
+    def __init__(self, *, params, deltaF_bins, pdfs, param_limits, singleGP=None):
         #Build an emulator for each redshift separately. This means that the
         #mean flux for each bin can be separated.
         if singleGP is None:
             singleGP = SkLearnGP
-        self.kf = kf
-        self.nk = np.size(kf)
-        assert np.shape(powers)[1] % self.nk == 0
-        self.nz = int(np.shape(powers)[1]/self.nk)
-        gp = lambda i: singleGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits)
+        self.deltaF_bins = deltaF_bins
+        self.nb = np.size(deltaF_bins)
+        assert np.shape(pdfs)[1] % self.nb == 0
+        self.nz = int(np.shape(pdfs)[1]/self.nb)
+        gp = lambda i: singleGP(params=params, pdfs=pdfs[:,i*self.nb:(i+1)*self.nb], param_limits = param_limits)
         print('Number of redshifts for emulator generation =', self.nz)
         self.gps = [gp(i) for i in range(self.nz)]
 
     def predict(self,params, tau0_factors = None, use_updated_training_set=False):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
-        std = np.zeros([1,self.nk*self.nz])
-        means = np.zeros([1,self.nk*self.nz])
+        std = np.zeros([1,self.nb*self.nz])
+        means = np.zeros([1,self.nb*self.nz])
         for i, gp in enumerate(self.gps): #Looping over redshifts
             #Adjust the slope of the mean flux for this bin
             zparams = np.array(params)
@@ -39,8 +39,8 @@ class MultiBinGP:
                 (m, s) = gp.predict(zparams)
             else:
                 (m, s) = gp.predict_from_updated_training_set(zparams)
-            means[0,i*self.nk:(i+1)*self.nk] = m
-            std[:,i*self.nk:(i+1)*self.nk] = s
+            means[0,i*self.nb:(i+1)*self.nb] = m
+            std[:,i*self.nb:(i+1)*self.nb] = s
         return means, std
 
     def add_to_training_set(self, new_params):

@@ -36,14 +36,12 @@ def plot_pdf_Wiener_filtered(map_file=['60_512', '60_1024', '120_1024'],bins=np.
     plt.savefig('hist_deltaF.png')
 
 
-def get_pdf_Wiener_filtered(map_file=['60_512', '60_1024', '120_1024'],bins=np.arange(-1.0, 1.0, 0.02)):
+def get_pdf_Wiener_filtered(bins=np.arange(-1.0, 1.0, 0.02)):
     
-    hist = []
     
     mbin = np.array([(bins[i]+bins[i+1])/2. for i in range(0,np.size(bins)-1)])
-    for i in map_file:
-        m = np.fromfile('./spectra/maps/map_'+i+'.dat')
-        hist.append(np.histogram(m, bins=bins, density=True)[0])
+    m = np.fromfile(map_file)
+    hist = np.histogram(m, bins=bins, density=True)[0]
 
     return mbin, hist
 
@@ -87,13 +85,14 @@ def plot_noisy_spectrum(flux=False, noise = True, spec_num=320, xlims=(-1500,150
     #plt.savefig(savefig)
 
 
-def write_input_duchshund(savefile= 'ranspectra_120.hdf5', output_file='mock_deltaF',lines=10):
+def write_input_duchshund(savefile= 'ranspectra_120.hdf5', output_dir = '',output_file='mock_deltaF',lines=10):
     """ Write a binary file of [X, y, z, deltaF, sigma_delta_F] of each pixel.
         Each row would be info for a single pixel
 
     """
     # A binary file file to write the result in
-    out = open(output_file, 'wb')
+
+    out = open(output_dir+output_file, 'wb')
    
     ps_no_noise = PlottingSpectra(num = 1, base='./', savedir='./', savefile=savefile, res = 127, snr = None, CE= None, spec_res = 145)
 

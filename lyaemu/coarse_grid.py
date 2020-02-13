@@ -11,6 +11,7 @@ import h5py
 from .SimulationRunner.SimulationRunner import lyasimulation
 from . import latin_hypercube
 from . import flux_power
+from . import flux_pdf
 from . import lyman_data
 from . import gpemulator
 from .mean_flux import ConstMeanFlux
@@ -258,8 +259,8 @@ class Emulator:
         di = self.get_outdir(pp, strz=3)
         if not os.path.exists(di):
             di = self.get_outdir(pp, strz=2)
-        flux_pdf = myspec.get_snapshot_list(base=di)
-        return flux_pdf
+        single_flux_pdf = myspec.get_snapshot_list(base=di)
+        return single_flux_pdf
 
     def _get_fv(self, pp,myspec):
         """Helper function to get a single flux vector."""
@@ -269,7 +270,7 @@ class Emulator:
         powerspectra = myspec.get_snapshot_list(base=di)
         return powerspectra
 
-    def get_emulator(self, max_z=4.2):
+    def get_emulator(self, max_z=2.8):
         """ Build an emulator for the desired k_F and our simulations.
             kf gives the desired k bins in s/km.
             Mean flux rescaling is handled (if mean_flux=True) as follows:
@@ -302,7 +303,7 @@ class Emulator:
             assert np.all(np.abs(pdfs[0].bins/pdfs[-1].bins-1) < 10e-6)
             self.save_pdf_vectors(aparams, deltaF_bins, pdf_vectors)
         
-        return deltaF_bins, pdf_vectors
+        return aparams, deltaF_bins, pdf_vectors
 
     def save_pdf_vectors(self, aparams, deltaF_bins, pdf_vectors, savefile="emulator_pdf_vectors.hdf5"):
         """ Save the pdf vecotrs to a file, which is the only thing read on reload """
@@ -314,7 +315,7 @@ class Emulator:
         save["bins"] = deltaF_bins
         save.close()
 
-    def laod_pdf_vectors(self, aparams, savefile="emulator_pdf_vectors.hdf5"):
+    def load_pdf_vectors(self, aparams, savefile="emulator_pdf_vectors.hdf5"):
         """Load flux pdf vectors from file    """
         save_Dir = "/work/06536/qezlou/stampede2/Spectra"
         load = h5py.File(os.path.join(save_Dir, savefile), 'r')
@@ -398,11 +399,12 @@ class Emulator:
         assert np.all(inparams - aparams < 1e-3)
         return kfmpc, kfkms, flux_vectors
 
-    def _get_custom_emulator(self, *, emuobj, max_z=4.2):
+    def _get_custom_emulator(self, *, emuobj, max_z=2.8):
         """Helper to allow supporting different emulators."""
-        aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
+        #aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
+        aparams, deltaF_bins, pdf_vectors = self.get_pdf_vectors() 
         plimits = self.get_param_limits(include_dense=True)
-        gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
+        gp = gpemulator.MultiBinGP(params=aparams, deltaF_bins = deltaF_bins, pdfs = pdf_vectors, param_limits = plimits, singleGP=emuobj)
         return gp
 
 class KnotEmulator(Emulator):

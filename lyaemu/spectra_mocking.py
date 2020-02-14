@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import array
 import h5py
 import seaborn as sn
+import os
+import subprocess
 
 def plot_pdf_Wiener_filtered(map_file=['60_512', '60_1024', '120_1024'],bins=np.arange(-1.0, 1.0, 0.02)):
     
@@ -85,21 +87,22 @@ def plot_noisy_spectrum(flux=False, noise = True, spec_num=320, xlims=(-1500,150
     #plt.savefig(savefig)
 
 
-def write_input_duchshund(savefile= 'ranspectra_120.hdf5', output_dir = '',output_file='mock_deltaF',lines=10):
+def write_input_dachshund(spec_dir= './', spec_file= 'ranspectra_120.hdf5', map_dir = './',input_file='mock_deltaF'):
     """ Write a binary file of [X, y, z, deltaF, sigma_delta_F] of each pixel.
         Each row would be info for a single pixel
 
     """
     # A binary file file to write the result in
-
-    out = open(output_dir+output_file, 'wb')
+    if not os.path.exists(map_dir):
+        os.mkdir(map_dir)
+    out = open(map_dir+input_file, 'wb')
    
-    ps_no_noise = PlottingSpectra(num = 1, base='./', savedir='./', savefile=savefile, res = 127, snr = None, CE= None, spec_res = 145)
+    ps_no_noise = PlottingSpectra(num = 1, base='./', savedir= spec_dir, savefile=spec_file, res = 127, snr = None, CE= None, spec_res = 145)
 
-    deltaF = get_deltaF(savefile= savefile, lines=lines)
+    deltaF = get_deltaF(savefile= spec_file, lines= np.size(ps_no_noise.axis))
 
     ## Calculate total noise
-    CNR = get_CNR(lines=lines)
+    CNR = get_CNR(lines= np.size(ps_no_noise.axis))
     CE = get_CE(CNR)
     
     ## noise for pixels along each spectrum
@@ -108,11 +111,41 @@ def write_input_duchshund(savefile= 'ranspectra_120.hdf5', output_dir = '',outpu
     ## find the position of the pixels along the spectrum
     dy = ps_no_noise.dvbin/ps_no_noise.velfac
 
-    for i in range(lines):
+    for i in range(np.size(ps_no_noise.axis)):
         for j in range(np.size(deltaF[0])):
             array.array('d', [ps_no_noise.cofm[i][0]/1000., dy*j*1.0/1000., ps_no_noise.cofm[i][2]/1000., tot_noise[i], deltaF[i,j]]).tofile(out)
            
     out.close()
+
+def run_dachshund(map_dir='', input_file='', map_file='map.dat'):
+    """ Uses bash commands to run dachshund on already written input files """
+    def write_config_fle():
+ 
+        f = open('Config_'+input_file[8:]+'.cfg', w)
+
+        f_p = open('body.cfg','r')
+
+        line_config = f_p.readlines()
+        f_p.close()
+        
+        line_config[-1] = 'map_path = '+map_file
+        line_config [-2] = 'pixel_data_path =' + input_file
+
+        for L in line_config:
+            L += "\n"
+            f.writelines(L)
+
+        f.close()
+
+    input_file= os.path.join(map_dir, input_file)
+
+
+    cur_dir = os.getcwd()
+    os.chdir(map_dir)
+    write_config_file()
+
+    sunprocess.call('./dachshund.exe '+mapfile, shell=True)
+
 
 
 

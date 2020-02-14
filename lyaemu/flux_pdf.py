@@ -49,21 +49,23 @@ class FluxPDF(object):
         
         my_spectra_dir = '/work/06536/qezlou/stampede2/Spectra/'
         my_spectra_dir = path.join(my_spectra_dir, "SPECTRA_"+str(num).rjust(3,'0'))
-        #Write input file for dachshund
-        sm.write_input_dachshund(savefile='', output_file='')
+
+
 
         ## I will pass just the mean redshift of LATIS, so self.snaps will only have that snpashot
         for i in range(0, len(self.snaps)):
             num = self.snaps[i]
             ss = self.snaps[i]
-            my_spectra_dir = path.join(my_spectra_dir, "SPECTRA_"+str(num).rjust(3,'0'))
+            spec_dir = path.join(my_spectra_dir, "SPECTRA_"+str(num).rjust(3,'0'))
             map_dir = "/work/06536/qezlou/stampede2/3DMap/"
-            map_file = str(num).rjust(3,'0')+'.dat'
-            sm.write_input_duchshund(savefile='lya_forest_spectra.hdf5', out_dir=map_dir, output_file=map_file)
-            mbin, hist = sm.get_pdf_Wiener_filtered(map_file = map_dir+map_file)
+            input_file = 'input_'+str(num).rjust(3,'0')+'.dat'
+            sm.write_input_dachshund(spec_dir = spec_dir, spec_file='lya_forest_spectra.hdf5', map_dir=map_dir, input_file=input_file)
+
+            sm.run_dachshund(map_dir= map_dir, input_file= input_file, map_file= 'map_'+str(num).rjust(3,'0')+'.dat')
+            mbin, pdf = sm.get_pdf_Wiener_filtered(map_file = map_dir+map_file)
 
 
-        return (mbin, hist)
+        return (mbin, pdf)
     
     def get_zout(self):
         """Get output redshifts"""

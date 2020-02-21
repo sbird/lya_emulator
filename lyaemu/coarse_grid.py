@@ -11,7 +11,7 @@ import h5py
 from .SimulationRunner.SimulationRunner import lyasimulation
 from . import latin_hypercube
 from . import flux_power
-from . import flux_pdf
+from . import deltaF_pdf
 from . import lyman_data
 from . import gpemulator
 from .mean_flux import ConstMeanFlux
@@ -70,6 +70,7 @@ class Emulator:
             self.mf = mf
 
         self.set_maxk()
+        self.bins = np.arange(-1.0, 1.0, 0.02)
         #This is the Planck best-fit value. We do not have to change it because
         #it is a) very well measured and b) mostly degenerate with the mean flux.
         self.omegabh2 = 0.0224
@@ -280,30 +281,49 @@ class Emulator:
         """
         gp = self._get_custom_emulator(emuobj=None, max_z=max_z)
         return gp
-    
-    def get_pdf_vectors(self):
-        """ Get the flux pdfs and their parameters"""
-        
+
+    def get_pdf_vectors(self, max_z=4.2, kfunits="kms"):
+        """Get the desired flux vectors and their parameters"""
         pvals = self.get_parameters()
         nparams = np.shape(pvals)[1]
         nsims = np.shape(pvals)[0]
         assert nparams == len(self.param_names)
-        myspec = flux_pdf.MySpectra()
+        myspec = deltaF_pdf.MySpectra(max_z=max_z, bins=self.bins)
         aparams = pvals
-        
-        ## No mean field calculations for flux_pdf
-        try :
-            deltaF_bins, pdf_vectors = self.load_pdf_vectors(aparams = aparams)
-        except(AssertionError, OSError):
-            print("Could not load pdf vectors, regenerating from disc")
+        #Note this gets tau_0 as a linear scale factor from the observed power law
+        dpvals = self.mf.get_params()
+        nuggets = np.zeros_like(pvals[:,0])
+        #Savefile prefix
+        mfc = "cc"
+        if dpvals is not None:
+            #Add a small offset to the mean flux in each simulation to improve support
+            nuggets = np.arange(nsims)/nsims * (dpvals[-1] - dpvals[0])/(np.size(dpvals)+1)
+            newdp = dpvals[0] + (dpvals-dpvals[0]) / (np.size(dpvals)+1) * np.size(dpvals)
+            #Make sure we don't overflow the parameter limits
+            assert (newdp[-1] + nuggets[-1] < dpvals[-1]) and (newdp[0] + nuggets[0] >= dpvals[0])
+            dpvals = newdp
+            aparams = np.array([np.concatenate([dp+nuggets[i],pvals[i]]) for dp in dpvals for i in range(nsims)])
+            mfc = "mf"
+        try:
+            deltaF_bins, pdf_vectors = self.load_pdf_vectors(aparams, mfc=mfc)
+        except (AssertionError, OSError):
+            print("Could not load flux vectors, regenerating from disc")
             pdfs = [self._get_pv(pp, myspec) for pp in pvals]
-            # No mean flux calculations
-            pdf_vectors = np.array([pdfs[i].get_flux_pdf() for i in range(nsims)])
-            deltaF_bins = pdfs[0].bins
-            assert np.all(np.abs(pdfs[0].bins/pdfs[-1].bins-1) < 10e-6)
-            self.save_pdf_vectors(aparams, deltaF_bins, pdf_vectors)
-        
-        return aparams, deltaF_bins, pdf_vectors
+            mef = lambda pp: self.mf.get_mean_flux(myspec.zout, params=pp)[0]
+            if dpvals is not None:
+                deltaF_vectors = np.array([pdfs[i].get_deltaF_pdf(mean_fluxes = mef(dp+nuggets[i])) for dp in dpvals for i in range(nsims)])
+                deltaF_bins = pdfs[0].bins
+
+            else:
+                deltaF_vectors = np.array([pdfs[i].get_deltaF_pdf(mean_fluxes = mef(dpvals)) for i in range(nsims)])
+                deltaF_bins = pdfs[0].bins
+
+            #Same in all boxes
+            self.save_pdf_vectors(aparams, deltaF_bins, deltaF_vectors, mfc=mfc)
+        assert np.shape(deltaF_vectors)[0] == np.shape(aparams)[0]
+        return aparams, deltaF_bins, deltaF_vectors
+
+
 
     def save_pdf_vectors(self, aparams, deltaF_bins, pdf_vectors, savefile="emulator_pdf_vectors.hdf5"):
         """ Save the pdf vecotrs to a file, which is the only thing read on reload """

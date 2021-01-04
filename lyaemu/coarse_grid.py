@@ -351,6 +351,24 @@ class Emulator:
         gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
         return gp
 
+    def do_loo_cross_validation(self, *, remove=None, max_z=4.2):
+        """Do cross-validation by constructing an emulator missing
+           a single simulation and checking accuracy.
+           The remove parameter chooses which simulation to leave out. If None this is random."""
+        aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
+        if remove is None:
+            pvals = self.get_parameters()
+            nsims = np.shape(pvals)[0]
+            rng = np.random.default_rng()
+            remove = rng.integers(0,nsims)
+        aparams_rem = np.delete(aparams, remove)
+        flux_vectors_rem = np.delete(flux_vectors, remove)
+        plimits = self.get_param_limits(include_dense=True)
+        gp = gpemulator.MultiBinGP(params=aparams_rem, kf=kf, powers = flux_vectors_rem, param_limits = plimits)
+        flux_predict = gp.predict(aparams[remove])
+        return flux_vectors[remove] / flux_predict - 1
+
+
 class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.
     Thermal parameters turned off."""

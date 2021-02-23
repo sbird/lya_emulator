@@ -86,7 +86,7 @@ def remove_single_parameter(center, prior_points):
     not_taken = np.setdiff1d(range(np.size(center)), already_taken)
     new_center = center[not_taken]
     assert np.size(new_center) == np.size(center) - np.size(prior_points)
-    return new_center,not_taken
+    return new_center,not_taken, np.sort(already_taken)
 
 def lhscentered(n, samples, prior_points = None):
     """
@@ -115,9 +115,9 @@ def lhscentered(n, samples, prior_points = None):
         #Remove all values within cells covered by prior samples for this parameter.
         #The prior samples must also be a latin hypercube!
         if npriors > 0:
-            H[:,j] = _center
-            new_center, not_taken = remove_single_parameter(_center, prior_points[:,j])
+            new_center, not_taken, already_taken = remove_single_parameter(_center, prior_points[:,j])
             H[not_taken, j] = np.random.permutation(new_center)
+            H[already_taken, j] = prior_points[:, j]
         else:
             H[:, j] = np.random.permutation(_center)
     assert np.shape(H) == (samples, n)

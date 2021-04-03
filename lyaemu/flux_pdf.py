@@ -43,12 +43,29 @@ class FluxPDF(object):
     def len(self):
         """Get the number of snapshots in the list"""
         return len(self.spectrae)
-    def get_flux_pdf():
+    
+    def get_flux_pdf(self):
+        """ Fet the flux contrast pdf for, I will just pass single redshift snapshot to it"""
+        
+        my_spectra_dir = '/work/06536/qezlou/stampede2/Spectra/'
+        my_spectra_dir = path.join(my_spectra_dir, "SPECTRA_"+str(num).rjust(3,'0'))
 
-        for (i, ss) in enumerate(self.spectrae):
-            mbins, hist = sm.get_pdf_Wiener_filtered()
 
-        return (mbin, hist)
+
+        ## I will pass just the mean redshift of LATIS, so self.snaps will only have that snpashot
+        for i in range(0, len(self.snaps)):
+            num = self.snaps[i]
+            ss = self.snaps[i]
+            spec_dir = path.join(my_spectra_dir, "SPECTRA_"+str(num).rjust(3,'0'))
+            map_dir = "/work/06536/qezlou/stampede2/3DMap/"
+            input_file = 'input_'+str(num).rjust(3,'0')+'.dat'
+            sm.write_input_dachshund(spec_dir = spec_dir, spec_file='lya_forest_spectra.hdf5', map_dir=map_dir, input_file=input_file)
+
+            sm.run_dachshund(map_dir= map_dir, input_file= input_file, map_file= 'map_'+str(num).rjust(3,'0')+'.dat')
+            mbin, pdf = sm.get_pdf_Wiener_filtered(map_file = map_dir+map_file)
+
+
+        return (mbin, pdf)
     
     def get_zout(self):
         """Get output redshifts"""
@@ -139,10 +156,9 @@ class MySpectra(object):
         return ss
 
     def get_snapshot_list(self, base, snappref="SPECTRA_"):
-        """Get the flux power spectrum in the format used by McDonald 2004
-        for a snapshot set."""
+        """Get the flux pdf """
         #print('Looking for spectra in', base)
-        flux_dist = FluxPDF()
+        fluxpdf = FluxPDF()
         for snap in range(9,13):
 	    ## Added a new adress for my directory because I have no write permission on Simeon's Directory
             my_spectra_dir = '/work/06536/qezlou/stampede2/Spectra/'
@@ -155,20 +171,20 @@ class MySpectra(object):
                     if not os.path.exists(snapdir):
                         continue
             #We have all we need
-            if flux_dist.len() == np.size(self.zout):
+            if fluxpdf.len() == np.size(self.zout):
                 break
             try:
                 ss = self._get_spectra_snap(snap, base)
 #                 print('Found spectra in', ss)
                 if ss is not None:
-                    flux_dist.add_snapshot(snap,ss)
+                    fluxpdf.add_snapshot(snap,ss)
             except IOError:
                 print("Didn't find any spectra because of IOError")
                 continue
         #Make sure we have enough outputs
-        if flux_dist.len() != np.size(self.zout):
-            raise ValueError("Found only",flux_dist.len(),"of",np.size(self.zout),"from snaps:",flux_dist.snaps)
-        return flux_dist
+        if fluxpdf.len() != np.size(self.zout):
+            raise ValueError("Found only",fluxpdf.len(),"of",np.size(self.zout),"from snaps:",fluxpdf.snaps)
+        return fluxpdf
 
 def _get_header_attr_from_snap(attr, num, base):
     """Get a header attribute from a snapshot, if it exists."""

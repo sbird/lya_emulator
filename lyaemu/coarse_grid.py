@@ -11,6 +11,7 @@ import h5py
 from .SimulationRunner.SimulationRunner import lyasimulation
 from . import latin_hypercube
 from . import flux_power
+from . import deltaF_pdf
 from . import lyman_data
 from . import gpemulator
 from .mean_flux import ConstMeanFlux
@@ -69,6 +70,7 @@ class Emulator:
             self.mf = mf
 
         self.set_maxk()
+        self.bins = np.arange(-1.0, 1.0, 0.02)
         #This is the Planck best-fit value. We do not have to change it because
         #it is a) very well measured and b) mostly degenerate with the mean flux.
         self.omegabh2 = 0.0224
@@ -253,6 +255,14 @@ class Emulator:
         """Get the number of sparse parameters, those sampled by simulations."""
         return np.shape(self.param_limits)[0]
 
+    def _get_pv(self, pp, myspec):
+        """ Helper function to get a single pdf vector """
+        di = self.get_outdir(pp, strz=3)
+        if not os.path.exists(di):
+            di = self.get_outdir(pp, strz=2)
+        single_flux_pdf = myspec.get_snapshot_list(base=di)
+        return single_flux_pdf
+
     def _get_fv(self, pp,myspec):
         """Helper function to get a single flux vector."""
         di = self.get_outdir(pp, strsz=3)
@@ -261,7 +271,7 @@ class Emulator:
         powerspectra = myspec.get_snapshot_list(base=di)
         return powerspectra
 
-    def get_emulator(self, max_z=4.2):
+    def get_emulator(self, max_z=2.8):
         """ Build an emulator for the desired k_F and our simulations.
             kf gives the desired k bins in s/km.
             Mean flux rescaling is handled (if mean_flux=True) as follows:
@@ -271,6 +281,71 @@ class Emulator:
         """
         gp = self._get_custom_emulator(emuobj=None, max_z=max_z)
         return gp
+
+    def get_pdf_vectors(self, max_z=4.2, kfunits="kms"):
+        """Get the desired flux vectors and their parameters"""
+        pvals = self.get_parameters()
+        nparams = np.shape(pvals)[1]
+        nsims = np.shape(pvals)[0]
+        assert nparams == len(self.param_names)
+        myspec = deltaF_pdf.MySpectra(max_z=max_z, bins=self.bins)
+        aparams = pvals
+        #Note this gets tau_0 as a linear scale factor from the observed power law
+        dpvals = self.mf.get_params()
+        nuggets = np.zeros_like(pvals[:,0])
+        #Savefile prefix
+        mfc = "cc"
+        if dpvals is not None:
+            #Add a small offset to the mean flux in each simulation to improve support
+            nuggets = np.arange(nsims)/nsims * (dpvals[-1] - dpvals[0])/(np.size(dpvals)+1)
+            newdp = dpvals[0] + (dpvals-dpvals[0]) / (np.size(dpvals)+1) * np.size(dpvals)
+            #Make sure we don't overflow the parameter limits
+            assert (newdp[-1] + nuggets[-1] < dpvals[-1]) and (newdp[0] + nuggets[0] >= dpvals[0])
+            dpvals = newdp
+            aparams = np.array([np.concatenate([dp+nuggets[i],pvals[i]]) for dp in dpvals for i in range(nsims)])
+            mfc = "mf"
+        try:
+            deltaF_bins, pdf_vectors = self.load_pdf_vectors(aparams, mfc=mfc)
+        except (AssertionError, OSError):
+            print("Could not load flux vectors, regenerating from disc")
+            pdfs = [self._get_pv(pp, myspec) for pp in pvals]
+            mef = lambda pp: self.mf.get_mean_flux(myspec.zout, params=pp)[0]
+            if dpvals is not None:
+                deltaF_vectors = np.array([pdfs[i].get_deltaF_pdf(mean_fluxes = mef(dp+nuggets[i])) for dp in dpvals for i in range(nsims)])
+                deltaF_bins = pdfs[0].bins
+
+            else:
+                deltaF_vectors = np.array([pdfs[i].get_deltaF_pdf(mean_fluxes = mef(dpvals)) for i in range(nsims)])
+                deltaF_bins = pdfs[0].bins
+
+            #Same in all boxes
+            self.save_pdf_vectors(aparams, deltaF_bins, deltaF_vectors, mfc=mfc)
+        assert np.shape(deltaF_vectors)[0] == np.shape(aparams)[0]
+        return aparams, deltaF_bins, deltaF_vectors
+
+
+
+    def save_pdf_vectors(self, aparams, deltaF_bins, pdf_vectors, savefile="emulator_pdf_vectors.hdf5"):
+        """ Save the pdf vecotrs to a file, which is the only thing read on reload """
+        save_Dir = "/work/06536/qezlou/stampede2/Spectra" 
+        save = h5py.File(os.path.join(save_Dir, savefile), 'w')
+        save.attrs["classname"] = str(self.__class__)
+        save["params"] = aparams
+        save["pdfs"] = pdf_vectors
+        save["bins"] = deltaF_bins
+        save.close()
+
+    def load_pdf_vectors(self, aparams, savefile="emulator_pdf_vectors.hdf5"):
+        """Load flux pdf vectors from file    """
+        save_Dir = "/work/06536/qezlou/stampede2/Spectra"
+        load = h5py.File(os.path.join(save_Dir, savefile), 'r')
+        inparams= np.array(load["params"])
+        pdf_vectors = np.array(load["pdf_vectors"])
+        bins = np.array(load["bins"])
+        load.close()
+        assert np.shape(inparams) == np.shape(aparams)
+        assert np.all(inparams - aparams < 1e-3)
+        return bins, pdf_vectors
 
     def get_flux_vectors(self, max_z=4.2, kfunits="kms"):
         """Get the desired flux vectors and their parameters"""
@@ -344,11 +419,12 @@ class Emulator:
         assert np.all(inparams - aparams < 1e-3)
         return kfmpc, kfkms, flux_vectors
 
-    def _get_custom_emulator(self, *, emuobj, max_z=4.2):
+    def _get_custom_emulator(self, *, emuobj, max_z=2.8):
         """Helper to allow supporting different emulators."""
-        aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
+        #aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
+        aparams, deltaF_bins, pdf_vectors = self.get_pdf_vectors() 
         plimits = self.get_param_limits(include_dense=True)
-        gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
+        gp = gpemulator.MultiBinGP(params=aparams, deltaF_bins = deltaF_bins, pdfs = pdf_vectors, param_limits = plimits, singleGP=emuobj)
         return gp
 
     def do_loo_cross_validation(self, *, remove=None, max_z=4.2):

@@ -11,9 +11,16 @@ from . import simulationics
 class LymanAlphaSim(simulationics.SimulationICs):
     """Specialise the Simulation class for the Lyman alpha forest.
        This uses the QuickLya star formation module with sigma_8 and n_s.
+       Extra parameters are:
+        here_i - Starting redshift for Helium reionization.
+        here_f - Ending redshift for Helium reionization.
+        alpha_q - Quasar emissivity spectral index for Helium reionization
+        redend - Final redshift of the simulation
+        hireionz - Redshift for the midpoint of HI reionization
+        uvb - UV background model.
     """
     __doc__ = __doc__+simulationics.SimulationICs.__doc__
-    def __init__(self, *, here_i = 4.0, here_f = 2.8, alpha_q = 1.7, redend = 2.2, uvb="fg19", **kwargs):
+    def __init__(self, *, here_i = 4.0, here_f = 2.8, alpha_q = 1.7, redend = 2.2, hireionz=7.5, uvb="fg19", **kwargs):
         #This includes the helium reionization table!
         super().__init__(redend=redend, uvb=uvb, **kwargs)
         assert self.separate_gas
@@ -21,6 +28,8 @@ class LymanAlphaSim(simulationics.SimulationICs):
         self.here_f = here_f
         self.here_i = here_i
         self.alpha_q = alpha_q
+        #Midpoint of the HI reionization model
+        self.hireionz = hireionz
 
     def _feedback_config_options(self, config, prefix=""):
         """Config options specific to the Lyman alpha forest star formation criterion"""
@@ -63,15 +72,15 @@ class LymanAlphaSim(simulationics.SimulationICs):
         return config
 
     def generate_times(self):
-        """Snapshot outputs for lyman alpha"""
-        redshifts = np.arange(4.2, self.redend, -0.2)
+        """Snapshot outputs for lyman alpha: go to the highest redshift yet measured."""
+        redshifts = np.arange(5.6, self.redend, -0.2)
         return 1./(1.+redshifts)
 
     def genicfile(self, camb_output):
         """Overload the genic file to also generate an HI table."""
         (genic_output, genic_param) = super().genicfile(camb_output)
         uvffile = os.path.join(self.outdir, "UVFluctuationFile")
-        hi.generate_zreion_file(os.path.join(self.outdir, genic_param), uvffile, 7.5, 1.0)
+        hi.generate_zreion_file(os.path.join(self.outdir, genic_param), uvffile, self.hireionz, 1.0)
         return (genic_output, genic_param)
 
 class LymanAlphaKnotICs(LymanAlphaSim):

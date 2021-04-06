@@ -1,0 +1,6 @@
+*.pyc
+.*.swp
+*.*-swp
+__pycache__
+depends
+tests

@@ -1,0 +1,18 @@
+#language: python
+#python: 3.4
+os: linux
+compiler: gcc
+addons:
+    apt:
+        packages:
+            - libboost-test-dev
+            - libopenmpi-dev
+            - libhdf5-serial-dev
+            - libfftw3-dev
+            - libgsl0-dev
+
+install:
+    - bash prepare_travis.sh
+    - export PATH=$HOME/miniconda/bin:$PATH
+    - source activate test
+script: nosetests

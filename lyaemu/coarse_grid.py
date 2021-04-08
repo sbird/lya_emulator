@@ -8,6 +8,7 @@ import string
 import json
 import numpy as np
 import h5py
+from .SimulationRunner.SimulationRunner import galaxysimulation
 from .SimulationRunner.SimulationRunner import lyasimulation
 from . import latin_hypercube
 from . import flux_power
@@ -37,21 +38,24 @@ class Emulator:
     """
     def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1):
         if param_names is None:
-            self.param_names = {'ns':0, 'As':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6}
+            self.param_names = {'ns':0, 'As':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hizreion':7, 'bhfeedback':8}
         else:
             self.param_names = param_names
-        #Parameters: ns: 0.8 - 0.995. Notice that this is not ns at the CMB scale!
-        # As: amplitude of power spectrum at 0.5 h/Mpc scales (note slightly larger than last paper!
-        # herei: redshift at which helium reionization starts.
-        # 4.0 is default, we use a linear history with 3.5-4.5
-        # heref: redshift at which helium reionization finishes. 2.8 is default.
-        # Thermal history suggests late, HeII Lyman alpha suggests earlier.
-        # hub: hubble constant (also changes omega_M)
-        # alphaq: quasar spectral index. 1 - 2.5 Controls IGM temperature.
-        # omegam h^2: We fix omega_m h^2 = 0.143+-0.001 (Planck 2018 best-fit) and vary omega_m and h^2 to match it.
-        # h^2 itself has little effect on the forest.
+        #Parameters:
         if param_limits is None:
-            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [4.0, 4.5], [2.6, 3.2], [1.4, 2.5], [0.65, 0.75], [0.14, 0.146]])
+            self.param_limits = np.array([[0.8, 0.995], # ns: 0.8 - 0.995. Notice that this is not ns at the CMB scale!
+                                          [1.2e-09, 2.6e-09], #As: amplitude of power spectrum at 0.5 h/Mpc scales (larger than 1812.04654)!
+                                          [4.0, 4.5], #herei: redshift at which helium reionization starts.
+                                                      # 4.0 is default, we use a linear history with 3.5-4.5
+                                          [2.6, 3.2], # heref: redshift at which helium reionization finishes. 2.8 is default.
+                                                      # Thermal history suggests late, HeII Lyman alpha suggests earlier.
+                                          [1.4, 2.5], # alphaq: quasar spectral index. 1 - 2.5 Controls IGM temperature.
+                                          [0.65, 0.75], # hub: hubble constant (also changes omega_M)
+                                          [0.14, 0.146],# omegam h^2: We fix omega_m h^2 = 0.143+-0.001 (Planck 2018 best-fit) and vary omega_m and h^2 to match it.
+                                                        # h^2 itself has little effect on the forest.
+                                          [6.5,8.5],   #Mid-point of HI reionization
+                                          [0.03, 0.07]  # BH feedback parameter
+                                ])
         else:
             self.param_limits = param_limits
         if limitfac != 1:
@@ -225,10 +229,15 @@ class Emulator:
         #Convert pivot of the scalar amplitude from amplitude
         #at k = 0.5 h/Mpc (~13 Mpc) to pivot scale of 0.05
         ns = ev[pn['ns']]
+        hireionz = ev[pn['hireionz']]
+        bhfeedback = ev[pn['bhfeedback']]
         om0 = ev[pn['omegamh2']]/hub**2
         omb = self.omegabh2 / hub**2
         wmap = (0.05/0.5)**(ns-1.) * ev[pn['As']]
-        ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.2, here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,unitary=True, seed=422317)
+        ss = galaxysimulation.GalaxySim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.2,
+                                         here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,
+                                         hireionz = hireionz, bhfeedback = bhfeedback,
+                                         unitary=True, seed=422317)
         try:
             ss.make_simulation()
             fpfile = os.path.join(os.path.dirname(__file__),"flux_power.py")
@@ -397,7 +406,9 @@ class KnotEmulator(Emulator):
         hub = ev[pn['hub']]
         om0 = ev[pn['omegamh2']]/hub**2
         omb = self.omegabh2 / hub**2
-        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],hubble=hub, redend=2.2, here_f = hef, here_i = hei, alpha_q = aq, omega0=om0, omegab=omb, unitary=True, seed=422317)
+        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],
+                                             hubble=hub, redend=2.2, here_f = hef, here_i = hei, alpha_q = aq, omega0=om0, omegab=omb,
+                                             unitary=True, seed=422317)
         try:
             ss.make_simulation()
         except RuntimeError as e:

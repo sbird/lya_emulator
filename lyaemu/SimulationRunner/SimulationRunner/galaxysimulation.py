@@ -1,13 +1,10 @@
 """Specialization of the Simulation class to galaxy formation simulations."""
 
-#TODO: - Seed BH masses increased to match density.
-#TODO: Which parameters to vary?
-
+import math
 import os
 import os.path
 import shutil
 import numpy as np
-from . import make_HI_reionization_table as hi
 from . import simulationics
 from . import lyasimulation
 
@@ -17,11 +14,12 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
     Extra parameters:
         bhfeedback - Amount of BH feedback."""
     __doc__ = __doc__+simulationics.SimulationICs.__doc__
-    def __init__(self, *, bhfeedback = 0.05, **kwargs):
+    def __init__(self, *, bhfeedback = 0.05, windsigma=3.7, **kwargs):
         #super generates the helium reionization table
         super().__init__(**kwargs)
         self.metalcool = "cooling_metal_UVB"
         self.bhfeedback = bhfeedback
+        self.windsigma = windsigma
 
     def _feedback_config_options(self, config, prefix=""):
         """Config options specific to the Lyman alpha forest star formation criterion"""
@@ -33,12 +31,12 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         #Stellar feedback parameters
         config['StarformationCriterion'] = 'density' #Note no h2 star formation! Different from ASTERIX.
         config['WindModel'] = 'ojft10,decouple'
-        config['WindEfficiency'] = 2.0
         config['WindOn'] = 1
         config['MetalCoolFile'] = self.metalcool
-        config['WindEnergyFraction'] = 1.0
+        #Wind speed normalisation
         config['WindSigma0'] = 353.0 #km/s
-        config['WindSpeedFactor'] = 3.7
+        #Wind speed: controls the strength of the supernova feedback. Default is 3.7
+        config['WindSpeedFactor'] = self.windsigma
         config['MetalReturnOn'] = 1
         #SPH parameters
         config['DensityKernelType'] = 'quintic'
@@ -53,11 +51,23 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         config['BlackHoleFeedbackMethod'] = "spline | mass"
         #2 generations only for numerical sanity.
         config['Generations'] = 2
-        #FIXME: Make this scale with mass of a DM particle.
-        config['SeedBHDynMass'] = 1e-3
+        #This scales with the mass of a DM particle because
+        #it stops the DM scattering the BH out of the halo.
+        #Newton's constant in Mpc^3 / (internal mass units)
+        #cm^3 g^-1 s^-2/(H0/h) -> Mpc^3  (10^10 Msun)^-1
+        GravpH = 6.672e-8/ 3.086e+24**3 * 1.989e+43 / (3.2407789e-18)**2
+        #Total mass of DM in the box in internal mass units/h.
+        omegatomass = self.box**3 / (8 * math.pi * GravpH)
+        DMmass = (self.omega0 - self.omegab) * omegatomass / self.npart**3
+        barmass = self.omegab * omegatomass / self.npart**3
+        starmass = barmass/ config['Generations']
+        config['SeedBHDynMass'] = DMmass * 1.5
+        #This is set by the smallest observed SMBH so leave it alone.
         config['MinFoFMassForNewSeed'] = 0.5
+        #This is basically "any stars" so leave it alone
         config['MinMStarForNewSeed'] = 2e-4
         #Real seed mass: no dynamical effect. Power law distributed.
+        #In practice this only affects subgrid accretion so leave it alone.
         config['SeedBlackHoleMass'] = 3.0e-6
         config['MaxSeedBlackHoleMass'] = 3.0e-5
         config['SeedBlackHoleMassIndex'] = -2

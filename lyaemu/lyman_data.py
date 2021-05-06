@@ -52,7 +52,7 @@ class SDSSData(object):
         return np.linalg.inv(self.covar)
 
     def get_covar(self, zbin=None):
-        """Get the inverse covariance matrix"""
+        """Get the covariance matrix"""
         _ = zbin
         return self.covar
 
@@ -101,5 +101,5 @@ class BOSSData(SDSSData):
         return covar_matrix
 
     def get_covar_diag(self):
-        """Get the covariance matrix"""
+        """Get the diagonal of the covariance matrix"""
         return self.covar_diag

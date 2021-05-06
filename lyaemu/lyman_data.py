@@ -87,12 +87,14 @@ class BOSSData(SDSSData):
 
     def get_covar(self, zbin=None):
         """Get the covariance matrix"""
+        # Note, DR9 and DR14 datasets report correlation matrices,
+        # hence the conversion factor (outer product of covar_diag)
         if zbin is None:
-            return self.covar * self.covar_diag
+            # return the full covariance matrix (all redshifts)
+            return self.covar * np.outer(np.sqrt(self.covar_diag), np.sqrt(self.covar_diag))
+        # return the covariance matrix for a specified redshift
         ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01)) #Elements in full matrix for given z
         rr = (np.min(ii), np.max(ii)+1)
-        #return self.covar[rr[0]:rr[1],rr[0]:rr[1]] * self.covar_diag[rr[0]:rr[1]]
-        #Bug fix
         std_diag_single_z = np.sqrt(self.covar_diag[rr[0]:rr[1]])
         covar_matrix = self.covar[rr[0]:rr[1], rr[0]:rr[1]] * np.outer(std_diag_single_z, std_diag_single_z)
         npt.assert_allclose(np.diag(covar_matrix), self.covar_diag[rr[0]:rr[1]], atol=1.e-16)

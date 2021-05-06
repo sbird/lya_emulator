@@ -59,31 +59,58 @@ class SDSSData(object):
 class BOSSData(SDSSData):
     """A class to store the flux power and corresponding covariance matrix from BOSS."""
     def __init__(self, datafile=None, covardir=None):
-
         cdir = os.path.dirname(__file__)
-        if datafile is None:
+        
+        # by default load the more recent data, from DR14: Chanbanier 2019, arXiv:1812.03554
+        if datafile is None or datafile is 'dr14':
+            datafile = os.path.join(cdir,"data/boss_dr14_data/Pk1D_data.dat")
+            covarfile = os.path.join(cdir, "data/boss_dr14_data/Pk1D_cor.dat")
+            systfile = os.path.join(cdir, "data/boss_dr14_data/Pk1D_syst.dat")
+            # Read BOSS DR14 flux power data.
+            # Fourth column: statistical uncertainty
+            # Fifth and Sixth column (unused) are noise and side-band powers
+            data = np.loadtxt(datafile)
+            self.redshifts = data[:,0]
+            self.kf = data[:,1]
+            self.pf = data[:,2]
+            self.nz = np.size(self.get_redshifts())
+            self.nk = np.size(self.get_kf())
+            assert self.nz * self.nk == np.size(self.kf)
+            # systematic uncertainies (8 contributions):
+            # continuum, noise, resolution, SB, linemask, DLAmask, DLAcompleteness, BALcompleteness
+            syst = np.loadtxt(systfile)
+            self.covar_diag = np.sum(syst**2, axis=1) + data[:, 3]**2
+            # The correlation matrix, correlating each k and z bin with every other.
+            # file includes a series of 13 (for each z bin) 35x35 matrices
+            corr = np.loadtxt(covarfile)
+            self.covar = np.zeros((len(self.redshifts),len(self.redshifts))) #Full covariance matrix (35*13 x 35*13) for k, z
+            for bb in range(self.nz):
+                dd = corr[35*bb:35*(bb+1)] # k-bin covariance matrix (35 x 35) for single redshift
+                self.covar[35*bb:35*(bb+1), 35*bb:35*(bb+1)] = dd #Filling in block matrices along diagonal
+        
+        # load the older dataset, from DR9: Palanque-Delabrouille 2013, arXiv:1306.5896
+        elif datafile is 'dr9':
             datafile = os.path.join(cdir,"data/boss_dr9_data/table4a.dat")
-        if covardir is None:
             covardir = os.path.join(cdir, "data/boss_dr9_data")
-        # Read SDSS best-fit data.
-        # Contains the redshift wavenumber from SDSS
-        # See Readme file.
-        # Fourth column: square roots of covariance diagonal
-        data = np.loadtxt(datafile)
-        self.redshifts = data[:,2]
-        self.kf = data[:,3]
-        self.pf = data[:,4]
-        self.nz = np.size(self.get_redshifts())
-        self.nk = np.size(self.get_kf())
-        assert self.nz * self.nk == np.size(self.kf)
-        self.covar_diag = data[:,5]**2 + data[:,8]**2
-        #The covariance matrix, correlating each k and z bin with every other.
-        #kbins vary first, so that we have 11 bins with z=2.2, then 11 with z=2.4,etc.
-        self.covar = np.zeros((len(self.redshifts),len(self.redshifts))) #Full covariance matrix (35*12 x 35*12) for k,z
-        for bb in range(12):
-            dfile = os.path.join(covardir,"cct4b"+str(bb+1)+".dat")
-            dd = np.loadtxt(dfile) #k-bin covariance matrix (35 x 35) for single redshift
-            self.covar[35*bb:35*(bb+1),35*bb:35*(bb+1)] = dd #Filling in block matrices along diagonal
+            # Read BOSS DR9 flux power data. See Readme file.
+            # Sixth column: statistical uncertainty
+            # Ninth column: systematic uncertainty
+            # correlation matrices for each redshift stored in separate files, "cct4b##.dat"
+            data = np.loadtxt(datafile)
+            self.redshifts = data[:,2]
+            self.kf = data[:,3]
+            self.pf = data[:,4]
+            self.nz = np.size(self.get_redshifts())
+            self.nk = np.size(self.get_kf())
+            assert self.nz * self.nk == np.size(self.kf)
+            self.covar_diag = data[:,5]**2 + data[:,8]**2
+            # The correlation matrix, correlating each k and z bin with every other.
+            # kbins vary first, so that we have 11 bins with z=2.2, then 11 with z=2.4, etc.
+            self.covar = np.zeros((len(self.redshifts), len(self.redshifts))) #Full matrix (35*12 x 35*12) for k, z
+            for bb in range(self.nz):
+                dfile = os.path.join(covardir,"cct4b"+str(bb+1)+".dat")
+                dd = np.loadtxt(dfile) #k-bin correlation matrix (35 x 35) for single redshift
+                self.covar[35*bb:35*(bb+1),35*bb:35*(bb+1)] = dd #Filling in block matrices along diagonal
 
     def get_covar(self, zbin=None):
         """Get the covariance matrix"""

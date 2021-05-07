@@ -36,6 +36,23 @@ def SiIIIcorr(fSiIII, tau_eff, kf):
     aa = fSiIII/(1-np.exp(-tau_eff))
     return 1 + aa**2 + 2 * aa * _siIIIcorr(kf)
 
+def DLAcorr(kf, z, alpha):
+    """The correction for DLA contamination, from arXiv:1706.08532"""
+    # fit values and pivot redshift directly from arXiv:1706.08532
+    z_0 = 2
+    # parameter order: LLS, Sub-DLA, Small-DLA, Large-DLA
+    a_0 = np.array([2.2001, 1.5083, 1.1415, 0.8633])
+    a_1 = np.array([0.0134, 0.0994, 0.0937, 0.2943])
+    b_0 = np.array([36.449, 81.388, 162.95, 429.58])
+    b_1 = np.array([-0.0674, -0.2287, 0.0126, -0.4964])
+    # compute the z-dependent correction terms
+    a_z = a_0 * ((1+z)/(1+z_0))**a_1
+    b_z = b_0 * ((1+z)/(1+z_0))**b_1
+    factor = np.ones(kf.size) # alpha_0 degenerate with mean flux, set to 1
+    for i in range(4):
+        factor += alpha[i] * ((1+z)/(1+z_0))**-3.55 * (a_z[i]*np.exp(b_z[i]*kf) - 1)**-2
+    return factor
+
 def gelman_rubin(chain):
     """Compute the Gelman-Rubin statistic for a chain"""
     ssq = np.var(chain, axis=1, ddof=1)

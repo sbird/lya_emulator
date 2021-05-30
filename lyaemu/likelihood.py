@@ -97,7 +97,8 @@ class LikelihoodClass:
         self._inverse_BOSS_covariance_full = None
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
-        #'Data' now is a simulation
+        #Default data is flux power from Chabanier 2019 (BOSS DR14)
+        #Pass datafile='dr9' to use data from Palanque-Delabrouille 2013
         self.max_z = max_z
         myspec = flux_power.MySpectra(max_z=max_z)
         self.zout = myspec.zout
@@ -258,11 +259,15 @@ class LikelihoodClass:
             covar_bin = self.sdss.get_covar(sdssz[zbin])
         return covar_bin
 
-    def do_sampling(self, savefile, datadir, nwalkers=150, burnin=3000, nsamples=3000, while_loop=True, include_emulator_error=True, maxsample=20):
+    def do_sampling(self, savefile, datadir=None, nwalkers=150, burnin=3000, nsamples=3000, while_loop=True, include_emulator_error=True, maxsample=20):
         """Initialise and run emcee."""
         pnames = self.emulator.print_pnames()
-        #Load the data directory
-        self.data_fluxpower = load_data(datadir, kf=self.kf, t0=self.t0_training_value)
+        if datadir is None:
+            #Default is to use the flux power data from BOSS (dr14 or dr9)
+            self.data_fluxpower = self.BOSS_flux_power.flatten()
+        else:
+            #Load the data directory (i.e. use a simulation flux power as data)
+            self.data_fluxpower = load_data(datadir, kf=self.kf, t0=self.t0_training_value)
         #Set up mean flux
         if self.mf_slope:
             pnames = [('dtau0',r'd\tau_0'),]+pnames

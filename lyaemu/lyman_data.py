@@ -20,7 +20,7 @@ class SDSSData(object):
         data = np.loadtxt(datafile)
         self.redshifts = data[:,0]
         self.kf = data[:,1]
-        self.pf = data[:,1]
+        self.pf = data[:,2]
         self.nz = np.size(self.get_redshifts())
         self.nk = np.size(self.get_kf())
         assert self.nz * self.nk == np.size(self.kf)

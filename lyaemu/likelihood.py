@@ -254,7 +254,7 @@ class LikelihoodClass:
         npt.assert_allclose(sdssz, self.zout, atol=1.e-16)
         #print('SDSS redshifts are', sdssz)
         if zbin < 0:
-            covar_bin = self.sdss.get_covar(sdssz)
+            covar_bin = self.sdss.get_covar()
         else:
             covar_bin = self.sdss.get_covar(sdssz[zbin])
         return covar_bin

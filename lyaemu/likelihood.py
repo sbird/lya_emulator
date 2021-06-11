@@ -326,6 +326,7 @@ class LikelihoodClass:
             if while_loop is False:
                 break
         self.flatchain = emcee_sampler.flatchain
+        np.savetxt(savefile+'_lnprob', emcee_sampler.flatlnprobability)
         return emcee_sampler
 
     def new_parameter_limits(self, confidence=0.99, include_dense=False):

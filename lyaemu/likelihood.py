@@ -190,7 +190,7 @@ class LikelihoodClass:
         completely correlated with each z bin, as the emulator
         parameters are estimated once per z bin."""
         if data_power is None:
-            data_power = self.data_fluxpower
+            data_power = np.copy(self.data_fluxpower)
         #Set parameter limits as the hull of the original emulator.
         if np.any(params >= self.param_limits[:,1]) or np.any(params <= self.param_limits[:,0]):
             return -np.inf

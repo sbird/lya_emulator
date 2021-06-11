@@ -306,7 +306,9 @@ class LikelihoodClass:
         p0 = [cent+2*pr/16.*np.random.rand(self.ndim)-pr/16. for _ in range(nwalkers)]
         assert np.all([np.isfinite(self.likelihood(pp, include_emu=include_emulator_error)) for pp in p0])
         emcee_sampler = emcee.EnsembleSampler(nwalkers, self.ndim, self.likelihood, args=(include_emulator_error,))
+        start = datetime.now()
         pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
+        print('Burnin completion time:', str(datetime.now()-start))
         #Check things are reasonable
         assert np.all(emcee_sampler.acceptance_fraction > 0.01)
         emcee_sampler.reset()
@@ -314,7 +316,9 @@ class LikelihoodClass:
         gr = 10.
         count = 0
         while np.any(gr > 1.01) and count < maxsample:
+            start = datetime.now()
             emcee_sampler.run_mcmc(pos, nsamples)
+            print(str(count+1)+'/'+str(maxsample)+' completion time:', str(datetime.now()-start))
             gr = gelman_rubin(emcee_sampler.chain)
             print("Total samples:",nsamples," Gelman-Rubin: ",gr)
             np.savetxt(savefile, emcee_sampler.flatchain)

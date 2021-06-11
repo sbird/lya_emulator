@@ -90,7 +90,7 @@ def load_data(datadir, *, kf, max_z=4.2, t0=1.):
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z = 4.2, emulator_class="standard", t0_training_value = 1., optimise_GP=True, emulator_json_file='emulator_params.json'):
+    def __init__(self, basedir, mean_flux='s', max_z = 4.2, emulator_class="standard", t0_training_value = 1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
 
         #Stored BOSS covariance matrix
@@ -144,6 +144,16 @@ class LikelihoodClass:
             #Shrink param limits t0 so that even with
             #a slope they are within the emulator range
             self.param_limits[1,:] = t0_factor
+        self.data_params = {}
+        if data_corr:
+            self.ndim = np.shape(self.param_limits)[0]
+            # Create some useful objects for implementing the DLA and SiIII corrections
+            self.dnames = [('a_lls',r'\alpha_{lls}'),('a_sub',r'\alpha_{sub}'),('a_sdla',r'\alpha_{sdla}'),('a_ldla',r'\alpha_{ldla}'),('fSiIII','fSiIII')]
+            self.data_params = {self.dnames[i][0]:np.arange(self.ndim, self.ndim+np.shape(self.dnames)[0])[i] for i in range(np.shape(self.dnames)[0])}
+            # Limits for the data correction parameters
+            alpha_limits = np.repeat(np.array([[-1., 1.]]), 4, axis=0)
+            fSiIII_limits = np.array([-0.03, 0.03])
+            self.param_limits = np.vstack([self.param_limits, alpha_limits, fSiIII_limits])
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
         print('Beginning to generate emulator at', str(datetime.now()))
@@ -185,7 +195,7 @@ class LikelihoodClass:
         if np.any(params >= self.param_limits[:,1]) or np.any(params <= self.param_limits[:,0]):
             return -np.inf
 
-        okf, predicted, std = self.get_predicted(params, use_updated_training_set=use_updated_training_set)
+        okf, predicted, std = self.get_predicted(params[:self.ndim-len(self.data_params)], use_updated_training_set=use_updated_training_set)
 
         nkf = int(np.size(self.kf))
         nz = np.shape(predicted)[0]
@@ -195,6 +205,12 @@ class LikelihoodClass:
 
         for bb in range(nz):
             idp = np.where(self.kf >= okf[bb][0])
+            if len(self.data_params) != 0:
+                # First, apply the DLA correction to the prediction
+                predicted[bb] = predicted[bb]*DLAcorr(okf[bb], self.zout[bb], params[self.data_params['a_lls']:self.data_params['a_ldla']+1])
+                # Then apply the SiIII correction
+                tau_eff = 0.0046*(1+self.zout[bb])**3.3 # model from Palanque-Delabrouille 2013, arXiv:1306.5896
+                predicted[bb] = predicted[bb]*SiIIIcorr(params[self.data_params['fSiIII']], tau_eff, okf[bb])
             diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
             std_bin = std[bb]
             bindx = np.min(idp)
@@ -211,6 +227,12 @@ class LikelihoodClass:
             (_, cdet) = np.linalg.slogdet(covar_bin)
             dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
             chi2 += dcd -0.5* cdet
+            # Add a prior to the DLA and SiIII correction parameters (zero-centered normal)
+            if len(self.data_params) != 0:
+                sigma_dla = 0.2 # somewhat arbitrary values for the prior widths
+                chi2 += -np.sum((params[self.data_params['a_lls']:self.data_params['a_ldla']+1]/sigma_dla)**2)
+                sigma_siIII = 1e-2
+                chi2 += -(params[self.data_params['fSiIII']]/sigma_siIII)**2
             assert 0 > chi2 > -2**31
             assert not np.isnan(chi2)
         return chi2
@@ -271,6 +293,9 @@ class LikelihoodClass:
         #Set up mean flux
         if self.mf_slope:
             pnames = [('dtau0',r'd\tau_0'),]+pnames
+        # Add DLA, SiIII correction parameters
+        if len(self.data_params) != 0:
+            pnames = pnames + self.dnames
         with open(savefile+"_names.txt",'w') as ff:
             for pp in pnames:
                 ff.write("%s %s\n" % pp)

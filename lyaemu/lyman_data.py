@@ -117,7 +117,7 @@ class BOSSData(SDSSData):
         # Note, DR9 and DR14 datasets report correlation matrices,
         # hence the conversion factor (outer product of covar_diag)
         if zbin is None:
-            # return the full covariance matrix (all redshifts)
+            # return the full covariance matrix (all redshifts) sorted in blocks from low to high redshift
             return self.covar * np.outer(np.sqrt(self.covar_diag), np.sqrt(self.covar_diag))
         # return the covariance matrix for a specified redshift
         ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01)) #Elements in full matrix for given z

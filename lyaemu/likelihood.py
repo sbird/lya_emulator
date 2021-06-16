@@ -71,10 +71,13 @@ def invert_block_diagonal_covariance(full_covariance_matrix, n_blocks):
     inverse_covariance_matrix = np.zeros_like(full_covariance_matrix)
     nz = n_blocks
     nk = int(full_covariance_matrix.shape[0] / nz)
-    for z in range(nz): #Loop over blocks by redshift
+    for i, z in zip(range(nz), reversed(range(nz))): #Loop over blocks by redshift
         start_index = nk * z
         end_index = nk * (z + 1)
         inverse_covariance_block = npl.inv(full_covariance_matrix[start_index:end_index, start_index:end_index])
+        # Reverse the order of the full matrix so it runs from high to low redshift
+        start_index = nk * i
+        end_index = nk * (i + 1)
         inverse_covariance_matrix[start_index:end_index, start_index:end_index] = inverse_covariance_block
     return inverse_covariance_matrix
 
@@ -276,7 +279,8 @@ class LikelihoodClass:
         npt.assert_allclose(sdssz, self.zout, atol=1.e-16)
         #print('SDSS redshifts are', sdssz)
         if zbin < 0:
-            covar_bin = self.sdss.get_covar()
+            # Returns the covariance matrix in block format for all redshifts up to max_z (sorted low to high redshift)
+            covar_bin = self.sdss.get_covar()[:sdssz.shape[0]*self.kf.shape[0], :sdssz.shape[0]*self.kf.shape[0]]
         else:
             covar_bin = self.sdss.get_covar(sdssz[zbin])
         return covar_bin

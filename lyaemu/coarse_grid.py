@@ -36,7 +36,7 @@ class Emulator:
     - mf: mean flux object, which takes mean flux parameters and outputs the mean flux in each redshift bin
     - limitfac: factor to uniformly grow the parameter limits by.
     """
-    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1):
+    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1, tau_thresh=None):
         if param_names is None:
             self.param_names = {'ns':0, 'As':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8, 'windsigma':9}
         else:
@@ -79,6 +79,7 @@ class Emulator:
         self.omegabh2 = 0.0224
         self.sample_params = []
         self.basedir = os.path.expanduser(basedir)
+        self.tau_thresh = tau_thresh
         if not os.path.exists(basedir):
             os.mkdir(basedir)
 
@@ -176,6 +177,7 @@ class Emulator:
         """Load parameters from a textfile."""
         kf = self.kf
         mf = self.mf
+        tau_thresh = self.tau_thresh
         real_basedir = self.basedir
         with open(os.path.join(real_basedir, dumpfile), 'r') as jsin:
             indict = json.load(jsin)
@@ -183,6 +185,7 @@ class Emulator:
         self._fromarray()
         self.kf = kf
         self.mf = mf
+        self.tau_thresh = tau_thresh
         self.basedir = real_basedir
         self.set_maxk()
 
@@ -312,11 +315,11 @@ class Emulator:
             powers = [self._get_fv(pp, myspec) for pp in pvals]
             mef = lambda pp: self.mf.get_mean_flux(myspec.zout, params=pp)[0]
             if dpvals is not None:
-                flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes = mef(dp+nuggets[i])) for dp in dpvals for i in range(nsims)])
+                flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes = mef(dp+nuggets[i]), tau_thresh=self.tau_thresh) for dp in dpvals for i in range(nsims)])
                 #'natively' binned k values in km/s units as a function of redshift
                 kfkms = [ps.get_kf_kms() for _ in dpvals for ps in powers]
             else:
-                flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes = mef(dpvals)) for i in range(nsims)])
+                flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes = mef(dpvals), tau_thresh=self.tau_thresh) for i in range(nsims)])
                 #'natively' binned k values in km/s units as a function of redshift
                 kfkms = [ps.get_kf_kms() for ps in powers]
             #Same in all boxes
@@ -332,6 +335,8 @@ class Emulator:
 
     def save_flux_vectors(self, aparams, kfmpc, kfkms, flux_vectors, mfc="mf", savefile="emulator_flux_vectors.hdf5"):
         """Save the flux vectors and parameters to a file, which is the only thing read on reload."""
+        if self.tau_thresh is not None:
+            savefile = savefile[:-5]+'_tau'+str(int(self.tau_thresh))+savefile[-5:]
         save = h5py.File(os.path.join(self.basedir, mfc+"_"+savefile), 'w')
         save.attrs["classname"] = str(self.__class__)
         save["params"] = aparams
@@ -343,6 +348,8 @@ class Emulator:
 
     def load_flux_vectors(self, aparams, mfc="mf", savefile="emulator_flux_vectors.hdf5"):
         """Save the flux vectors and parameters to a file, which is the only thing read on reload."""
+        if self.tau_thresh is not None:
+            savefile = savefile[:-5]+'_tau'+str(int(self.tau_thresh))+savefile[-5:]
         load = h5py.File(os.path.join(self.basedir, mfc+"_"+savefile), 'r')
         inparams = np.array(load["params"])
         flux_vectors = np.array(load["flux_vectors"])

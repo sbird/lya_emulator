@@ -81,19 +81,19 @@ def invert_block_diagonal_covariance(full_covariance_matrix, n_blocks):
         inverse_covariance_matrix[start_index:end_index, start_index:end_index] = inverse_covariance_block
     return inverse_covariance_matrix
 
-def load_data(datadir, *, kf, max_z=4.2, t0=1.):
+def load_data(datadir, *, kf, max_z=4.2, t0=1., tau_thresh=None):
     """Load and initialise a "fake data" flux power spectrum"""
     #Load the data directory
     myspec = flux_power.MySpectra(max_z=max_z)
     pps = myspec.get_snapshot_list(datadir)
     #self.data_fluxpower is used in likelihood.
-    data_fluxpower = pps.get_power(kf=kf, mean_fluxes=np.exp(-t0*mflux.obs_mean_tau(myspec.zout, amp=0)))
+    data_fluxpower = pps.get_power(kf=kf, mean_fluxes=np.exp(-t0*mflux.obs_mean_tau(myspec.zout, amp=0)), tau_thresh=tau_thresh)
     assert np.size(data_fluxpower) % np.size(kf) == 0
     return data_fluxpower
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z=4.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True):
+    def __init__(self, basedir, mean_flux='s', max_z=4.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
 
         #Stored BOSS covariance matrix
@@ -132,7 +132,7 @@ class LikelihoodClass:
         else:
             mf = mflux.MeanFluxFactor()
         if emulator_class == "standard":
-            self.emulator = coarse_grid.Emulator(basedir, kf=self.kf, mf=mf)
+            self.emulator = coarse_grid.Emulator(basedir, kf=self.kf, mf=mf, tau_thresh=tau_thresh)
         elif emulator_class == "knot":
             self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.kf, mf=mf)
         elif emulator_class == "quadratic":

@@ -39,7 +39,7 @@ class FluxPower(object):
         """Get the number of snapshots in the list"""
         return len(self.spectrae)
 
-    def get_power(self, kf, mean_fluxes):
+    def get_power(self, kf, mean_fluxes, tau_thresh=None):
         """Generate a flux power spectrum rebinned to be like the flux power from BOSS.
         This can be used as an artificial data vector."""
         mf = None
@@ -47,7 +47,7 @@ class FluxPower(object):
         for (i,ss) in enumerate(self.spectrae):
             if mean_fluxes is not None:
                 mf = mean_fluxes[i]
-            kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
+            kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf, tau_thresh=tau_thresh)
             #Rebin flux power to have desired k bins
             rebinned=scipy.interpolate.interpolate.interp1d(kf_sim,flux_power_sim)
             ii = np.where(kf > kf_sim[0])
@@ -59,7 +59,7 @@ class FluxPower(object):
         self.drop_table()
         return flux_arr
 
-    def get_power_native_binning(self, mean_fluxes):
+    def get_power_native_binning(self, mean_fluxes, tau_thresh=None):
         """ Generate the flux power, with known optical depth, from a list of snapshots.
             maxk should be in comoving Mpc/h.
             kf is stored in comoving Mpc/h units.
@@ -70,7 +70,7 @@ class FluxPower(object):
         for (i,ss) in enumerate(self.spectrae):
             if mean_fluxes is not None:
                 mf = mean_fluxes[i]
-            kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf)
+            kf_sim, flux_power_sim = ss.get_flux_power_1D("H",1,1215, mean_flux_desired=mf, tau_thresh=tau_thresh)
             #Store k_F in comoving Mpc/h units, so that it is independent of redshift.
             vscale = ss.velfac * 3.085678e24/ss.units.UnitLength_in_cm
             kf_sim *= vscale

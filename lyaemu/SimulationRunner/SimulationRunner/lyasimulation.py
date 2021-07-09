@@ -61,10 +61,13 @@ class LymanAlphaSim(simulationics.SimulationICs):
         except NameError:
             self.qsolightup = 0
         config['QSOLightupOn'] = self.qsolightup
-        config['QSOMeanBubble'] = 30000
+        #Default bubble size and variance follows McQuinn 2009, Method II, Figure 2.
+        config['QSOMeanBubble'] = 35000
+        config['QSOVarBubble'] = 10000
         if self.box < 60000:
             #Use a smaller bubble in small boxes
             config['QSOMeanBubble'] = 10000
+            config['QSOVarBubble'] = 5000
             #And smaller halos: Tinker HMF has 30 of these in a 40Mpc box at z=4.
             config['QSOMinMass'] = 50
         config['ReionHistFile'] = hefile

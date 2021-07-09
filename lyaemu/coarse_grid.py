@@ -206,7 +206,9 @@ class Emulator:
         return latin_hypercube.get_hypercube_samples(limits, nsamples,prior_points=prior_points)
 
     def gen_simulations(self, nsamples, npart=256.,box=40,samples=None):
-        """Initialise the emulator by generating simulations for various parameters."""
+        """Initialise the emulator by generating simulations for various parameters.
+        Box size is in Mpc/h, not Mpc so that the bins of the flux power spectrum in s/km are at fixed values
+        no matter the cosmology."""
         self.sample_params = self.build_params(nsamples)
         if samples is None:
             samples = self.sample_params

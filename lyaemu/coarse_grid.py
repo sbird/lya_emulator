@@ -6,6 +6,7 @@ import shutil
 import glob
 import string
 import json
+import math
 import numpy as np
 import h5py
 from .SimulationRunner.SimulationRunner import galaxysimulation

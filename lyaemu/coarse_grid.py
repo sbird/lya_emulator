@@ -38,7 +38,7 @@ class Emulator:
     """
     def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1):
         if param_names is None:
-            self.param_names = {'ns':0, 'As':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8, 'windsigma':9}
+            self.param_names = {'ns':0, 'As':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8}
         else:
             self.param_names = param_names
         #Parameters:
@@ -55,7 +55,7 @@ class Emulator:
                                                         # h^2 itself has little effect on the forest.
                                           [6.5,8.5],   #Mid-point of HI reionization
                                           [0.03, 0.07],  # BH feedback parameter
-                                          [3.2, 4.2] # Wind speed
+                                       #   [3.2, 4.2] # Wind speed
                                 ])
         else:
             self.param_limits = param_limits
@@ -232,13 +232,12 @@ class Emulator:
         ns = ev[pn['ns']]
         hireionz = ev[pn['hireionz']]
         bhfeedback = ev[pn['bhfeedback']]
-        windsigma = ev[pn['windsigma']]
         om0 = ev[pn['omegamh2']]/hub**2
         omb = self.omegabh2 / hub**2
         wmap = (0.05/0.5)**(ns-1.) * ev[pn['As']]
         ss = galaxysimulation.GalaxySim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.0,
                                          here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,
-                                         hireionz = hireionz, bhfeedback = bhfeedback, windsigma = windsigma,
+                                         hireionz = hireionz, bhfeedback = bhfeedback,
                                          unitary=True, seed=422317)
         try:
             ss.make_simulation()

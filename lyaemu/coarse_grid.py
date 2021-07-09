@@ -19,7 +19,7 @@ from .mean_flux import ConstMeanFlux
 def get_latex(key):
     """Get a latex name if it exists, otherwise return the key."""
     #Names for pretty-printing some parameters in Latex
-    print_names = { 'ns': r'n_\mathrm{s}', 'As': r'A_\mathrm{s}', 'herei': r'z_\mathrm{He i}', 'heref': r'z_\mathrm{He f}', 'hub':'h', 'tau0':r'\tau_0', 'dtau0':r'd\tau_0'}
+    print_names = { 'ns': r'n_\mathrm{s}', 'Ap': r'A_\mathrm{P}', 'herei': r'z_\mathrm{He i}', 'heref': r'z_\mathrm{He f}', 'hub':'h', 'tau0':r'\tau_0', 'dtau0':r'd\tau_0'}
     try:
         return print_names[key]
     except KeyError:
@@ -38,13 +38,13 @@ class Emulator:
     """
     def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1):
         if param_names is None:
-            self.param_names = {'ns':0, 'As':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8}
+            self.param_names = {'ns':0, 'Ap':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8}
         else:
             self.param_names = param_names
         #Parameters:
         if param_limits is None:
             self.param_limits = np.array([[0.8, 0.995], # ns: 0.8 - 0.995. Notice that this is not ns at the CMB scale!
-                                          [1.2e-09, 2.6e-09], #As: amplitude of power spectrum at 0.5 h/Mpc scales (larger than 1812.04654)!
+                                          [1.2e-09, 2.6e-09], #Ap: amplitude of power spectrum at 8/2pi Mpc scales (see 1812.04654)!
                                           [4.0, 4.5], #herei: redshift at which helium reionization starts.
                                                       # 4.0 is default, we use a linear history with 3.5-4.5
                                           [2.6, 3.2], # heref: redshift at which helium reionization finishes. 2.8 is default.
@@ -139,7 +139,7 @@ class Emulator:
         #Convert pivot of the scalar amplitude from amplitude
         #at 8 Mpc (k = 0.78) to pivot scale of 0.05
         conv = (0.05/(2*math.pi/8.))**(sics["ns"]-1.)
-        ev[pn['As']] = wmap / conv
+        ev[pn['Ap']] = wmap / conv
         return ev
 
     def reconstruct(self):
@@ -234,7 +234,7 @@ class Emulator:
         bhfeedback = ev[pn['bhfeedback']]
         om0 = ev[pn['omegamh2']]/hub**2
         omb = self.omegabh2 / hub**2
-        wmap = (0.05/(2*math.pi/8.))**(ns-1.) * ev[pn['As']]
+        wmap = (0.05/(2*math.pi/8.))**(ns-1.) * ev[pn['Ap']]
         ss = galaxysimulation.GalaxySim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.0,
                                          here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,
                                          hireionz = hireionz, bhfeedback = bhfeedback,
@@ -429,6 +429,6 @@ def get_simulation_parameters_s8(base, dt0=0, t0=1, pivot=0.05):
     jsin = open(os.path.join(base, "SimulationICs.json"), 'r')
     pp = json.load(jsin)
     #Change the pivot value
-    As = pp['scalar_amp'] / (pivot/0.5)**(pp['ns']-1.)
-    parvec = [dt0, t0, pp['ns'], As, pp['herei'], pp['heref'],pp['alphaq'], pp["hubble"]]
+    Ap = pp['scalar_amp'] / (pivot/(2*math.pi/8))**(pp['ns']-1.)
+    parvec = [dt0, t0, pp['ns'], Ap, pp['herei'], pp['heref'],pp['alphaq'], pp["hubble"]]
     return parvec

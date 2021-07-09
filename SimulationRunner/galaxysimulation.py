@@ -37,7 +37,7 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         config['WindSigma0'] = 353.0 #km/s
         #Wind speed: controls the strength of the supernova feedback. Default is 3.7
         config['WindSpeedFactor'] = self.windsigma
-        config['MetalReturnOn'] = 1
+        config['MetalReturnOn'] = 0
         config['WindFreeTravelLength'] = 0
         #SPH parameters
         config['DensityKernelType'] = 'quintic'

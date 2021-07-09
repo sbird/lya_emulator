@@ -137,8 +137,8 @@ class Emulator:
         ev[pn['ns']] = sics["ns"]
         wmap = sics["scalar_amp"]
         #Convert pivot of the scalar amplitude from amplitude
-        #at k = 0.5 (~13 Mpc) to pivot scale of 0.05
-        conv = (0.05/(0.5))**(sics["ns"]-1.)
+        #at 8 Mpc (k = 0.78) to pivot scale of 0.05
+        conv = (0.05/(2*math.pi/8.))**(sics["ns"]-1.)
         ev[pn['As']] = wmap / conv
         return ev
 
@@ -228,13 +228,13 @@ class Emulator:
         aq = ev[pn['alphaq']]
         hub = ev[pn['hub']]
         #Convert pivot of the scalar amplitude from amplitude
-        #at k = 0.5 h/Mpc (~13 Mpc) to pivot scale of 0.05
+        #at 8 Mpc (k = 0.78) to pivot scale of 0.05
         ns = ev[pn['ns']]
         hireionz = ev[pn['hireionz']]
         bhfeedback = ev[pn['bhfeedback']]
         om0 = ev[pn['omegamh2']]/hub**2
         omb = self.omegabh2 / hub**2
-        wmap = (0.05/0.5)**(ns-1.) * ev[pn['As']]
+        wmap = (0.05/(2*math.pi/8.))**(ns-1.) * ev[pn['As']]
         ss = galaxysimulation.GalaxySim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.0,
                                          here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,
                                          hireionz = hireionz, bhfeedback = bhfeedback,

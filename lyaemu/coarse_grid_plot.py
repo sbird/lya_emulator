@@ -159,9 +159,10 @@ def plot_test_loo_interpolate(emulatordir, savedir=None, plotname="", max_z=4.2,
     errlist = np.array([])
     nred = len(zout)
     dist_col = dc.get_distinct(nred)
-    nsims = np.shape(params.get_parameters())[0]
+    parameters = params.get_parameters()
+    nsims = np.shape(parameters)[0]
     for ii in range(nsims):
-        (kf, pkdiff, errrr) = params.do_loo_cross_validation(remove=ii)
+        (kf, pkdiff, errrr) = params.do_loo_cross_validation(remove=ii, max_z=max_z)
         errlist = np.concatenate([errlist, errrr])
         for i in range(nred):
             nk = np.size(kf)
@@ -171,7 +172,7 @@ def plot_test_loo_interpolate(emulatordir, savedir=None, plotname="", max_z=4.2,
         plt.ylabel(r"Predicted/Exact-1")
         plt.ylim(-0.08,0.08)
         #plt.xticks([1e-3, 1e-2, 0.05],[r"$10^{-3}$",r"$10^{-2}$","0.05"])
-        name = params.build_dirname(ii, include_dense=True)
+        name = params.build_dirname(parameters[ii,:], include_dense=True)
 #         plt.title(name)
         #plt.xlim(1e-3, 0.052)
         plt.legend(loc='upper left', ncol=4)

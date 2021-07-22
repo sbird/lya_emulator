@@ -23,7 +23,7 @@ class MultiBinGP:
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = int(np.shape(powers)[1]/self.nk)
         gp = lambda i: singleGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits)
-        print('Number of redshifts for emulator generation =', self.nz)
+        print('Number of redshifts for emulator generation=%d nk= %d' % (self.nz, self.nk))
         self.gps = [gp(i) for i in range(self.nz)]
 
     def predict(self,params, tau0_factors = None, use_updated_training_set=False):

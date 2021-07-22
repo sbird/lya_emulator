@@ -377,9 +377,9 @@ class Emulator:
         flux_vectors_rem = np.delete(flux_vectors, remove, axis=0)
         plimits = self.get_param_limits(include_dense=True)
         gp = gpemulator.MultiBinGP(params=aparams_rem, kf=kf, powers = flux_vectors_rem, param_limits = plimits)
-        flux_predict, _ = gp.predict(aparams[remove, :].reshape(1, -1))
-        return kf, flux_vectors[remove,:] / flux_predict - 1
-
+        flux_predict, std_predict = gp.predict(aparams[remove, :].reshape(1, -1))
+        err = (flux_vectors[remove,:] - flux_predict[0])/std_predict[0]
+        return kf, flux_vectors[remove,:] / flux_predict[0] - 1, err
 
 class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.

@@ -161,7 +161,7 @@ def plot_test_loo_interpolate(emulatordir, savedir=None, plotname="", max_z=4.2,
     dist_col = dc.get_distinct(nred)
     nsims = np.shape(params.get_parameters())[0]
     for ii in range(nsims):
-        (kf, pkdiff, errrr) = params.do_loo_cross_validation(ii)
+        (kf, pkdiff, errrr) = params.do_loo_cross_validation(remove=ii)
         errlist = np.concatenate([errlist, errrr])
         for i in range(nred):
             nk = np.size(kf)

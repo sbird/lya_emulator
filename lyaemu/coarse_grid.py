@@ -241,7 +241,7 @@ class Emulator:
         ss = galaxysimulation.GalaxySim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.0,
                                          here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,
                                          hireionz = hireionz, bhfeedback = bhfeedback,
-                                         unitary=True, seed=422317)
+                                         unitary=True, seed=422317, timelimit=6)
         try:
             ss.make_simulation()
             fpfile = os.path.join(os.path.dirname(__file__),"flux_power.py")

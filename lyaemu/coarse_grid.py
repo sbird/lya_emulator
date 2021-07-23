@@ -136,6 +136,9 @@ class Emulator:
         ev[pn['alphaq']] = sics["alpha_q"]
         ev[pn['hub']] = sics["hubble"]
         ev[pn['ns']] = sics["ns"]
+        ev[pn['omegamh2']] = sics["omega0"]*sics["hubble"]**2
+        ev[pn['hireionz']] = sics["hireionz"]
+        ev[pn['bhfeedback']] = sics["bhfeedback"]
         wmap = sics["scalar_amp"]
         #Convert pivot of the scalar amplitude from amplitude
         #at 8 Mpc (k = 0.78) to pivot scale of 0.05

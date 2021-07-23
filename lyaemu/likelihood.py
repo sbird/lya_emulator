@@ -379,13 +379,15 @@ class LikelihoodClass:
 
     def optimise_acquisition_function(self, starting_params, datadir=None, optimisation_bounds='default', optimisation_method=None, iteration_number=1, delta=0.5, nu=1., exploitation_weight=1., integration_bounds='default'):
         """Find parameter vector (marginalised over mean flux parameters) at maximum of (GP-UCB) acquisition function"""
+        assert self.mf_slope
+        param_limits_no_mf = self.param_limits[2:,:]
         if datadir is not None:
             self.data_fluxpower = load_data(datadir, kf=self.kf, t0=self.t0_training_value)
         if optimisation_bounds == 'default': #Default to prior bounds
             #optimisation_bounds = [tuple(self.param_limits[2 + i]) for i in range(starting_params.shape[0])]
             optimisation_bounds = [(1.e-7, 1. - 1.e-7) for i in range(starting_params.shape[0])] #Might get away with 1.e-7
-        optimisation_function = lambda parameter_vector: -1. * self.acquisition_function_GP_UCB_marginalised_mean_flux(map_from_unit_cube(parameter_vector, self.param_limits), iteration_number=iteration_number, delta=delta, nu=nu, exploitation_weight=exploitation_weight, integration_bounds=integration_bounds)
-        return spo.minimize(optimisation_function, map_to_unit_cube(starting_params, self.param_limits), method=optimisation_method, bounds=optimisation_bounds)
+        optimisation_function = lambda parameter_vector: -1. * self.acquisition_function_GP_UCB_marginalised_mean_flux(map_from_unit_cube(parameter_vector, param_limits_no_mf), iteration_number=iteration_number, delta=delta, nu=nu, exploitation_weight=exploitation_weight, integration_bounds=integration_bounds)
+        return spo.minimize(optimisation_function, map_to_unit_cube(starting_params, param_limits_no_mf), method=optimisation_method, bounds=optimisation_bounds)
 
     def check_for_refinement(self, conf = 0.95, thresh = 1.05):
         """Crude check for refinement: check whether the likelihood is dominated by

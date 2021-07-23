@@ -372,7 +372,7 @@ class Emulator:
         rng = np.random.default_rng()
         if subsample is not None:
             nsims = np.shape(aparams)[0]
-            reorder = rng.perturbation(nsims)
+            reorder = rng.permutation(nsims)
             aparams = aparams[reorder[:subsample]]
             flux_vectors = flux_vectors[reorder[:subsample]]
         if remove is None:

@@ -364,11 +364,17 @@ class Emulator:
         gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
         return gp
 
-    def do_loo_cross_validation(self, *, remove=None, max_z=4.2):
+    def do_loo_cross_validation(self, *, remove=None, max_z=4.2, subsample=None):
         """Do cross-validation by constructing an emulator missing
            a single simulation and checking accuracy.
            The remove parameter chooses which simulation to leave out. If None this is random."""
         aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
+        rng = np.random.default_rng()
+        if subsample is not None:
+            nsims = np.shape(aparams)[0]
+            reorder = rng.perturbation(nsims)
+            aparams = aparams[reorder[:subsample]]
+            flux_vectors = flux_vectors[reorder[:subsample]]
         if remove is None:
             nsims = np.shape(aparams)[0]
             rng = np.random.default_rng()

@@ -143,7 +143,7 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
 
     return gp, myspec.zout
 
-def plot_test_loo_interpolate(emulatordir, savedir=None, plotname="", max_z=4.2, emuclass=None):
+def plot_test_loo_interpolate(emulatordir, savedir=None, plotname="", max_z=4.2, emuclass=None, subsample=None):
     """Make a plot showing the interpolation error using a leave-one-out emulator."""
     if savedir is None:
         savedir = emulatordir
@@ -162,7 +162,7 @@ def plot_test_loo_interpolate(emulatordir, savedir=None, plotname="", max_z=4.2,
     parameters = params.get_parameters()
     nsims = np.shape(parameters)[0]
     for ii in range(nsims):
-        (kf, pkdiff, errrr) = params.do_loo_cross_validation(remove=ii, max_z=max_z)
+        (kf, pkdiff, errrr) = params.do_loo_cross_validation(remove=ii, max_z=max_z, subsample=subsample)
         errlist = np.concatenate([errlist, errrr])
         for i in range(nred):
             nk = np.size(kf)

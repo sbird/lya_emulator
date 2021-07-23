@@ -220,7 +220,7 @@ class StampedeClass(ClusterClass):
     def __init__(self, *args, nproc=2,timelimit=3,**kwargs):
         super().__init__(*args, nproc=nproc,timelimit=timelimit, **kwargs)
 
-    def _queue_directive(self, name, timelimit, nproc=2, prefix="#SBATCH",ntasks=4):
+    def _queue_directive(self, name, timelimit, nproc=2, prefix="#SBATCH",ntasks=2):
         """Generate mpi_submit with stampede specific parts"""
         _ = timelimit
         qstring = prefix+" --partition=skx-normal\n"
@@ -228,7 +228,7 @@ class StampedeClass(ClusterClass):
         qstring += prefix+" --time="+self.timestring(timelimit)+"\n"
         qstring += prefix+" --nodes=%d\n" % int(nproc)
         #Number of tasks (processes) per node:
-        #currently optimal is 2 processes per socket.
+        #currently optimal is 1 process per socket.
         qstring += prefix+" --ntasks-per-node=%d\n" % int(ntasks)
         qstring += prefix+" --mail-type=end\n"
         qstring += prefix+" --mail-user="+self.email+"\n"
@@ -239,7 +239,7 @@ class StampedeClass(ClusterClass):
         """String for MPI program to execute."""
         #Should be 96/ntasks-per-node. This uses the hyperthreading,
         #which is perhaps an extra 10% performance.
-        qstring = "export OMP_NUM_THREADS=24\n"
+        qstring = "export OMP_NUM_THREADS=48\n"
         qstring += "ibrun "+command+"\n"
         return qstring
 
@@ -275,11 +275,11 @@ class FronteraClass(StampedeClass):
         """String for MPI program to execute."""
         #Should be 96/ntasks-per-node. This uses the hyperthreading,
         #which is perhaps an extra 10% performance.
-        qstring = "export OMP_NUM_THREADS=14\n"
+        qstring = "export OMP_NUM_THREADS=28\n"
         qstring += "ibrun "+command+"\n"
         return qstring
 
-    def _queue_directive(self, name, timelimit, nproc=2, prefix="#SBATCH",ntasks=4):
+    def _queue_directive(self, name, timelimit, nproc=2, prefix="#SBATCH",ntasks=2):
         """Generate mpi_submit with stampede specific parts"""
         _ = timelimit
         qstring = prefix+" --partition=normal\n"
@@ -289,8 +289,9 @@ class FronteraClass(StampedeClass):
         #Number of tasks (processes) per node:
         #currently optimal is 2 processes per socket.
         qstring += prefix+" --ntasks-per-node=%d\n" % int(ntasks)
-        qstring += prefix+" --mail-type=end\n"
+        qstring += prefix+" --mail-type=ALL\n"
         qstring += prefix+" --mail-user="+self.email+"\n"
+        qstring += prefix+" -A AST21005\n"
         return qstring
 
     def generate_spectra_submit(self, outdir, threads=56):
@@ -301,9 +302,8 @@ class FronteraClass(StampedeClass):
 
     def cluster_optimize(self):
         """Compiler optimisation options for frontera.
-        Only MP-Gadget pays attention to this. I don't trust the compiler,
-        so these are not as aggressive as usual."""
-        return "-fopenmp -O2 -g -Wall -xCORE-AVX2 -Zp16 -fp-model fast=1"
+        Only MP-Gadget pays attention to this."""
+        return "-fopenmp -O3 -g -Wall -xCORE-AVX2 -Zp16 -fp-model fast=1"
 
 class HypatiaClass(ClusterClass):
     """Subclass for Hypatia cluster in UCL"""

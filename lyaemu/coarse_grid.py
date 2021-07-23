@@ -370,17 +370,17 @@ class Emulator:
            The remove parameter chooses which simulation to leave out. If None this is random."""
         aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
         rng = np.random.default_rng()
-        if subsample is not None:
-            nsims = np.shape(aparams)[0]
-            reorder = rng.permutation(nsims)
-            aparams = aparams[reorder[:subsample]]
-            flux_vectors = flux_vectors[reorder[:subsample]]
         if remove is None:
             nsims = np.shape(aparams)[0]
             rng = np.random.default_rng()
             remove = rng.integers(0,nsims)
         aparams_rem = np.delete(aparams, remove, axis=0)
         flux_vectors_rem = np.delete(flux_vectors, remove, axis=0)
+        if subsample is not None:
+            nsims = np.shape(aparams_rem)[0]
+            reorder = rng.permutation(nsims)
+            aparams_rem = aparams_rem[reorder[:subsample]]
+            flux_vectors_rem = flux_vectors_rem[reorder[:subsample]]
         plimits = self.get_param_limits(include_dense=True)
         gp = gpemulator.MultiBinGP(params=aparams_rem, kf=kf, powers = flux_vectors_rem, param_limits = plimits)
         flux_predict, std_predict = gp.predict(aparams[remove, :].reshape(1, -1))

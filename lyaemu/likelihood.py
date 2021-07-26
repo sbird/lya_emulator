@@ -148,6 +148,7 @@ class LikelihoodClass:
             #a slope they are within the emulator range
             self.param_limits[1, :] = t0_factor
         self.data_params = {}
+        self.dla_data_corr = data_corr
         if data_corr:
             self.ndim = np.shape(self.param_limits)[0]
             # Create some useful objects for implementing the DLA and SiIII corrections
@@ -436,7 +437,10 @@ class LikelihoodClass:
 
     def optimise_acquisition_function(self, starting_params, datadir=None, optimisation_bounds='default', optimisation_method=None, iteration_number=1, delta=0.5, nu=1., exploitation_weight=1., integration_bounds='default'):
         """Find parameter vector (marginalised over mean flux parameters) at maximum of (GP-UCB) acquisition function"""
+        #We marginalise out the mean flux parameters
         assert self.mf_slope
+        #We do not want the DLA model corrections enabled here
+        assert self.dla_data_corr == False
         param_limits_no_mf = self.param_limits[2:,:]
         if datadir is not None:
             self.data_fluxpower = load_data(datadir, kf=self.kf, t0=self.t0_training_value)

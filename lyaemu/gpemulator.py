@@ -23,7 +23,7 @@ class MultiBinGP:
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = int(np.shape(powers)[1]/self.nk)
         gp = lambda i: singleGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits)
-        print('Number of redshifts for emulator generation =', self.nz)
+        print('Number of redshifts for emulator generation=%d nk= %d' % (self.nz, self.nk))
         self.gps = [gp(i) for i in range(self.nz)]
 
     def predict(self,params, tau0_factors = None, use_updated_training_set=False):
@@ -75,8 +75,8 @@ class SkLearnGP:
         params_cube = map_to_unit_cube_list(self.params, self.param_limits)
         #Check that we span the parameter space
         for i in range(nparams):
-            assert np.max(params_cube[:,i]) > 0.9
-            assert np.min(params_cube[:,i]) < 0.1
+            assert np.max(params_cube[:,i]) > 0.8
+            assert np.min(params_cube[:,i]) < 0.2
         #print('Normalised parameter values =', params_cube)
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.

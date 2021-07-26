@@ -143,6 +143,50 @@ def plot_test_interpolate(emulatordir,testdir, savedir=None, plotname="", mean_f
 
     return gp, myspec.zout
 
+def plot_test_loo_interpolate(emulatordir, savedir=None, plotname="", max_z=4.2, emuclass=None, subsample=None):
+    """Make a plot showing the interpolation error using a leave-one-out emulator."""
+    if savedir is None:
+        savedir = emulatordir
+    if not os.path.exists(savedir):
+        os.makedirs(savedir)
+    mf = mflux.ConstMeanFlux(value=1)
+    if emuclass is None:
+        params = coarse_grid.Emulator(emulatordir, mf=mf)
+    else:
+        params = emuclass(emulatordir, mf=mf)
+    params.load()
+    zout = flux_power.MySpectra(max_z=max_z, max_k=params.maxk).zout
+    errlist = np.array([])
+    nred = len(zout)
+    dist_col = dc.get_distinct(nred)
+    parameters = params.get_parameters()
+    nsims = np.shape(parameters)[0]
+    for ii in range(nsims):
+        (kf, pkdiff, errrr) = params.do_loo_cross_validation(remove=ii, max_z=max_z, subsample=subsample)
+        errlist = np.concatenate([errlist, errrr])
+        for i in range(nred):
+            nk = np.size(kf)
+            plt.semilogx(kf,pkdiff[i*nk:(i+1)*nk],label=round(zout[i],1), color=dist_col[i])
+        #plt.yscale('log')
+        plt.xlabel(r"$k_F$ (h/mpc)")
+        plt.ylabel(r"Predicted/Exact-1")
+        plt.ylim(-0.08,0.08)
+        #plt.xticks([1e-3, 1e-2, 0.05],[r"$10^{-3}$",r"$10^{-2}$","0.05"])
+        name = params.build_dirname(parameters[ii,:], include_dense=True)
+#         plt.title(name)
+        #plt.xlim(1e-3, 0.052)
+        plt.legend(loc='upper left', ncol=4)
+        plt.tight_layout()
+        name_ending = ".pdf"
+        name = re.sub(r"\.","_",str(name))+plotname+name_ending
+        #So we can use it in a latex document
+        plt.savefig(os.path.join(savedir, name))
+        plt.clf()
+        print(name)
+    #Plot the distribution of errors, compared to a Gaussian
+    if np.all(np.isfinite(errlist)):
+        _plot_error_histogram(savedir, plotname, errlist, xlim=6., nbins=100)
+
 def plot_test_matter_interpolate(emulatordir,testdir, savedir=None, redshift=3.):
     """Make a plot showing the interpolation error for the matter power spectrum."""
     if savedir is None:

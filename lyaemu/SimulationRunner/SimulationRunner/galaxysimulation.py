@@ -37,12 +37,14 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         config['WindSigma0'] = 353.0 #km/s
         #Wind speed: controls the strength of the supernova feedback. Default is 3.7
         config['WindSpeedFactor'] = self.windsigma
-        config['MetalReturnOn'] = 1
+        config['MetalReturnOn'] = 0
+        config['WindFreeTravelLength'] = 0
         #SPH parameters
         config['DensityKernelType'] = 'quintic'
         config['DensityIndependentSphOn'] = 1
         config['OutputPotential'] = 0
         #Dynamic friction models for BH
+        config['BlackHoleOn'] = 1
         config['BlackHoleRepositionEnabled'] = 0
         config['BH_DRAG'] = 1
         config['BH_DynFrictionMethod'] = 2
@@ -78,7 +80,7 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
 
     def generate_times(self):
         """Snapshot outputs for lyman alpha"""
-        redshifts = np.arange(4.2, self.redend, -0.2)
+        redshifts = np.arange(5.4, self.redend, -0.2)
         return 1./(1.+redshifts)
 
     def genicfile(self, camb_output):

@@ -6,6 +6,7 @@ import shutil
 import glob
 import string
 import json
+import math
 import numpy as np
 import h5py
 from .SimulationRunner.SimulationRunner import galaxysimulation
@@ -19,7 +20,7 @@ from .mean_flux import ConstMeanFlux
 def get_latex(key):
     """Get a latex name if it exists, otherwise return the key."""
     #Names for pretty-printing some parameters in Latex
-    print_names = { 'ns': r'n_\mathrm{s}', 'As': r'A_\mathrm{s}', 'herei': r'z_\mathrm{He i}', 'heref': r'z_\mathrm{He f}', 'hub':'h', 'tau0':r'\tau_0', 'dtau0':r'd\tau_0'}
+    print_names = { 'ns': r'n_\mathrm{s}', 'Ap': r'A_\mathrm{P}', 'herei': r'z_\mathrm{He i}', 'heref': r'z_\mathrm{He f}', 'hub':'h', 'tau0':r'\tau_0', 'dtau0':r'd\tau_0'}
     try:
         return print_names[key]
     except KeyError:
@@ -38,13 +39,13 @@ class Emulator:
     """
     def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1, tau_thresh=None):
         if param_names is None:
-            self.param_names = {'ns':0, 'As':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8, 'windsigma':9}
+            self.param_names = {'ns':0, 'Ap':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8}
         else:
             self.param_names = param_names
         #Parameters:
         if param_limits is None:
             self.param_limits = np.array([[0.8, 0.995], # ns: 0.8 - 0.995. Notice that this is not ns at the CMB scale!
-                                          [1.2e-09, 2.6e-09], #As: amplitude of power spectrum at 0.5 h/Mpc scales (larger than 1812.04654)!
+                                          [1.2e-09, 2.6e-09], #Ap: amplitude of power spectrum at 8/2pi Mpc scales (see 1812.04654)!
                                           [4.0, 4.5], #herei: redshift at which helium reionization starts.
                                                       # 4.0 is default, we use a linear history with 3.5-4.5
                                           [2.6, 3.2], # heref: redshift at which helium reionization finishes. 2.8 is default.
@@ -55,7 +56,7 @@ class Emulator:
                                                         # h^2 itself has little effect on the forest.
                                           [6.5,8.5],   #Mid-point of HI reionization
                                           [0.03, 0.07],  # BH feedback parameter
-                                          [3.2, 4.2] # Wind speed
+                                       #   [3.2, 4.2] # Wind speed
                                 ])
         else:
             self.param_limits = param_limits
@@ -136,11 +137,14 @@ class Emulator:
         ev[pn['alphaq']] = sics["alpha_q"]
         ev[pn['hub']] = sics["hubble"]
         ev[pn['ns']] = sics["ns"]
+        ev[pn['omegamh2']] = sics["omega0"]*sics["hubble"]**2
+        ev[pn['hireionz']] = sics["hireionz"]
+        ev[pn['bhfeedback']] = sics["bhfeedback"]
         wmap = sics["scalar_amp"]
         #Convert pivot of the scalar amplitude from amplitude
-        #at k = 0.5 (~13 Mpc) to pivot scale of 0.05
-        conv = (0.05/(0.5))**(sics["ns"]-1.)
-        ev[pn['As']] = wmap / conv
+        #at 8 Mpc (k = 0.78) to pivot scale of 0.05
+        conv = (0.05/(2*math.pi/8.))**(sics["ns"]-1.)
+        ev[pn['Ap']] = wmap / conv
         return ev
 
     def reconstruct(self):
@@ -209,7 +213,9 @@ class Emulator:
         return latin_hypercube.get_hypercube_samples(limits, nsamples,prior_points=prior_points)
 
     def gen_simulations(self, nsamples, npart=256.,box=40,samples=None):
-        """Initialise the emulator by generating simulations for various parameters."""
+        """Initialise the emulator by generating simulations for various parameters.
+        Box size is in Mpc/h, not Mpc so that the bins of the flux power spectrum in s/km are at fixed values
+        no matter the cosmology."""
         self.sample_params = self.build_params(nsamples)
         if samples is None:
             samples = self.sample_params
@@ -231,18 +237,17 @@ class Emulator:
         aq = ev[pn['alphaq']]
         hub = ev[pn['hub']]
         #Convert pivot of the scalar amplitude from amplitude
-        #at k = 0.5 h/Mpc (~13 Mpc) to pivot scale of 0.05
+        #at 8 Mpc (k = 0.78) to pivot scale of 0.05
         ns = ev[pn['ns']]
         hireionz = ev[pn['hireionz']]
         bhfeedback = ev[pn['bhfeedback']]
-        windsigma = ev[pn['windsigma']]
         om0 = ev[pn['omegamh2']]/hub**2
         omb = self.omegabh2 / hub**2
-        wmap = (0.05/0.5)**(ns-1.) * ev[pn['As']]
-        ss = galaxysimulation.GalaxySim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.2,
+        wmap = (0.05/(2*math.pi/8.))**(ns-1.) * ev[pn['Ap']]
+        ss = galaxysimulation.GalaxySim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.0,
                                          here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,
-                                         hireionz = hireionz, bhfeedback = bhfeedback, windsigma = windsigma,
-                                         unitary=True, seed=422317)
+                                         hireionz = hireionz, bhfeedback = bhfeedback,
+                                         unitary=True, seed=422317, timelimit=6)
         try:
             ss.make_simulation()
             fpfile = os.path.join(os.path.dirname(__file__),"flux_power.py")
@@ -369,22 +374,28 @@ class Emulator:
         gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
         return gp
 
-    def do_loo_cross_validation(self, *, remove=None, max_z=4.2):
+    def do_loo_cross_validation(self, *, remove=None, max_z=4.2, subsample=None):
         """Do cross-validation by constructing an emulator missing
            a single simulation and checking accuracy.
            The remove parameter chooses which simulation to leave out. If None this is random."""
         aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
+        rng = np.random.default_rng()
         if remove is None:
             nsims = np.shape(aparams)[0]
             rng = np.random.default_rng()
             remove = rng.integers(0,nsims)
         aparams_rem = np.delete(aparams, remove, axis=0)
         flux_vectors_rem = np.delete(flux_vectors, remove, axis=0)
+        if subsample is not None:
+            nsims = np.shape(aparams_rem)[0]
+            reorder = rng.permutation(nsims)
+            aparams_rem = aparams_rem[reorder[:subsample]]
+            flux_vectors_rem = flux_vectors_rem[reorder[:subsample]]
         plimits = self.get_param_limits(include_dense=True)
         gp = gpemulator.MultiBinGP(params=aparams_rem, kf=kf, powers = flux_vectors_rem, param_limits = plimits)
-        flux_predict, _ = gp.predict(aparams[remove, :].reshape(1, -1))
-        return kf, flux_vectors[remove,:] / flux_predict - 1
-
+        flux_predict, std_predict = gp.predict(aparams[remove, :].reshape(1, -1))
+        err = (flux_vectors[remove,:] - flux_predict[0])/std_predict[0]
+        return kf, flux_vectors[remove,:] / flux_predict[0] - 1, err
 
 class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.
@@ -437,6 +448,6 @@ def get_simulation_parameters_s8(base, dt0=0, t0=1, pivot=0.05):
     jsin = open(os.path.join(base, "SimulationICs.json"), 'r')
     pp = json.load(jsin)
     #Change the pivot value
-    As = pp['scalar_amp'] / (pivot/0.5)**(pp['ns']-1.)
-    parvec = [dt0, t0, pp['ns'], As, pp['herei'], pp['heref'],pp['alphaq'], pp["hubble"]]
+    Ap = pp['scalar_amp'] / (pivot/(2*math.pi/8))**(pp['ns']-1.)
+    parvec = [dt0, t0, pp['ns'], Ap, pp['herei'], pp['heref'],pp['alphaq'], pp["hubble"]]
     return parvec

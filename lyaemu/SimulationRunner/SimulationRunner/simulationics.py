@@ -44,7 +44,7 @@ class SimulationICs:
     m_nu - neutrino mass
     unitary - if true, do not scatter modes, but use a unitary gaussian amplitude.
     """
-    def __init__(self, *, outdir, box, npart, seed = 9281110, redshift=99, redend=0, separate_gas=True, omega0=0.288, omegab=0.0472, hubble=0.7, scalar_amp=2.427e-9, ns=0.97, rscatter=False, m_nu=0, nu_hierarchy='degenerate', uvb="pu", cluster_class=clusters.StampedeClass, nu_acc=1e-5, unitary=True):
+    def __init__(self, *, outdir, box, npart, seed = 9281110, redshift=99, redend=0, separate_gas=True, omega0=0.288, omegab=0.0472, hubble=0.7, scalar_amp=2.427e-9, ns=0.97, rscatter=False, m_nu=0, nu_hierarchy='degenerate', uvb="pu", cluster_class=clusters.StampedeClass, nu_acc=1e-5, unitary=True, timelimit=1.5, nnode=2):
         #Check that input is reasonable and set parameters
         #In Mpc/h
         assert box < 20000
@@ -91,16 +91,7 @@ class SimulationICs:
         self.nu_hierarchy = nu_hierarchy
         self.outdir = outdir
         self._set_default_paths()
-        if self.npart <= 256:
-            nproc = 2
-            timelimit = 1.5
-        elif 256 < self.npart <=512:
-            nproc = 16
-            timelimit = 6
-        else:
-            nproc = 48
-            timelimit = 8
-        self._cluster = cluster_class(gadget=self.gadgetexe, param=self.gadgetparam, genic=self.genicexe, genicparam=self.genicout, nproc=nproc, timelimit=timelimit)
+        self._cluster = cluster_class(gadget=self.gadgetexe, param=self.gadgetparam, genic=self.genicexe, genicparam=self.genicout, nproc=nnode, timelimit=timelimit)
         #For repeatability, we store git hashes of Gadget, GenIC, CAMB and ourselves
         #at time of running.
         self.simulation_git = utils.get_git_hash(os.path.dirname(__file__))

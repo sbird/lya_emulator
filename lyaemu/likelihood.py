@@ -395,7 +395,7 @@ class LikelihoodClass:
         for dtau0 in np.linspace(self.param_limits[0, 0], self.param_limits[0, 1], num=n_samples):
             for tau0 in np.linspace(self.param_limits[1, 0], self.param_limits[1, 1], num=n_samples):
                 _, _, std = self.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
-                emulator_error_total += std
+                emulator_error_total += np.sum(std)
         return emulator_error_total / (n_samples ** 2)
 
     def _get_GP_UCB_exploitation_term(self, objective_function, exploitation_weight=1.):

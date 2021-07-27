@@ -359,7 +359,7 @@ class LikelihoodClass:
         detemu = self.get_covar_det(params, True)
         return detemu/detnoemu
 
-    def log_likelihood_marginalised_mean_flux(self, params, include_emu=True, integration_bounds='default', integration_options='gauss-legendre', verbose=True, integration_method='Quadrature'): #marginalised_axes=(0, 1)
+    def log_likelihood_marginalised_mean_flux(self, params, include_emu=True, integration_bounds='default', integration_options='gauss-legendre', verbose=False, integration_method='Quadrature'): #marginalised_axes=(0, 1)
         """Evaluate (Gaussian) likelihood marginalised over mean flux parameter axes: (dtau0, tau0)"""
         #assert len(marginalised_axes) == 2
         assert self.mf_slope
@@ -426,15 +426,17 @@ class LikelihoodClass:
         """Evaluate the GP-UCB at given parameter vector. This is an acquisition function for determining where to run
         new training simulations"""
         #Exploration term: least accurate part of the emulator
-        acquisition = self.get_GP_UCB_exploration_term(params, marginalise_mean_flux=marginalise_mean_flux, iteration_number=iteration_number, delta=delta, nu=nu, use_updated_training_set=use_updated_training_set)
+        exploration = self.get_GP_UCB_exploration_term(params, marginalise_mean_flux=marginalise_mean_flux, iteration_number=iteration_number, delta=delta, nu=nu, use_updated_training_set=use_updated_training_set)
         #Exploitation term: how good is the likelihood at this point
+        exploitation = 0
         if exploitation_weight is not None:
             if marginalise_mean_flux:
                 loglike = self.log_likelihood_marginalised_mean_flux(params)
             else:
                 loglike = self.likelihood(params)
-            acquisition += loglike * exploitation_weight
-        return acquisition
+            exploitation = loglike * exploitation_weight
+        print("acquis: %g explor: %g exploit:%g params:" % (exploitation+exploration,exploration,exploitation), params)
+        return exploration + exploitation
 
     def optimise_acquisition_function(self, starting_params, datadir=None, optimisation_bounds='default', optimisation_method=None, iteration_number=1, delta=0.5, nu=1., exploitation_weight=1., marginalise_mean_flux=True):
         """Find parameter vector (marginalised over mean flux parameters) at maximum of (GP-UCB) acquisition function"""

@@ -383,7 +383,7 @@ class LikelihoodClass:
         return volume_factor * function_sum / n_samples
 
     def get_GP_UCB_exploration_term(self, params, iteration_number=1, delta=0.5, nu=1.,
-                                     marginalise_mean_flux = True, use_updated_training_set=False):
+                                    marginalise_mean_flux = True, use_updated_training_set=False):
         """Evaluate the exploration term of the GP-UCB acquisition function"""
         assert iteration_number >= 1.
         assert 0. < delta < 1.
@@ -403,8 +403,8 @@ class LikelihoodClass:
                 for tau0 in np.linspace(self.param_limits[1, 0], self.param_limits[1, 1], num=n_samples):
                     _, _, std_loc = self.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
                     for ii, ss in enumerate(std_loc):
-                        std[ii] += ss/(n_samples**2+1)
-
+                        std[ii] += ss
+            [ss/=(n_samples**2+1) for ss in std]
         #Do the summation of sigma_emu^T \Sigma^{-1}_{BOSS} sigma_emu (ie, emulator error convolved with data covariance)
         posterior_estimated_error = 0
         nz = np.shape(std)[0]

@@ -395,17 +395,21 @@ class LikelihoodClass:
             okf, _, std = self.get_predicted(params, use_updated_training_set=use_updated_training_set)
         else:
             #Compute the error averaged over the mean flux
-            n_samples = 10
             dtau0 = np.mean([self.param_limits[0, 0], self.param_limits[0, 1]])
             tau0 = np.mean([self.param_limits[1, 0], self.param_limits[1, 1]])
             okf, _, std = self.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
-            for dtau0 in np.linspace(self.param_limits[0, 0], self.param_limits[0, 1], num=n_samples):
-                for tau0 in np.linspace(self.param_limits[1, 0], self.param_limits[1, 1], num=n_samples):
-                    _, _, std_loc = self.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
-                    for ii, ss in enumerate(std_loc):
-                        std[ii] += ss
-            for ss in std:
-                ss/=(n_samples**2+1)
+            n_samples = 0
+            #We don't really need to do this, because the interpolation error should always be dominated
+            #by the position in simulation parameter space: we have always used multiple mean flux points.
+            #So just use the error at the average mean flux value
+            if n_samples > 0:
+                for dtau0 in np.linspace(self.param_limits[0, 0], self.param_limits[0, 1], num=n_samples):
+                    for tau0 in np.linspace(self.param_limits[1, 0], self.param_limits[1, 1], num=n_samples):
+                        _, _, std_loc = self.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
+                        for ii, ss in enumerate(std_loc):
+                            std[ii] += ss
+                for ss in std:
+                    ss/=(n_samples**2+1)
         #Do the summation of sigma_emu^T \Sigma^{-1}_{BOSS} sigma_emu (ie, emulator error convolved with data covariance)
         posterior_estimated_error = 0
         nz = np.shape(std)[0]

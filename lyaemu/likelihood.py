@@ -404,7 +404,8 @@ class LikelihoodClass:
                     _, _, std_loc = self.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
                     for ii, ss in enumerate(std_loc):
                         std[ii] += ss
-            [ss/=(n_samples**2+1) for ss in std]
+            for ss in std:
+                ss/=(n_samples**2+1)
         #Do the summation of sigma_emu^T \Sigma^{-1}_{BOSS} sigma_emu (ie, emulator error convolved with data covariance)
         posterior_estimated_error = 0
         nz = np.shape(std)[0]

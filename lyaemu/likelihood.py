@@ -3,7 +3,6 @@ import math
 from datetime import datetime
 import mpmath as mmh
 import numpy as np
-import numpy.linalg as npl
 import numpy.random as npr
 import numpy.testing as npt
 import scipy.optimize as spo
@@ -74,7 +73,7 @@ def invert_block_diagonal_covariance(full_covariance_matrix, n_blocks):
     for i, z in zip(range(nz), reversed(range(nz))): #Loop over blocks by redshift
         start_index = nk * z
         end_index = nk * (z + 1)
-        inverse_covariance_block = npl.inv(full_covariance_matrix[start_index:end_index, start_index:end_index])
+        inverse_covariance_block = np.linalg.inv(full_covariance_matrix[start_index:end_index, start_index:end_index])
         # Reverse the order of the full matrix so it runs from high to low redshift
         start_index = nk * i
         end_index = nk * (i + 1)
@@ -84,7 +83,7 @@ def invert_block_diagonal_covariance(full_covariance_matrix, n_blocks):
 def load_data(datadir, *, kf, max_z=4.2, min_z = 2.1, t0=1., tau_thresh=None):
     """Load and initialise a "fake data" flux power spectrum"""
     #Load the data directory
-    myspec = flux_power.MySpectra(max_z=max_z, min_z=2.1)
+    myspec = flux_power.MySpectra(max_z=max_z, min_z=min_z)
     pps = myspec.get_snapshot_list(datadir)
     #self.data_fluxpower is used in likelihood.
     data_fluxpower = pps.get_power(kf=kf, mean_fluxes=np.exp(-t0*mflux.obs_mean_tau(myspec.zout, amp=0)), tau_thresh=tau_thresh)
@@ -95,9 +94,6 @@ class LikelihoodClass:
     """Class to contain likelihood computations."""
     def __init__(self, basedir, mean_flux='s', max_z=4.2, min_z=2.1, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
-
-        #Stored BOSS covariance matrix
-        self._inverse_BOSS_covariance_full = None
         #Use the BOSS covariance matrix
         self.sdss = lyman_data.BOSSData()
         #Default data is flux power from Chabanier 2019 (BOSS DR14)
@@ -246,31 +242,6 @@ class LikelihoodClass:
         """Load the chain from a savefile"""
         self.flatchain = np.loadtxt(savefile)
 
-    def log_likelihood_marginalised_mean_flux(self, params, include_emu=True, integration_bounds='default', integration_options='gauss-legendre', verbose=True, integration_method='Quadrature'): #marginalised_axes=(0, 1)
-        """Evaluate (Gaussian) likelihood marginalised over mean flux parameter axes: (dtau0, tau0)"""
-        #assert len(marginalised_axes) == 2
-        assert self.mf_slope
-        if integration_bounds == 'default':
-            integration_bounds = [list(self.param_limits[0]), list(self.param_limits[1])]
-
-        likelihood_function = lambda dtau0, tau0: mmh.exp(self.likelihood(np.concatenate(([dtau0, tau0], params)), include_emu=include_emu))
-        if integration_method == 'Quadrature':
-            integration_output = mmh.quad(likelihood_function, integration_bounds[0], integration_bounds[1], method=integration_options, error=True, verbose=verbose)
-        elif integration_method == 'Monte-Carlo':
-            integration_output = (self._do_Monte_Carlo_marginalisation(likelihood_function, n_samples=integration_options),)
-        print(integration_output)
-        return float(mmh.log(integration_output[0]))
-
-    def _do_Monte_Carlo_marginalisation(self, function, n_samples=6000):
-        """Marginalise likelihood by Monte-Carlo integration"""
-        random_samples = self.param_limits[:2, 0, np.newaxis] + (self.param_limits[:2, 1, np.newaxis] - self.param_limits[:2, 0, np.newaxis]) * npr.rand(2, n_samples)
-        function_sum = 0.
-        for i in range(n_samples):
-            print('Likelihood function evaluation number =', i + 1)
-            function_sum += function(random_samples[0, i], random_samples[1, i])
-        volume_factor = (self.param_limits[0, 1] - self.param_limits[0, 0]) * (self.param_limits[1, 1] - self.param_limits[1, 0])
-        return volume_factor * function_sum / n_samples
-
     def get_BOSS_error(self, zbin):
         """Get the BOSS covariance matrix error."""
         #Redshifts
@@ -388,67 +359,97 @@ class LikelihoodClass:
         detemu = self.get_covar_det(params, True)
         return detemu/detnoemu
 
-    def _get_emulator_error_averaged_mean_flux(self, params, use_updated_training_set=False):
-        """Get the emulator error having averaged over the mean flux parameter axes: (dtau0, tau0)"""
-        n_samples = 10
-        emulator_error_total = 0.
-        for dtau0 in np.linspace(self.param_limits[0, 0], self.param_limits[0, 1], num=n_samples):
-            for tau0 in np.linspace(self.param_limits[1, 0], self.param_limits[1, 1], num=n_samples):
-                _, _, std = self.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
-                emulator_error_total += np.sum([np.sum(ss) for ss in std])
-        return emulator_error_total / (n_samples ** 2)
+    def log_likelihood_marginalised_mean_flux(self, params, include_emu=True, integration_bounds='default', integration_options='gauss-legendre', verbose=True, integration_method='Quadrature'): #marginalised_axes=(0, 1)
+        """Evaluate (Gaussian) likelihood marginalised over mean flux parameter axes: (dtau0, tau0)"""
+        #assert len(marginalised_axes) == 2
+        assert self.mf_slope
+        if integration_bounds == 'default':
+            integration_bounds = [list(self.param_limits[0]), list(self.param_limits[1])]
+        likelihood_function = lambda dtau0, tau0: mmh.exp(self.likelihood(np.concatenate(([dtau0, tau0], params)), include_emu=include_emu))
+        if integration_method == 'Quadrature':
+            integration_output = mmh.quad(likelihood_function, integration_bounds[0], integration_bounds[1], method=integration_options, error=True, verbose=verbose)
+        elif integration_method == 'Monte-Carlo':
+            integration_output = (self._do_Monte_Carlo_marginalisation(likelihood_function, n_samples=integration_options),)
+        return float(mmh.log(integration_output[0]))
 
-    def _get_GP_UCB_exploitation_term(self, objective_function, exploitation_weight=1.):
-        """Evaluate the exploitation term of the GP-UCB acquisition function"""
-        return objective_function * exploitation_weight
+    def _do_Monte_Carlo_marginalisation(self, function, n_samples=6000):
+        """Marginalise likelihood by Monte-Carlo integration"""
+        random_samples = self.param_limits[:2, 0, np.newaxis] + (self.param_limits[:2, 1, np.newaxis] - self.param_limits[:2, 0, np.newaxis]) * npr.rand(2, n_samples)
+        function_sum = 0.
+        for i in range(n_samples):
+            print('Likelihood function evaluation number =', i + 1)
+            function_sum += function(random_samples[0, i], random_samples[1, i])
+        volume_factor = (self.param_limits[0, 1] - self.param_limits[0, 0]) * (self.param_limits[1, 1] - self.param_limits[1, 0])
+        return volume_factor * function_sum / n_samples
 
-    def _get_GP_UCB_exploration_term(self, data_vector_emulator_error, n_emulated_params, iteration_number=1, delta=0.5, nu=1.):
+    def get_GP_UCB_exploration_term(self, params, iteration_number=1, delta=0.5, nu=1.,
+                                     marginalise_mean_flux = True, use_updated_training_set=False):
         """Evaluate the exploration term of the GP-UCB acquisition function"""
-        exploration_weight = math.sqrt(nu * 2. * math.log((iteration_number**((n_emulated_params / 2.) + 2.)) * (math.pi**2) / 3. / delta))
-        if self._inverse_BOSS_covariance_full is None:
-            self._inverse_BOSS_covariance_full = invert_block_diagonal_covariance(self.get_BOSS_error(-1), self.zout.shape[0])
-        posterior_estimated_error = np.dot(data_vector_emulator_error, np.dot(self._inverse_BOSS_covariance_full, data_vector_emulator_error))
-        return exploration_weight * posterior_estimated_error
-
-    def acquisition_function_GP_UCB(self, params, iteration_number=1, delta=0.5, nu=1., exploitation_weight=1.):
-        """Evaluate the GP-UCB at given parameter vector. This is an acquisition function for determining where to run
-        new training simulations"""
         assert iteration_number >= 1.
         assert 0. < delta < 1.
-        if self.mf_slope:
-            n_emulated_params = params.shape[0] - 1
+        #if self._inverse_BOSS_covariance_full is None:
+            #self._inverse_BOSS_covariance_full = invert_block_diagonal_covariance(self.get_BOSS_error(-1), self.zout.shape[0])
+        exploration_weight = math.sqrt(nu * 2. * math.log((iteration_number**((np.shape(params)[0] / 2.) + 2.)) * (math.pi**2) / 3. / delta))
+        #Exploration term: least accurate part of the emulator
+        if not marginalise_mean_flux:
+            okf, _, std = self.get_predicted(params, use_updated_training_set=use_updated_training_set)
         else:
-            n_emulated_params = params.shape[0]
-        #exploitation_term = self.likelihood(params) * exploitation_weight #Log-posterior [weighted]
+            #Compute the error averaged over the mean flux
+            n_samples = 10
+            dtau0 = np.mean([self.param_limits[0, 0], self.param_limits[0, 1]])
+            tau0 = np.mean([self.param_limits[1, 0], self.param_limits[1, 1]])
+            okf, _, std = self.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
+            for dtau0 in np.linspace(self.param_limits[0, 0], self.param_limits[0, 1], num=n_samples):
+                for tau0 in np.linspace(self.param_limits[1, 0], self.param_limits[1, 1], num=n_samples):
+                    _, _, std_loc = self.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
+                    for ii, ss in enumerate(std_loc):
+                        std[ii] += ss/(n_samples**2+1)
 
-        exploitation = self._get_GP_UCB_exploitation_term(self.likelihood(params), exploitation_weight)
-        _, _, std = self.get_predicted(params)
-        exploration = self._get_GP_UCB_exploration_term(std, n_emulated_params, iteration_number=iteration_number, delta=delta, nu=nu)
-        return exploitation + exploration
+        #Do the summation of sigma_emu^T \Sigma^{-1}_{BOSS} sigma_emu (ie, emulator error convolved with data covariance)
+        posterior_estimated_error = 0
+        nz = np.shape(std)[0]
+        #Likelihood using full covariance matrix
+        for bb in range(nz):
+            idp = np.where(self.kf >= okf[bb][0])
+            std_bin = std[bb]
+            bindx = np.min(idp)
+            covar_bin = self.get_BOSS_error(bb)[bindx:, bindx:]
+            assert np.shape(np.outer(std_bin, std_bin)) == np.shape(covar_bin)
+            icov_bin = np.linalg.inv(covar_bin)
+            dcd = - np.dot(std_bin, np.dot(icov_bin, std_bin),)/2.
+            posterior_estimated_error += dcd
+            assert 0 > posterior_estimated_error > -2**31
+            assert not np.isnan(posterior_estimated_error)
+        return exploration_weight * posterior_estimated_error
 
-    def acquisition_function_GP_UCB_marginalised_mean_flux(self, params, iteration_number=1, delta=0.5, nu=1., exploitation_weight=1., integration_bounds='default', integration_options='gauss-legendre', use_updated_training_set=False):
-        """Evaluate the GP-UCB acquisition function, having marginalised over mean flux parameter axes: (dtau0, tau0)"""
-        if exploitation_weight is None:
-            print('No exploitation term')
-            exploitation = 0.
-        else:
-            exploitation = self._get_GP_UCB_exploitation_term(self.log_likelihood_marginalised_mean_flux(params, integration_bounds=integration_bounds, integration_options=integration_options), exploitation_weight=exploitation_weight)
-        exploration = self._get_GP_UCB_exploration_term(self._get_emulator_error_averaged_mean_flux(params, use_updated_training_set=use_updated_training_set), params.size, iteration_number=iteration_number, delta=delta, nu=nu)
-        return exploitation + exploration
+    def acquisition_function_GP_UCB(self, params, iteration_number=1, delta=0.5, nu=1., exploitation_weight=1., marginalise_mean_flux = True, use_updated_training_set=False):
+        """Evaluate the GP-UCB at given parameter vector. This is an acquisition function for determining where to run
+        new training simulations"""
+        #Exploration term: least accurate part of the emulator
+        acquisition = self.get_GP_UCB_exploration_term(params, marginalise_mean_flux=marginalise_mean_flux, iteration_number=iteration_number, delta=delta, nu=nu, use_updated_training_set=use_updated_training_set)
+        #Exploitation term: how good is the likelihood at this point
+        if exploitation_weight is not None:
+            if marginalise_mean_flux:
+                loglike = self.log_likelihood_marginalised_mean_flux(params)
+            else:
+                loglike = self.likelihood(params)
+            acquisition += loglike * exploitation_weight
+        return acquisition
 
-    def optimise_acquisition_function(self, starting_params, datadir=None, optimisation_bounds='default', optimisation_method=None, iteration_number=1, delta=0.5, nu=1., exploitation_weight=1., integration_bounds='default'):
+    def optimise_acquisition_function(self, starting_params, datadir=None, optimisation_bounds='default', optimisation_method=None, iteration_number=1, delta=0.5, nu=1., exploitation_weight=1., marginalise_mean_flux=True):
         """Find parameter vector (marginalised over mean flux parameters) at maximum of (GP-UCB) acquisition function"""
-        #We marginalise out the mean flux parameters
-        assert self.mf_slope
         #We do not want the DLA model corrections enabled here
-        assert self.dla_data_corr == False
-        param_limits_no_mf = self.param_limits[2:,:]
+        assert not self.dla_data_corr
+        #We marginalise the mean flux parameters so they should not be mapped
+        if marginalise_mean_flux:
+            param_limits_no_mf = self.param_limits[2:,:]
+            assert self.mf_slope
         if datadir is not None:
             self.data_fluxpower = load_data(datadir, kf=self.kf, t0=self.t0_training_value)
         if optimisation_bounds == 'default': #Default to prior bounds
             #optimisation_bounds = [tuple(self.param_limits[2 + i]) for i in range(starting_params.shape[0])]
             optimisation_bounds = [(1.e-7, 1. - 1.e-7) for i in range(starting_params.shape[0])] #Might get away with 1.e-7
-        optimisation_function = lambda parameter_vector: -1. * self.acquisition_function_GP_UCB_marginalised_mean_flux(map_from_unit_cube(parameter_vector, param_limits_no_mf), iteration_number=iteration_number, delta=delta, nu=nu, exploitation_weight=exploitation_weight, integration_bounds=integration_bounds)
+        optimisation_function = lambda parameter_vector: -1. * self.acquisition_function_GP_UCB(map_from_unit_cube(parameter_vector, param_limits_no_mf), iteration_number=iteration_number, delta=delta, nu=nu, exploitation_weight=exploitation_weight, marginalise_mean_flux=marginalise_mean_flux)
         return spo.minimize(optimisation_function, map_to_unit_cube(starting_params, param_limits_no_mf), method=optimisation_method, bounds=optimisation_bounds)
 
     def check_for_refinement(self, conf=0.95, thresh=1.05):

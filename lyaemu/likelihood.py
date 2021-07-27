@@ -359,7 +359,7 @@ class LikelihoodClass:
         detemu = self.get_covar_det(params, True)
         return detemu/detnoemu
 
-    def log_likelihood_marginalised_mean_flux(self, params, include_emu=True, integration_bounds='default', integration_options='gauss-legendre', verbose=False, integration_method='Quadrature'): #marginalised_axes=(0, 1)
+    def loglike_marginalised_mean_flux(self, params, include_emu=True, integration_bounds='default', integration_options='gauss-legendre', verbose=False, integration_method='Quadrature'): #marginalised_axes=(0, 1)
         """Evaluate (Gaussian) likelihood marginalised over mean flux parameter axes: (dtau0, tau0)"""
         #assert len(marginalised_axes) == 2
         assert self.mf_slope
@@ -431,7 +431,7 @@ class LikelihoodClass:
         exploitation = 0
         if exploitation_weight is not None:
             if marginalise_mean_flux:
-                loglike = self.log_likelihood_marginalised_mean_flux(params)
+                loglike = self.loglike_marginalised_mean_flux(params)
             else:
                 loglike = self.likelihood(params)
             exploitation = loglike * exploitation_weight
@@ -451,8 +451,17 @@ class LikelihoodClass:
         if optimisation_bounds == 'default': #Default to prior bounds
             #optimisation_bounds = [tuple(self.param_limits[2 + i]) for i in range(starting_params.shape[0])]
             optimisation_bounds = [(1.e-7, 1. - 1.e-7) for i in range(starting_params.shape[0])] #Might get away with 1.e-7
-        optimisation_function = lambda parameter_vector: -1. * self.acquisition_function_GP_UCB(map_from_unit_cube(parameter_vector, param_limits_no_mf), iteration_number=iteration_number, delta=delta, nu=nu, exploitation_weight=exploitation_weight, marginalise_mean_flux=marginalise_mean_flux)
-        return spo.minimize(optimisation_function, map_to_unit_cube(starting_params, param_limits_no_mf), method=optimisation_method, bounds=optimisation_bounds)
+
+        mapped = lambda parameter_vector: map_from_unit_cube(parameter_vector, param_limits_no_mf)
+        optimisation_function = lambda parameter_vector: -1.*self.acquisition_function_GP_UCB(mapped(parameter_vector),
+                                                                                                iteration_number=iteration_number, delta=delta, nu=nu,
+                                                                                                exploitation_weight=exploitation_weight,
+                                                                                                marginalise_mean_flux=marginalise_mean_flux)
+        min_result = spo.minimize(optimisation_function, map_to_unit_cube(starting_params, param_limits_no_mf), method=optimisation_method, bounds=optimisation_bounds)
+        if not min_result.success:
+            print(min_result)
+            raise ValueError(min_result.message)
+        return map_from_unit_cube(min_result.x, param_limits_no_mf)
 
     def check_for_refinement(self, conf=0.95, thresh=1.05):
         """Crude check for refinement: check whether the likelihood is dominated by

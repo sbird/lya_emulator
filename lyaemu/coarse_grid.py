@@ -75,6 +75,7 @@ class Emulator:
             self.mf = mf
 
         self.set_maxk()
+        self.myspec = flux_power.MySpectra(max_z=5.4, min_z=2.0, max_k=self.maxk)
         #This is the Planck best-fit value. We do not have to change it because
         #it is a) very well measured and b) mostly degenerate with the mean flux.
         self.omegabh2 = 0.0224
@@ -272,12 +273,12 @@ class Emulator:
         """Get the number of sparse parameters, those sampled by simulations."""
         return np.shape(self.param_limits)[0]
 
-    def _get_fv(self, pp,myspec):
+    def _get_fv(self, pp):
         """Helper function to get a single flux vector."""
         di = self.get_outdir(pp, strsz=3)
         if not os.path.exists(di):
             di = self.get_outdir(pp, strsz=2)
-        powerspectra = myspec.get_snapshot_list(base=di)
+        powerspectra = self.myspec.get_snapshot_list(base=di)
         return powerspectra
 
     def get_emulator(self, max_z=4.2):
@@ -291,13 +292,12 @@ class Emulator:
         gp = self._get_custom_emulator(emuobj=None, max_z=max_z)
         return gp
 
-    def get_flux_vectors(self, max_z=4.2, kfunits="kms"):
+    def get_flux_vectors(self, max_z=4.2, min_z=1.9, kfunits="kms"):
         """Get the desired flux vectors and their parameters"""
         pvals = self.get_parameters()
         nparams = np.shape(pvals)[1]
         nsims = np.shape(pvals)[0]
         assert nparams == len(self.param_names)
-        myspec = flux_power.MySpectra(max_z=max_z, max_k=self.maxk)
         aparams = pvals
         #Note this gets tau_0 as a linear scale factor from the observed power law
         dpvals = self.mf.get_params()
@@ -317,8 +317,8 @@ class Emulator:
             kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams, mfc=mfc)
         except (AssertionError, OSError):
             print("Could not load flux vectors, regenerating from disc")
-            powers = [self._get_fv(pp, myspec) for pp in pvals]
-            mef = lambda pp: self.mf.get_mean_flux(myspec.zout, params=pp)[0]
+            powers = [self._get_fv(pp) for pp in pvals]
+            mef = lambda pp: self.mf.get_mean_flux(self.myspec.zout, params=pp)[0]
             if dpvals is not None:
                 flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes = mef(dp+nuggets[i]), tau_thresh=self.tau_thresh) for dp in dpvals for i in range(nsims)])
                 #'natively' binned k values in km/s units as a function of redshift
@@ -336,7 +336,14 @@ class Emulator:
             kf = kfkms
         else:
             kf = kfmpc
-        return aparams, kf, flux_vectors
+        #Cut out redshifts that we don't want this time
+        minbin = int((self.myspec.zout[0] - max_z)/0.2)
+        assert minbin >= 0
+        maxbin = int((self.myspec.zout[-1] - min_z)/0.2)-1
+        assert maxbin < 0
+        kflen = np.shape(kf)[-1]
+        newflux = np.array([ff[minbin*kflen:maxbin*kflen] for ff in flux_vectors])
+        return aparams, kf, newflux
 
     def save_flux_vectors(self, aparams, kfmpc, kfkms, flux_vectors, mfc="mf", savefile="emulator_flux_vectors.hdf5"):
         """Save the flux vectors and parameters to a file, which is the only thing read on reload."""
@@ -345,6 +352,7 @@ class Emulator:
         save = h5py.File(os.path.join(self.basedir, mfc+"_"+savefile), 'w')
         save.attrs["classname"] = str(self.__class__)
         save["params"] = aparams
+        save["zout"] = self.myspec.zout
         save["flux_vectors"] = flux_vectors
         #Save in both km/s and Mpc/h units.
         save["kfkms"] = kfkms
@@ -360,6 +368,8 @@ class Emulator:
         flux_vectors = np.array(load["flux_vectors"])
         kfkms = np.array(load["kfkms"])
         kfmpc = np.array(load["kfmpc"])
+        zout = np.array(load["zout"])
+        self.myspec.zout = zout
         name = str(load.attrs["classname"])
         load.close()
         assert name.split(".")[-1] == str(self.__class__).split(".")[-1]

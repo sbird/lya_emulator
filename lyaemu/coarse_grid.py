@@ -75,7 +75,6 @@ class Emulator:
             self.mf = mf
 
         self.set_maxk()
-        self.myspec = flux_power.MySpectra(max_z=5.4, min_z=2.0, max_k=self.maxk)
         #This is the Planck best-fit value. We do not have to change it because
         #it is a) very well measured and b) mostly degenerate with the mean flux.
         self.omegabh2 = 0.0224
@@ -193,6 +192,7 @@ class Emulator:
         self.tau_thresh = tau_thresh
         self.basedir = real_basedir
         self.set_maxk()
+        self.myspec = flux_power.MySpectra(max_z=5.4, min_z=1.9, max_k=self.maxk)
 
     def get_outdir(self, pp, strsz=3):
         """Get the simulation output directory path for a parameter set."""

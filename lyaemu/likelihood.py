@@ -81,10 +81,10 @@ def invert_block_diagonal_covariance(full_covariance_matrix, n_blocks):
         inverse_covariance_matrix[start_index:end_index, start_index:end_index] = inverse_covariance_block
     return inverse_covariance_matrix
 
-def load_data(datadir, *, kf, max_z=4.2, t0=1., tau_thresh=None):
+def load_data(datadir, *, kf, max_z=4.2, min_z = 2.1, t0=1., tau_thresh=None):
     """Load and initialise a "fake data" flux power spectrum"""
     #Load the data directory
-    myspec = flux_power.MySpectra(max_z=max_z)
+    myspec = flux_power.MySpectra(max_z=max_z, min_z=2.1)
     pps = myspec.get_snapshot_list(datadir)
     #self.data_fluxpower is used in likelihood.
     data_fluxpower = pps.get_power(kf=kf, mean_fluxes=np.exp(-t0*mflux.obs_mean_tau(myspec.zout, amp=0)), tau_thresh=tau_thresh)
@@ -93,7 +93,7 @@ def load_data(datadir, *, kf, max_z=4.2, t0=1., tau_thresh=None):
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z=4.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None):
+    def __init__(self, basedir, mean_flux='s', max_z=4.2, min_z=2.1, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
 
         #Stored BOSS covariance matrix
@@ -103,7 +103,8 @@ class LikelihoodClass:
         #Default data is flux power from Chabanier 2019 (BOSS DR14)
         #Pass datafile='dr9' to use data from Palanque-Delabrouille 2013
         self.max_z = max_z
-        myspec = flux_power.MySpectra(max_z=max_z)
+        self.min_z = min_z
+        myspec = flux_power.MySpectra(max_z=max_z, min_z = min_z)
         self.zout = myspec.zout
         self.kf = self.sdss.get_kf()
 
@@ -162,7 +163,7 @@ class LikelihoodClass:
         assert np.shape(self.param_limits)[1] == 2
         print('Beginning to generate emulator at', str(datetime.now()))
         if optimise_GP:
-            self.gpemu = self.emulator.get_emulator(max_z=max_z)
+            self.gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
         print('Finished generating emulator at', str(datetime.now()))
 
     def get_predicted(self, params, use_updated_training_set=False):
@@ -294,7 +295,7 @@ class LikelihoodClass:
             self.data_fluxpower = self.BOSS_flux_power.flatten()
         else:
             #Load the data directory (i.e. use a simulation flux power as data)
-            self.data_fluxpower = load_data(datadir, kf=self.kf, t0=self.t0_training_value)
+            self.data_fluxpower = load_data(datadir, kf=self.kf, t0=self.t0_training_value, min_z = self.min_z)
         #Set up mean flux
         if self.mf_slope:
             pnames = [('dtau0', r'd\tau_0'),]+pnames

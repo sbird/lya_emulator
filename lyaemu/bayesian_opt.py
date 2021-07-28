@@ -14,7 +14,30 @@ class BayesianOpt:
         self.param_limits = self.like.param_limits
         #This will be replaced with real data
         self.data_fluxpower = likelihood.load_data(datadir, kf=self.like.kf, t0=self.like.t0_training_value)
-        self.optimise_acquisition_function(np.array([0.875, 2.58e-9, 4.24, 3.17, 1.6, 0.748, 0.146, 8.47, 0.04]))
+        #Parameters to calculate the exploration weight. In practice exploration is usually subdominant so these are not very important.
+        self.delta = 0.5
+        self.nu = 1
+
+    def find_new_trials(self, nsamples, iteration_number=1, marginalise_mean_flux=True):
+        """Main driver of Bayesian optimisation.
+        Optimises the acquisition function multiple times to find new simulations to run. This is the batch mode of Bayesian optimisation."""
+        #Pick a starting point for the optimisation in the middle of the parameter range
+        starting_params = (self.param_limits[2:,0] + self.param_limits[2:,1])/2.
+        new_points = np.zeros((nsamples,)+np.shape(starting_params))
+        for i in np.range(nsamples):
+            #Generate a new optimum of the Bayesian optimisation function
+            new_points[i,:] = self.optimise_acquisition_function(starting_params, marginalise_mean_flux=marginalise_mean_flux,
+                                                           iteration_number = iteration_number+i, use_updated_training_set=(i>0))
+            #Add the *prediction* of this new optimum to the GP emulator, which will shrink the error bars and thus change the next bayesian point.
+            #Hyper-parameters are NOT re-trained.
+            self.like.gpemu.add_to_training_set(new_points[i,:])
+        return new_points
+
+    def gen_new_simulations(self, nsamples, iteration_number=1, marginalise_mean_flux=True):
+        """Generate simulations for the newly found points."""
+        new_samples = self.find_new_trials(nsamples, iteration_number=iteration_number, marginalise_mean_flux=marginalise_mean_flux)
+        assert np.shape(new_samples)[0] == nsamples
+        self.like.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
 
     def loglike_marginalised_mean_flux(self, params, include_emu=True, integration_bounds='default', integration_options='gauss-legendre', verbose=False, integration_method='Quadrature'):
         """Evaluate (Gaussian) likelihood marginalised over mean flux parameter axes: (dtau0, tau0)"""

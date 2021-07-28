@@ -6,21 +6,6 @@ import scipy.optimize as spo
 from .latin_hypercube import map_to_unit_cube, map_from_unit_cube
 from . import likelihood
 
-def invert_block_diagonal_covariance(full_covariance_matrix, n_blocks):
-    """Efficiently invert block diagonal covariance matrix"""
-    inverse_covariance_matrix = np.zeros_like(full_covariance_matrix)
-    nz = n_blocks
-    nk = int(full_covariance_matrix.shape[0] / nz)
-    for i, z in zip(range(nz), reversed(range(nz))): #Loop over blocks by redshift
-        start_index = nk * z
-        end_index = nk * (z + 1)
-        inverse_covariance_block = np.linalg.inv(full_covariance_matrix[start_index:end_index, start_index:end_index])
-        # Reverse the order of the full matrix so it runs from high to low redshift
-        start_index = nk * i
-        end_index = nk * (i + 1)
-        inverse_covariance_matrix[start_index:end_index, start_index:end_index] = inverse_covariance_block
-    return inverse_covariance_matrix
-
 class BayesianOpt:
     """Class for doing Bayesian optimisation with the likelihood."""
     def __init__(self, emudir, datadir):

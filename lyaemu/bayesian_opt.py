@@ -28,7 +28,7 @@ class BayesianOpt:
         for i in range(nsamples):
             #Generate a new optimum of the Bayesian optimisation function
             new_points[i,:] = self.optimise_acquisition_function(starting_params, marginalise_mean_flux=marginalise_mean_flux,
-                                                           iteration_number = iteration_number+i, use_updated_training_set=(i>0))
+                                                           iteration_number = iteration_number+i)
             #Build a new GP emulator adding the *prediction* of this new optimum from the old GP emulator.
             #This will shrink the error bars and thus change the next Bayesian point.
             new_params_with_mf, new_flux_with_mf = self.get_new_predicted_power(new_points[i,:], self.like.gpemu, self.like.emulator.mf)
@@ -88,7 +88,7 @@ class BayesianOpt:
         volume_factor = (param_limits[0, 1] - param_limits[0, 0]) * (param_limits[1, 1] - param_limits[1, 0])
         return volume_factor * function_sum / n_samples
 
-    def get_GP_UCB_exploration_term(self, params, iteration_number=1, marginalise_mean_flux = True, use_updated_training_set=False):
+    def get_GP_UCB_exploration_term(self, params, iteration_number=1, marginalise_mean_flux = True):
         """Evaluate the exploration term of the GP-UCB acquisition function"""
         assert iteration_number >= 1.
         assert 0. < self.delta < 1.
@@ -98,12 +98,12 @@ class BayesianOpt:
         exploration_weight = math.sqrt(self.nu * 2. * math.log((iteration_number**((np.shape(params)[0] / 2.) + 2.)) * (math.pi**2) / 3. / self.delta))
         #Exploration term: least accurate part of the emulator
         if not marginalise_mean_flux:
-            okf, _, std = self.like.get_predicted(params, use_updated_training_set=use_updated_training_set)
+            okf, _, std = self.like.get_predicted(params)
         else:
             #Compute the error averaged over the mean flux
             dtau0 = np.mean([param_limits_mf[0, 0], param_limits_mf[0, 1]])
             tau0 = np.mean([param_limits_mf[1, 0], param_limits_mf[1, 1]])
-            okf, _, std = self.like.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
+            okf, _, std = self.like.get_predicted(np.concatenate([[dtau0, tau0], params]))
             n_samples = 0
             #We don't really need to do this, because the interpolation error should always be dominated
             #by the position in simulation parameter space: we have always used multiple mean flux points.
@@ -111,7 +111,7 @@ class BayesianOpt:
             if n_samples > 0:
                 for dtau0 in np.linspace(param_limits_mf[0, 0], param_limits_mf[0, 1], num=n_samples):
                     for tau0 in np.linspace(param_limits_mf[1, 0], param_limits_mf[1, 1], num=n_samples):
-                        _, _, std_loc = self.like.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
+                        _, _, std_loc = self.like.get_predicted(np.concatenate([[dtau0, tau0], params]))
                         for ii, ss in enumerate(std_loc):
                             std[ii] += ss
                 for ss in std:
@@ -133,12 +133,11 @@ class BayesianOpt:
             assert not np.isnan(posterior_estimated_error)
         return exploration_weight * posterior_estimated_error
 
-    def acquisition_function_GP_UCB(self, params, iteration_number=1, exploitation_weight=1., marginalise_mean_flux = True, use_updated_training_set=False):
+    def acquisition_function_GP_UCB(self, params, iteration_number=1, exploitation_weight=1., marginalise_mean_flux = True):
         """Evaluate the GP-UCB at given parameter vector. This is an acquisition function for determining where to run
         new training simulations"""
         #Exploration term: least accurate part of the emulator
-        exploration = self.get_GP_UCB_exploration_term(params, marginalise_mean_flux=marginalise_mean_flux, iteration_number=iteration_number,
-                                                       use_updated_training_set=use_updated_training_set)
+        exploration = self.get_GP_UCB_exploration_term(params, marginalise_mean_flux=marginalise_mean_flux, iteration_number=iteration_number)
         #Exploitation term: how good is the likelihood at this point
         exploitation = 0
         if exploitation_weight is not None:
@@ -150,7 +149,7 @@ class BayesianOpt:
         print("acquis: %g explor: %g exploit:%g params:" % (exploitation+exploration,exploration,exploitation), params)
         return exploration + exploitation
 
-    def optimise_acquisition_function(self, starting_params, optimisation_bounds='default', optimisation_method=None, iteration_number=1, exploitation_weight=1., marginalise_mean_flux=True, use_updated_training_set=False):
+    def optimise_acquisition_function(self, starting_params, optimisation_bounds='default', optimisation_method=None, iteration_number=1, exploitation_weight=1., marginalise_mean_flux=True):
         """Find parameter vector (marginalised over mean flux parameters) at maximum of (GP-UCB) acquisition function"""
         #We marginalise the mean flux parameters so they should not be mapped
         if marginalise_mean_flux:
@@ -162,7 +161,7 @@ class BayesianOpt:
         mapped = lambda parameter_vector: map_from_unit_cube(parameter_vector, param_limits_no_mf)
         optimisation_function = lambda parameter_vector: -1.*self.acquisition_function_GP_UCB(mapped(parameter_vector),
                                                                 iteration_number=iteration_number, exploitation_weight=exploitation_weight,
-                                                                marginalise_mean_flux=marginalise_mean_flux, use_updated_training_set=use_updated_training_set)
+                                                                marginalise_mean_flux=marginalise_mean_flux)
         min_result = spo.minimize(optimisation_function, map_to_unit_cube(starting_params, param_limits_no_mf), method=optimisation_method, bounds=optimisation_bounds)
         if not min_result.success:
             print(min_result)

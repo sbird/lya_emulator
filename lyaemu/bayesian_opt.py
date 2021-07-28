@@ -24,7 +24,7 @@ class BayesianOpt:
         #Pick a starting point for the optimisation in the middle of the parameter range
         starting_params = (self.param_limits[2:,0] + self.param_limits[2:,1])/2.
         new_points = np.zeros((nsamples,)+np.shape(starting_params))
-        for i in np.range(nsamples):
+        for i in range(nsamples):
             #Generate a new optimum of the Bayesian optimisation function
             new_points[i,:] = self.optimise_acquisition_function(starting_params, marginalise_mean_flux=marginalise_mean_flux,
                                                            iteration_number = iteration_number+i, use_updated_training_set=(i>0))

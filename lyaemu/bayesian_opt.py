@@ -156,20 +156,18 @@ class BayesianOpt:
         print("acquis: %g explor: %g exploit:%g params:" % (exploitation+exploration,exploration,exploitation), params)
         return exploration + exploitation
 
-    def optimise_acquisition_function(self, starting_params, optimisation_bounds='default', optimisation_method=None, iteration_number=1, exploitation_weight=1., marginalise_mean_flux=True):
+    def optimise_acquisition_function(self, starting_params, opt_bound = 0.05, iteration_number=1, exploitation_weight=1., marginalise_mean_flux=True):
         """Find parameter vector (marginalised over mean flux parameters) at maximum of (GP-UCB) acquisition function"""
         #We marginalise the mean flux parameters so they should not be mapped
         if marginalise_mean_flux:
             param_limits_no_mf = self.param_limits[2:,:]
-        if optimisation_bounds == 'default': #Default to prior bounds
-            #optimisation_bounds = [tuple(self.param_limits[2 + i]) for i in range(starting_params.shape[0])]
-            optimisation_bounds = [(1.e-7, 1. - 1.e-7) for i in range(starting_params.shape[0])] #Might get away with 1.e-7
-
         mapped = lambda parameter_vector: map_from_unit_cube(parameter_vector, param_limits_no_mf)
         optimisation_function = lambda parameter_vector: -1.*self.acquisition_function_GP_UCB(mapped(parameter_vector),
                                                                 iteration_number=iteration_number, exploitation_weight=exploitation_weight,
                                                                 marginalise_mean_flux=marginalise_mean_flux)
-        min_result = spo.minimize(optimisation_function, map_to_unit_cube(starting_params, param_limits_no_mf), method=optimisation_method, bounds=optimisation_bounds)
+        #Shrink optimisation bounds to interior 95% of emulator to avoid edge effects
+        optimisation_bounds = [(opt_bound, 1. - opt_bound) for i in range(starting_params.shape[0])]
+        min_result = spo.minimize(optimisation_function, map_to_unit_cube(starting_params, param_limits_no_mf), bounds=optimisation_bounds)
         if not min_result.success:
             print(min_result)
             raise ValueError(min_result.message)

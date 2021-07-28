@@ -28,7 +28,7 @@ class BayesianOpt:
         new_points = np.zeros((nsamples,)+np.shape(starting_params))
         for i in range(nsamples):
             offset = rng.uniform(0.2, 0.8, size=np.shape(starting_params))
-            starting_params = (offset * self.param_limits[2:,0] + (1-offset)*self.param_limits[2:,1])/2.
+            starting_params = offset * self.param_limits[2:,0] + (1-offset)*self.param_limits[2:,1]
             #Generate a new optimum of the Bayesian optimisation function
             new_points[i,:] = self.optimise_acquisition_function(starting_params, marginalise_mean_flux=marginalise_mean_flux,
                                                            iteration_number = iteration_number+i)

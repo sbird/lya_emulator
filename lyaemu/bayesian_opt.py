@@ -22,10 +22,13 @@ class BayesianOpt:
     def find_new_trials(self, nsamples, iteration_number=1, marginalise_mean_flux=True):
         """Main driver of Bayesian optimisation.
         Optimises the acquisition function multiple times to find new simulations to run. This is the batch mode of Bayesian optimisation."""
+        rng = np.random.default_rng()
         #Pick a starting point for the optimisation in the middle of the parameter range
         starting_params = (self.param_limits[2:,0] + self.param_limits[2:,1])/2.
         new_points = np.zeros((nsamples,)+np.shape(starting_params))
         for i in range(nsamples):
+            offset = rng.uniform(0.2, 0.8, size=np.shape(starting_params))
+            starting_params = (offset * self.param_limits[2:,0] + (1-offset)*self.param_limits[2:,1])/2.
             #Generate a new optimum of the Bayesian optimisation function
             new_points[i,:] = self.optimise_acquisition_function(starting_params, marginalise_mean_flux=marginalise_mean_flux,
                                                            iteration_number = iteration_number+i)

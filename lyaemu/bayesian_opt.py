@@ -55,7 +55,7 @@ class BayesianOpt:
         if dpvals is not None:
             aparams = np.array([np.concatenate([dp,new_point]) for dp in dpvals])
         # .predict should take [{list of parameters: t0; cosmo.; thermal},]
-        flux_vectors, _ = zip([gpemu.predict(aa, tau0_factors=None) for aa in aparams])
+        flux_vectors, _ = zip([gpemu.predict([aa,], tau0_factors=None) for aa in aparams])
         return aparams, flux_vectors
 
     def gen_new_simulations(self, nsamples, iteration_number=1, marginalise_mean_flux=True):

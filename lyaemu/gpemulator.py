@@ -2,7 +2,7 @@
 # from datetime import datetime
 import copy as cp
 import numpy as np
-from .latin_hypercube import map_to_unit_cube_list
+from .latin_hypercube import map_to_unit_cube,map_to_unit_cube_list
 #Make sure that we don't accidentally
 #get another backend when we import GPy.
 import matplotlib
@@ -123,7 +123,7 @@ class SkLearnGP:
         #Note mean flux excluded from param_limits
         new_params_unit_cube = map_to_unit_cube(new_params, self.param_limits[-1 * new_params.shape[0]:])
         new_params_unit_cube_expand = np.tile(new_params_unit_cube, (mean_flux_training_samples.shape[0], 1))
-        new_params_unit_cube_mean_flux = np.hstack((mean_flux_training_samples, new_params_unit_cube))
+        new_params_unit_cube_mean_flux = np.hstack((mean_flux_training_samples, new_params_unit_cube_expand))
         #new_params_mean_flux = map_from_unit_cube_list(new_params_unit_cube_mean_flux, self.param_limits)
         gp_updated_X_new = np.vstack((self.gp_updated.X, new_params_unit_cube_mean_flux))
         gp_updated_Y_new = np.vstack((self.gp_updated.Y, self.gp.predict(new_params_unit_cube_mean_flux)[0]))

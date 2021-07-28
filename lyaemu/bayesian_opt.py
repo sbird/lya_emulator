@@ -41,7 +41,8 @@ class BayesianOpt:
         aparams, kf, flux_vectors = self.like.gpemu.get_training_data()
         params = np.concatenate([new_params, aparams])
         flux = np.concatenate([new_flux, flux_vectors])
-        gp = gpemulator.MultiBinGP(params=params, kf=kf, powers = flux, param_limits = self.param_limits)
+        par_lim = self.like.emulator.get_param_limits(include_dense=True)
+        gp = gpemulator.MultiBinGP(params=params, kf=kf, powers = flux, param_limits = par_lim)
         return gp
 
     def get_new_predicted_power(self, new_point, gpemu, mf):
@@ -55,7 +56,7 @@ class BayesianOpt:
         if dpvals is not None:
             aparams = np.array([np.concatenate([dp,new_point]) for dp in dpvals])
         # .predict should take [{list of parameters: t0; cosmo.; thermal},]
-        flux_vectors, _ = zip([gpemu.predict([aa,], tau0_factors=None) for aa in aparams])
+        flux_vectors = np.array([gpemu.predict(np.array(aa).reshape(1, -1), tau0_factors=None)[0][0] for aa in aparams])
         return aparams, flux_vectors
 
     def gen_new_simulations(self, nsamples, iteration_number=1, marginalise_mean_flux=True):

@@ -60,9 +60,9 @@ class BOSSData(SDSSData):
     """A class to store the flux power and corresponding covariance matrix from BOSS."""
     def __init__(self, datafile=None, covardir=None):
         cdir = os.path.dirname(__file__)
-        
+
         # by default load the more recent data, from DR14: Chanbanier 2019, arXiv:1812.03554
-        if datafile is None or datafile is 'dr14':
+        if datafile is None or datafile == 'dr14':
             datafile = os.path.join(cdir,"data/boss_dr14_data/Pk1D_data.dat")
             covarfile = os.path.join(cdir, "data/boss_dr14_data/Pk1D_cor.dat")
             systfile = os.path.join(cdir, "data/boss_dr14_data/Pk1D_syst.dat")
@@ -87,9 +87,9 @@ class BOSSData(SDSSData):
             for bb in range(self.nz):
                 dd = corr[35*bb:35*(bb+1)] # k-bin covariance matrix (35 x 35) for single redshift
                 self.covar[35*bb:35*(bb+1), 35*bb:35*(bb+1)] = dd #Filling in block matrices along diagonal
-        
+
         # load the older dataset, from DR9: Palanque-Delabrouille 2013, arXiv:1306.5896
-        elif datafile is 'dr9':
+        elif datafile == 'dr9':
             datafile = os.path.join(cdir,"data/boss_dr9_data/table4a.dat")
             covardir = os.path.join(cdir, "data/boss_dr9_data")
             # Read BOSS DR9 flux power data. See Readme file.

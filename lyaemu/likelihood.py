@@ -142,7 +142,7 @@ class LikelihoodClass:
             self.gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
         print('Finished generating emulator at', str(datetime.now()))
 
-    def get_predicted(self, params, use_updated_training_set=False):
+    def get_predicted(self, params):
         """Helper function to get the predicted flux power spectrum and error, rebinned to match the desired kbins."""
         nparams = params
         if self.mf_slope:
@@ -154,7 +154,7 @@ class LikelihoodClass:
             tau0_fac = None
         # .predict should take [{list of parameters: t0; cosmo.; thermal},]
         # Here: emulating @ cosmo.; thermal; sampled t0 * [tau0_fac from above]
-        predicted_nat, std_nat = self.gpemu.predict(np.array(nparams).reshape(1, -1), tau0_factors=tau0_fac, use_updated_training_set=use_updated_training_set)
+        predicted_nat, std_nat = self.gpemu.predict(np.array(nparams).reshape(1, -1), tau0_factors=tau0_fac)
         ndense = len(self.emulator.mf.dense_param_names)
         hindex = ndense + self.emulator.param_names["hub"]
         omegamh2_index = ndense + self.emulator.param_names["omegamh2"]
@@ -164,7 +164,7 @@ class LikelihoodClass:
         _, std = flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=self.gpemu.kf, flux_powers=std_nat[0], zbins=self.zout, omega_m=omega_m)
         return okf, predicted, std
 
-    def likelihood(self, params, include_emu=True, data_power=None, use_updated_training_set=False):
+    def likelihood(self, params, include_emu=True, data_power=None):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix.
         The covariance for the emulator points is assumed to be
@@ -176,7 +176,7 @@ class LikelihoodClass:
         if np.any(params >= self.param_limits[:, 1]) or np.any(params <= self.param_limits[:, 0]):
             return -np.inf
 
-        okf, predicted, std = self.get_predicted(params[:self.ndim-len(self.data_params)], use_updated_training_set=use_updated_training_set)
+        okf, predicted, std = self.get_predicted(params[:self.ndim-len(self.data_params)])
 
         nkf = int(np.size(self.kf))
         nz = np.shape(predicted)[0]

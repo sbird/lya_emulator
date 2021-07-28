@@ -6,6 +6,7 @@ import numpy as np
 import scipy.optimize as spo
 from .latin_hypercube import map_to_unit_cube, map_from_unit_cube
 from . import likelihood
+from . import gpemulator
 
 class BayesianOpt:
     """Class for doing Bayesian optimisation with the likelihood."""
@@ -28,10 +29,34 @@ class BayesianOpt:
             #Generate a new optimum of the Bayesian optimisation function
             new_points[i,:] = self.optimise_acquisition_function(starting_params, marginalise_mean_flux=marginalise_mean_flux,
                                                            iteration_number = iteration_number+i, use_updated_training_set=(i>0))
-            #Add the *prediction* of this new optimum to the GP emulator, which will shrink the error bars and thus change the next bayesian point.
-            #Hyper-parameters are NOT re-trained.
-            self.like.gpemu.add_to_training_set(new_points[i,:])
+            #Build a new GP emulator adding the *prediction* of this new optimum from the old GP emulator.
+            #This will shrink the error bars and thus change the next Bayesian point.
+            new_params_with_mf, new_flux_with_mf = self.get_new_predicted_power(new_points[i,:], self.like.gpemu, self.like.emulator.mf)
+            newgpemu = self.rebuild_emulator_extra(new_params_with_mf, new_flux_with_mf)
+            self.like.gpemu = newgpemu
         return new_points
+
+    def rebuild_emulator_extra(self, new_params, new_flux):
+        """Build a new emulator adding extra flux vectors, assumed to include mean flux samples. Used for batch mode Bayesian optimisation."""
+        aparams, kf, flux_vectors = self.like.gpemu.get_training_data()
+        params = np.concatenate([new_params, aparams])
+        flux = np.concatenate([new_flux, flux_vectors])
+        gp = gpemulator.MultiBinGP(params=params, kf=kf, powers = flux, param_limits = self.param_limits)
+        return gp
+
+    def get_new_predicted_power(self, new_point, gpemu, mf):
+        """This routine generates a new sample - including with new mean flux values - from the emulator.
+        This is needed for the batch mode of Bayesian optimisation: the new predictions of the emulator will
+        be added as training data."""
+        #Make sure we have the right number of params
+        assert np.shape(new_point)[1] == np.shape(self.param_limits)[0]-2
+        #Note this gets tau_0 as a linear scale factor from the observed power law
+        dpvals = mf.get_params()
+        if dpvals is not None:
+            aparams = np.array([np.concatenate([dp,new_point]) for dp in dpvals])
+        # .predict should take [{list of parameters: t0; cosmo.; thermal},]
+        flux_vectors, _ = zip([gpemu.predict(aa, tau0_factors=None) for aa in aparams])
+        return aparams, flux_vectors
 
     def gen_new_simulations(self, nsamples, iteration_number=1, marginalise_mean_flux=True):
         """Generate simulations for the newly found points."""

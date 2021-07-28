@@ -49,7 +49,7 @@ class BayesianOpt:
         This is needed for the batch mode of Bayesian optimisation: the new predictions of the emulator will
         be added as training data."""
         #Make sure we have the right number of params
-        assert np.shape(new_point)[1] == np.shape(self.param_limits)[0]-2
+        assert np.shape(new_point)[0]+2 == np.shape(self.param_limits)[0]
         #Note this gets tau_0 as a linear scale factor from the observed power law
         dpvals = mf.get_params()
         if dpvals is not None:

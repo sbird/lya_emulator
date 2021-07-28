@@ -150,7 +150,7 @@ class Emulator:
 
     def reconstruct(self):
         """Reconstruct the parameters of an emulator by loading the parameters of each simulation in turn."""
-        dirs = glob.glob(os.path.join(self.basedir, "*"))
+        dirs = glob.glob(os.path.join(self.basedir, "*/"))
         self.sample_params = np.array([self._recon_one(pdir) for pdir in dirs])
         assert np.shape(self.sample_params) == (len(dirs), np.size(self.param_limits[:,0]))
 

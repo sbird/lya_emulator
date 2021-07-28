@@ -59,11 +59,15 @@ class BayesianOpt:
         flux_vectors = np.array([gpemu.predict(np.array(aa).reshape(1, -1), tau0_factors=None)[0][0] for aa in aparams])
         return aparams, flux_vectors
 
-    def gen_new_simulations(self, nsamples, iteration_number=1, marginalise_mean_flux=True):
+    def gen_new_simulations(self, new_samples):
         """Generate simulations for the newly found points."""
-        new_samples = self.find_new_trials(nsamples, iteration_number=iteration_number, marginalise_mean_flux=marginalise_mean_flux)
-        assert np.shape(new_samples)[0] == nsamples
-        self.like.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
+        if len(np.shape(new_samples)) == 1:
+            new_samples = [new_samples,]
+        [self.like.emulator.do_ic_generation(ev) for ev in new_samples]
+        #Read the new ICs in again
+        self.like.emulator.reconstruct()
+        #Dump them to disc, automatically making a backup.
+        self.like.emulator.dump()
 
     def loglike_marginalised_mean_flux(self, params, include_emu=True, integration_bounds='default', integration_options='gauss-legendre', verbose=False, integration_method='Quadrature'):
         """Evaluate (Gaussian) likelihood marginalised over mean flux parameter axes: (dtau0, tau0)"""

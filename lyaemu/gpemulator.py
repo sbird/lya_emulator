@@ -25,6 +25,8 @@ class MultiBinGP:
         gp = lambda i: singleGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits)
         print('Number of redshifts for emulator generation=%d nk= %d' % (self.nz, self.nk))
         self.gps = [gp(i) for i in range(self.nz)]
+        self.powers = powers
+        self.params = params
 
     def predict(self,params, tau0_factors = None, use_updated_training_set=False):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
@@ -42,6 +44,10 @@ class MultiBinGP:
             means[0,i*self.nk:(i+1)*self.nk] = m
             std[:,i*self.nk:(i+1)*self.nk] = s
         return means, std
+
+    def get_training_data(self):
+        """Get the originally input training data so we can easily rebuild the GP"""
+        return self.params, self.kf, self.powers
 
     def add_to_training_set(self, new_params):
         """Add to training set and update emulator (without re-training) -- for all redshifts"""

@@ -292,6 +292,13 @@ class Emulator:
         gp = self._get_custom_emulator(emuobj=None, max_z=max_z, min_z=min_z)
         return gp
 
+    def _get_custom_emulator(self, *, emuobj, max_z=4.2, min_z=1.9):
+        """Helper to allow supporting different emulators."""
+        aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
+        plimits = self.get_param_limits(include_dense=True)
+        gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
+        return gp
+
     def get_flux_vectors(self, max_z=4.2, min_z=1.9, kfunits="kms"):
         """Get the desired flux vectors and their parameters"""
         pvals = self.get_parameters()
@@ -376,13 +383,6 @@ class Emulator:
         assert np.shape(inparams) == np.shape(aparams)
         assert np.all(inparams - aparams < 1e-3)
         return kfmpc, kfkms, flux_vectors
-
-    def _get_custom_emulator(self, *, emuobj, max_z=4.2, min_z=1.9):
-        """Helper to allow supporting different emulators."""
-        aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
-        plimits = self.get_param_limits(include_dense=True)
-        gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
-        return gp
 
     def do_loo_cross_validation(self, *, remove=None, max_z=4.2, subsample=None):
         """Do cross-validation by constructing an emulator missing

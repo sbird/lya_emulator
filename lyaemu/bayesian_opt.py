@@ -2,9 +2,7 @@
 import math
 import mpmath as mmh
 import numpy as np
-import numpy.random as npr
 import scipy.optimize as spo
-import scipy.interpolate
 from .latin_hypercube import map_to_unit_cube, map_from_unit_cube
 from . import likelihood
 
@@ -23,29 +21,34 @@ def invert_block_diagonal_covariance(full_covariance_matrix, n_blocks):
         inverse_covariance_matrix[start_index:end_index, start_index:end_index] = inverse_covariance_block
     return inverse_covariance_matrix
 
-class BayesianOpt(likelihood.LikelihoodClass):
-    """Class to add Bayesian optimisation methods to likelihood."""
-    def loglike_marginalised_mean_flux(self, params, include_emu=True, integration_bounds='default', integration_options='gauss-legendre', verbose=False, integration_method='Quadrature'): #marginalised_axes=(0, 1)
+class BayesianOpt:
+    """Class for doing Bayesian optimisation with the likelihood."""
+    def __init__(self, emudir, datadir):
+        self.like = likelihood.LikelihoodClass(emudir, mean_flux='s', data_corr=False)
+        self.data_fluxpower = likelihood.load_data(datadir, kf=self.like.kf, t0=self.like.t0_training_value)
+        self.optimise_acquisition_function(np.array([0.875, 2.58e-9, 4.24, 3.17, 1.6, 0.748, 0.146, 8.47, 0.04]))
+
+    def loglike_marginalised_mean_flux(self, params, include_emu=True, integration_bounds='default', integration_options='gauss-legendre', verbose=False, integration_method='Quadrature'):
         """Evaluate (Gaussian) likelihood marginalised over mean flux parameter axes: (dtau0, tau0)"""
         #assert len(marginalised_axes) == 2
-        assert self.mf_slope
+        #marginalised_axes=(0, 1)
         if integration_bounds == 'default':
-            integration_bounds = [list(self.param_limits[0]), list(self.param_limits[1])]
-        likelihood_function = lambda dtau0, tau0: mmh.exp(self.likelihood(np.concatenate(([dtau0, tau0], params)), include_emu=include_emu))
+            integration_bounds = [list(self.like.param_limits[0]), list(self.like.param_limits[1])]
+        likelihood_function = lambda dtau0, tau0: mmh.exp(self.like.likelihood(np.concatenate(([dtau0, tau0], params)), include_emu=include_emu, data_power=self.data_fluxpower))
         if integration_method == 'Quadrature':
             integration_output = mmh.quad(likelihood_function, integration_bounds[0], integration_bounds[1], method=integration_options, error=True, verbose=verbose)
         elif integration_method == 'Monte-Carlo':
-            integration_output = (self._do_Monte_Carlo_marginalisation(likelihood_function, n_samples=integration_options),)
+            integration_output = (self._do_Monte_Carlo_marginalisation(likelihood_function, self.like.param_limits, n_samples=integration_options),)
         return float(mmh.log(integration_output[0]))
 
-    def _do_Monte_Carlo_marginalisation(self, function, n_samples=6000):
+    def _do_Monte_Carlo_marginalisation(self, function, param_limits, n_samples=6000):
         """Marginalise likelihood by Monte-Carlo integration"""
-        random_samples = self.param_limits[:2, 0, np.newaxis] + (self.param_limits[:2, 1, np.newaxis] - self.param_limits[:2, 0, np.newaxis]) * npr.rand(2, n_samples)
+        random_samples = param_limits[:2, 0, np.newaxis] + (param_limits[:2, 1, np.newaxis] - param_limits[:2, 0, np.newaxis]) * np.random.rand(2, n_samples)
         function_sum = 0.
         for i in range(n_samples):
             print('Likelihood function evaluation number =', i + 1)
             function_sum += function(random_samples[0, i], random_samples[1, i])
-        volume_factor = (self.param_limits[0, 1] - self.param_limits[0, 0]) * (self.param_limits[1, 1] - self.param_limits[1, 0])
+        volume_factor = (param_limits[0, 1] - param_limits[0, 0]) * (param_limits[1, 1] - param_limits[1, 0])
         return volume_factor * function_sum / n_samples
 
     def get_GP_UCB_exploration_term(self, params, iteration_number=1, delta=0.5, nu=1.,
@@ -53,25 +56,26 @@ class BayesianOpt(likelihood.LikelihoodClass):
         """Evaluate the exploration term of the GP-UCB acquisition function"""
         assert iteration_number >= 1.
         assert 0. < delta < 1.
+        param_limits_mf = self.like.param_limits[:2, :]
         #if self._inverse_BOSS_covariance_full is None:
             #self._inverse_BOSS_covariance_full = invert_block_diagonal_covariance(self.get_BOSS_error(-1), self.zout.shape[0])
         exploration_weight = math.sqrt(nu * 2. * math.log((iteration_number**((np.shape(params)[0] / 2.) + 2.)) * (math.pi**2) / 3. / delta))
         #Exploration term: least accurate part of the emulator
         if not marginalise_mean_flux:
-            okf, _, std = self.get_predicted(params, use_updated_training_set=use_updated_training_set)
+            okf, _, std = self.like.get_predicted(params, use_updated_training_set=use_updated_training_set)
         else:
             #Compute the error averaged over the mean flux
-            dtau0 = np.mean([self.param_limits[0, 0], self.param_limits[0, 1]])
-            tau0 = np.mean([self.param_limits[1, 0], self.param_limits[1, 1]])
-            okf, _, std = self.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
+            dtau0 = np.mean([param_limits_mf[0, 0], param_limits_mf[0, 1]])
+            tau0 = np.mean([param_limits_mf[1, 0], param_limits_mf[1, 1]])
+            okf, _, std = self.like.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
             n_samples = 0
             #We don't really need to do this, because the interpolation error should always be dominated
             #by the position in simulation parameter space: we have always used multiple mean flux points.
             #So just use the error at the average mean flux value
             if n_samples > 0:
-                for dtau0 in np.linspace(self.param_limits[0, 0], self.param_limits[0, 1], num=n_samples):
-                    for tau0 in np.linspace(self.param_limits[1, 0], self.param_limits[1, 1], num=n_samples):
-                        _, _, std_loc = self.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
+                for dtau0 in np.linspace(param_limits_mf[0, 0], param_limits_mf[0, 1], num=n_samples):
+                    for tau0 in np.linspace(param_limits_mf[1, 0], param_limits_mf[1, 1], num=n_samples):
+                        _, _, std_loc = self.like.get_predicted(np.concatenate([[dtau0, tau0], params]), use_updated_training_set=use_updated_training_set)
                         for ii, ss in enumerate(std_loc):
                             std[ii] += ss
                 for ss in std:
@@ -81,10 +85,10 @@ class BayesianOpt(likelihood.LikelihoodClass):
         nz = np.shape(std)[0]
         #Likelihood using full covariance matrix
         for bb in range(nz):
-            idp = np.where(self.kf >= okf[bb][0])
+            idp = np.where(self.like.kf >= okf[bb][0])
             std_bin = std[bb]
             bindx = np.min(idp)
-            covar_bin = self.get_BOSS_error(bb)[bindx:, bindx:]
+            covar_bin = self.like.get_BOSS_error(bb)[bindx:, bindx:]
             assert np.shape(np.outer(std_bin, std_bin)) == np.shape(covar_bin)
             icov_bin = np.linalg.inv(covar_bin)
             dcd = - np.dot(std_bin, np.dot(icov_bin, std_bin),)/2.
@@ -104,21 +108,16 @@ class BayesianOpt(likelihood.LikelihoodClass):
             if marginalise_mean_flux:
                 loglike = self.loglike_marginalised_mean_flux(params)
             else:
-                loglike = self.likelihood(params)
+                loglike = self.like.likelihood(params, data_power = self.data_fluxpower)
             exploitation = loglike * exploitation_weight
         print("acquis: %g explor: %g exploit:%g params:" % (exploitation+exploration,exploration,exploitation), params)
         return exploration + exploitation
 
-    def optimise_acquisition_function(self, starting_params, datadir=None, optimisation_bounds='default', optimisation_method=None, iteration_number=1, delta=0.5, nu=1., exploitation_weight=1., marginalise_mean_flux=True):
+    def optimise_acquisition_function(self, starting_params, optimisation_bounds='default', optimisation_method=None, iteration_number=1, delta=0.5, nu=1., exploitation_weight=1., marginalise_mean_flux=True):
         """Find parameter vector (marginalised over mean flux parameters) at maximum of (GP-UCB) acquisition function"""
-        #We do not want the DLA model corrections enabled here
-        assert not self.dla_data_corr
         #We marginalise the mean flux parameters so they should not be mapped
         if marginalise_mean_flux:
-            param_limits_no_mf = self.param_limits[2:,:]
-            assert self.mf_slope
-        if datadir is not None:
-            self.data_fluxpower = likelihood.load_data(datadir, kf=self.kf, t0=self.t0_training_value)
+            param_limits_no_mf = self.like.param_limits[2:,:]
         if optimisation_bounds == 'default': #Default to prior bounds
             #optimisation_bounds = [tuple(self.param_limits[2 + i]) for i in range(starting_params.shape[0])]
             optimisation_bounds = [(1.e-7, 1. - 1.e-7) for i in range(starting_params.shape[0])] #Might get away with 1.e-7
@@ -134,43 +133,8 @@ class BayesianOpt(likelihood.LikelihoodClass):
             raise ValueError(min_result.message)
         return map_from_unit_cube(min_result.x, param_limits_no_mf)
 
-    def check_for_refinement(self, conf=0.95, thresh=1.05):
-        """Crude check for refinement: check whether the likelihood is dominated by
-           emulator error at the 1 sigma contours."""
-        limits = self.new_parameter_limits(confidence=conf, include_dense=True)
-        while True:
-            #Do the check
-            uref = self.refine_metric(limits[:, 0])
-            lref = self.refine_metric(limits[:, 1])
-            #This should be close to 1.
-            print("up =", uref, " low=", lref)
-            if (uref < thresh) and (lref < thresh):
-                break
-            #Iterate by moving each limit 40% outwards.
-            midpt = np.mean(limits, axis=1)
-            limits[:, 0] = 1.4*(limits[:, 0] - midpt) + midpt
-            limits[:, 0] = np.max([limits[:, 0], self.param_limits[:, 0]], axis=0)
-            limits[:, 1] = 1.4*(limits[:, 1] - midpt) + midpt
-            limits[:, 1] = np.min([limits[:, 1], self.param_limits[:, 1]], axis=0)
-            if np.all(limits == self.param_limits):
-                break
-        return limits
-
-    def refinement(self, nsamples, confidence=0.99):
+    def refinement(self, nsamples):
         """Do the refinement step."""
-        new_limits = self.new_parameter_limits(confidence=confidence)
-        new_samples = self.emulator.build_params(nsamples=nsamples, limits=new_limits)
+        new_samples = self.like.emulator.build_params(nsamples=nsamples)
         assert np.shape(new_samples)[0] == nsamples
-        self.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)
-
-    def make_err_grid(self, i, j, samples=30000):
-        """Make an error grid"""
-        ndim = np.size(self.param_limits[:, 0])
-        rr = lambda x: np.random.rand(ndim)*(self.param_limits[:, 1]-self.param_limits[:, 0]) + self.param_limits[:, 0]
-        rsamples = np.array([rr(i) for i in range(samples)])
-        randscores = [self.refine_metric(rr) for rr in rsamples]
-        grid_x, grid_y = np.mgrid[0:1:200j, 0:1:200j]
-        grid_x = grid_x * (self.param_limits[i, 1] - self.param_limits[i, 0]) + self.param_limits[i, 0]
-        grid_y = grid_y * (self.param_limits[j, 1] - self.param_limits[j, 0]) + self.param_limits[j, 0]
-        grid = scipy.interpolate.griddata(rsamples[:, (i, j)], randscores, (grid_x, grid_y), fill_value=0)
-        return grid
+        self.like.emulator.gen_simulations(nsamples=nsamples, samples=new_samples)

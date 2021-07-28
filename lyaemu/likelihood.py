@@ -1,18 +1,13 @@
 """Module for computing the likelihood function for the forest emulator."""
 import math
 from datetime import datetime
-import mpmath as mmh
 import numpy as np
-import numpy.random as npr
-import numpy.testing as npt
-import scipy.optimize as spo
 import scipy.interpolate
 import emcee
 from . import coarse_grid
 from . import flux_power
 from . import lyman_data
 from . import mean_flux as mflux
-from .latin_hypercube import map_to_unit_cube, map_from_unit_cube
 from .quadratic_emulator import QuadraticEmulator
 
 def _siIIIcorr(kf):
@@ -234,7 +229,7 @@ class LikelihoodClass:
         #Fix maximum redshift bug
         sdssz = sdssz[sdssz <= self.max_z]
         #Important assertion
-        npt.assert_allclose(sdssz, self.zout, atol=1.e-16)
+        np.testing.assert_allclose(sdssz, self.zout, atol=1.e-16)
         #print('SDSS redshifts are', sdssz)
         if zbin < 0:
             # Returns the covariance matrix in block format for all redshifts up to max_z (sorted low to high redshift)
@@ -291,27 +286,6 @@ class LikelihoodClass:
         np.savetxt(savefile+'_lnprob', emcee_sampler.flatlnprobability)
         return emcee_sampler
 
-    def new_parameter_limits(self, confidence=0.99, include_dense=False):
-        """Find a square region which includes coverage of the parameters in each direction, for refinement.
-        Confidence must be 0.68, 0.95 or 0.99."""
-        #Use the marginalised distributions to find the square region.
-        #If there are strong degeneracies this will be very inefficient.
-        #We could rotate the parameters here,
-        #but ideally we would do that before running the coarse grid anyway.
-        #Get marginalised statistics.
-        limits = np.percentile(self.flatchain, [100-100*confidence, 100*confidence], axis=0).T
-        #Discard dense params
-        ndense = len(self.emulator.mf.dense_param_names)
-        if self.mf_slope:
-            ndense += 1
-        if include_dense:
-            ndense = 0
-        lower = limits[ndense:, 0]
-        upper = limits[ndense:, 1]
-        assert np.all(lower < upper)
-        new_par = limits[ndense:, :]
-        return new_par
-
     def get_covar_det(self, params, include_emu):
         """Get the determinant of the covariance matrix.for certain parameters"""
         if np.any(params >= self.param_limits[:, 1]) or np.any(params <= self.param_limits[:, 0]):
@@ -343,3 +317,15 @@ class LikelihoodClass:
         detnoemu = self.get_covar_det(params, False)
         detemu = self.get_covar_det(params, True)
         return detemu/detnoemu
+
+    def make_err_grid(self, i, j, samples=30000):
+        """Make an error grid"""
+        ndim = np.size(self.param_limits[:, 0])
+        rr = lambda x: np.random.rand(ndim)*(self.param_limits[:, 1]-self.param_limits[:, 0]) + self.param_limits[:, 0]
+        rsamples = np.array([rr(i) for i in range(samples)])
+        randscores = [self.refine_metric(rr) for rr in rsamples]
+        grid_x, grid_y = np.mgrid[0:1:200j, 0:1:200j]
+        grid_x = grid_x * (self.param_limits[i, 1] - self.param_limits[i, 0]) + self.param_limits[i, 0]
+        grid_y = grid_y * (self.param_limits[j, 1] - self.param_limits[j, 0]) + self.param_limits[j, 0]
+        grid = scipy.interpolate.griddata(rsamples[:, (i, j)], randscores, (grid_x, grid_y), fill_value=0)
+        return grid

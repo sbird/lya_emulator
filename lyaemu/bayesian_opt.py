@@ -1,5 +1,18 @@
 """Separate file for doing Bayesian optimisation on a likelihood.
-The main routine is BayesianOpt.find_new_trials"""
+The main routine is BayesianOpt.find_new_trials
+
+To perform Bayesian optimisation, do:
+
+bayes.BayesianOpt(emulatordir, datadir)
+new_sims = bayes.find_new_trials(1-3)
+bayes.gen_new_simulations(new_sims)
+
+Then run the simulations
+
+To regenerate the emulator once the new simulations have run you can do:
+        emulator.reconstruct()
+        emulator.dump()
+"""
 import math
 import mpmath as mmh
 import numpy as np
@@ -67,10 +80,6 @@ class BayesianOpt:
         if len(np.shape(new_samples)) == 1:
             new_samples = [new_samples,]
         [self.like.emulator.do_ic_generation(ev) for ev in new_samples]
-        #Read the new ICs in again
-        self.like.emulator.reconstruct()
-        #Dump them to disc, automatically making a backup.
-        self.like.emulator.dump()
 
     def loglike_marginalised_mean_flux(self, params, include_emu=True, integration_bounds='default', integration_options='gauss-legendre', verbose=False, integration_method='Quadrature'):
         """Evaluate (Gaussian) likelihood marginalised over mean flux parameter axes: (dtau0, tau0)"""

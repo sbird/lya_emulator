@@ -2,7 +2,7 @@
 # from datetime import datetime
 import copy as cp
 import numpy as np
-from .latin_hypercube import map_to_unit_cube_list
+from .latin_hypercube import map_to_unit_cube,map_to_unit_cube_list
 #Make sure that we don't accidentally
 #get another backend when we import GPy.
 import matplotlib
@@ -25,8 +25,10 @@ class MultiBinGP:
         gp = lambda i: singleGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits)
         print('Number of redshifts for emulator generation=%d nk= %d' % (self.nz, self.nk))
         self.gps = [gp(i) for i in range(self.nz)]
+        self.powers = powers
+        self.params = params
 
-    def predict(self,params, tau0_factors = None, use_updated_training_set=False):
+    def predict(self,params, tau0_factors = None):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         std = np.zeros([1,self.nk*self.nz])
         means = np.zeros([1,self.nk*self.nz])
@@ -35,13 +37,14 @@ class MultiBinGP:
             zparams = np.array(params)
             if tau0_factors is not None:
                 zparams[0][0] *= tau0_factors[i] #Multiplying t0[z] by "tau0_factors"[z]
-            if not use_updated_training_set:
-                (m, s) = gp.predict(zparams)
-            else:
-                (m, s) = gp.predict_from_updated_training_set(zparams)
+            (m, s) = gp.predict(zparams)
             means[0,i*self.nk:(i+1)*self.nk] = m
             std[:,i*self.nk:(i+1)*self.nk] = s
         return means, std
+
+    def get_training_data(self):
+        """Get the originally input training data so we can easily rebuild the GP"""
+        return self.params, self.kf, self.powers
 
     def add_to_training_set(self, new_params):
         """Add to training set and update emulator (without re-training) -- for all redshifts"""
@@ -116,37 +119,27 @@ class SkLearnGP:
                 assert np.max(worst) < self.intol
 
     def add_to_training_set(self, new_params):
-        """Add to training set and update emulator (without re-training)"""
-        if self.gp_updated is None: #First time training set is updated
-            self.gp_updated = cp.deepcopy(self.gp)
+        """Add to training set and update emulator (without re-training). Takes a single set of new parameters"""
+        gp_new = cp.deepcopy(self.gp)
         mean_flux_training_samples = np.unique(self.gp.X[:, 0]).reshape(-1, 1)
-        mean_flux_samples_expand = np.repeat(mean_flux_training_samples, new_params.shape[0], axis=0)
-        new_params_unit_cube = map_to_unit_cube_list(new_params, self.param_limits[-1 * new_params.shape[0]:])
+        #Note mean flux excluded from param_limits
+        new_params_unit_cube = map_to_unit_cube(new_params, self.param_limits[-1 * new_params.shape[0]:])
         new_params_unit_cube_expand = np.tile(new_params_unit_cube, (mean_flux_training_samples.shape[0], 1))
-        new_params_unit_cube_mean_flux = np.hstack((mean_flux_samples_expand, new_params_unit_cube_expand))
+        new_params_unit_cube_mean_flux = np.hstack((mean_flux_training_samples, new_params_unit_cube_expand))
         #new_params_mean_flux = map_from_unit_cube_list(new_params_unit_cube_mean_flux, self.param_limits)
-        gp_updated_X_new = np.vstack((self.gp_updated.X, new_params_unit_cube_mean_flux))
-        gp_updated_Y_new = np.vstack((self.gp_updated.Y, self.gp.predict(new_params_unit_cube_mean_flux)[0]))
-        self.gp_updated.set_XY(X=gp_updated_X_new, Y=gp_updated_Y_new)
+        gp_updated_X_new = np.vstack((gp_new.X, new_params_unit_cube_mean_flux))
+        gp_updated_Y_new = np.vstack((gp_new.Y, self.gp.predict(new_params_unit_cube_mean_flux)[0]))
+        gp_new.set_XY(X=gp_updated_X_new, Y=gp_updated_Y_new)
+        self.gp = gp_new
 
-    def _predict(self, params, GP_instance):
+    def predict(self, params):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = map_to_unit_cube_list(params, self.param_limits)
-        flux_predict, var = GP_instance.predict(params_cube)
+        flux_predict, var = self.gp.predict(params_cube)
         mean = (flux_predict+1)*self.scalefactors
         std = np.sqrt(var) * self.scalefactors
         return mean, std
-
-    def predict(self, params):
-        """Get the predicted flux power spectrum (and error) at a parameter value
-        (or list of parameter values)."""
-        return self._predict(params, GP_instance=self.gp)
-
-    def predict_from_updated_training_set(self, params):
-        """Get the predicted flux power spectrum (and error) at a parameter value
-        (or list of parameter values) -- using updated training set"""
-        return self._predict(params, GP_instance=self.gp_updated)
 
     def get_predict_error(self, test_params, test_exact):
         """Get the difference between the predicted GP

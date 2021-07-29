@@ -37,7 +37,7 @@ class Emulator:
     - mf: mean flux object, which takes mean flux parameters and outputs the mean flux in each redshift bin
     - limitfac: factor to uniformly grow the parameter limits by.
     """
-    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1, tau_thresh=None):
+    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1, tau_thresh=None, npart=256, box=40):
         if param_names is None:
             self.param_names = {'ns':0, 'Ap':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8}
         else:
@@ -74,6 +74,8 @@ class Emulator:
         else:
             self.mf = mf
 
+        self.npart = npart
+        self.box = box
         self.set_maxk()
         #This is the Planck best-fit value. We do not have to change it because
         #it is a) very well measured and b) mostly degenerate with the mean flux.
@@ -95,7 +97,6 @@ class Emulator:
         #Maximum k value to use in comoving Mpc/h.
         #Comes out to k ~ 5, which is a bit larger than strictly necessary.
         self.maxk = np.max(self.kf) * velfac(1/(1+4.4)) * 2
-
 
     def build_dirname(self,params, include_dense=False, strsz=3):
         """Make a directory name for a given set of parameter values"""
@@ -152,7 +153,7 @@ class Emulator:
 
     def reconstruct(self):
         """Reconstruct the parameters of an emulator by loading the parameters of each simulation in turn."""
-        dirs = glob.glob(os.path.join(self.basedir, "*"))
+        dirs = glob.glob(os.path.join(self.basedir, "*/"))
         self.sample_params = np.array([self._recon_one(pdir) for pdir in dirs])
         assert np.shape(self.sample_params) == (len(dirs), np.size(self.param_limits[:,0]))
 
@@ -216,7 +217,7 @@ class Emulator:
             prior_points = self.sample_params[ii]
         return latin_hypercube.get_hypercube_samples(limits, nsamples,prior_points=prior_points)
 
-    def gen_simulations(self, nsamples, npart=256.,box=40,samples=None):
+    def gen_simulations(self, nsamples,samples=None):
         """Initialise the emulator by generating simulations for various parameters.
         Box size is in Mpc/h, not Mpc so that the bins of the flux power spectrum in s/km are at fixed values
         no matter the cosmology."""
@@ -227,10 +228,10 @@ class Emulator:
             self.sample_params = np.vstack([self.sample_params, samples])
         #Generate ICs for each set of parameter inputs
         for ev in samples:
-            self._do_ic_generation(ev, npart, box)
+            self.do_ic_generation(ev)
         self.dump()
 
-    def _do_ic_generation(self,ev,npart,box):
+    def do_ic_generation(self,ev):
         """Do the actual IC generation."""
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
         if os.path.exists(outdir):
@@ -248,7 +249,7 @@ class Emulator:
         om0 = ev[pn['omegamh2']]/hub**2
         omb = self.omegabh2 / hub**2
         wmap = (0.05/(2*math.pi/8.))**(ns-1.) * ev[pn['Ap']]
-        ss = galaxysimulation.GalaxySim(outdir=outdir, box=box,npart=npart, ns=ns, scalar_amp=wmap, redend=2.0,
+        ss = galaxysimulation.GalaxySim(outdir=outdir, box=self.box, npart=self.npart, ns=ns, scalar_amp=wmap, redend=2.0,
                                          here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,
                                          hireionz = hireionz, bhfeedback = bhfeedback,
                                          unitary=True, seed=422317, timelimit=6)
@@ -293,6 +294,13 @@ class Emulator:
             3.
         """
         gp = self._get_custom_emulator(emuobj=None, max_z=max_z, min_z=min_z)
+        return gp
+
+    def _get_custom_emulator(self, *, emuobj, max_z=4.2, min_z=2.0):
+        """Helper to allow supporting different emulators."""
+        aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
+        plimits = self.get_param_limits(include_dense=True)
+        gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
         return gp
 
     def get_flux_vectors(self, max_z=4.2, min_z=2.0, kfunits="kms"):
@@ -380,13 +388,6 @@ class Emulator:
         assert np.all(inparams - aparams < 1e-3)
         return kfmpc, kfkms, flux_vectors
 
-    def _get_custom_emulator(self, *, emuobj, max_z=4.2, min_z=2.0):
-        """Helper to allow supporting different emulators."""
-        aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
-        plimits = self.get_param_limits(include_dense=True)
-        gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
-        return gp
-
     def do_loo_cross_validation(self, *, remove=None, max_z=4.2, subsample=None):
         """Do cross-validation by constructing an emulator missing
            a single simulation and checking accuracy.
@@ -413,21 +414,21 @@ class Emulator:
 class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.
     Thermal parameters turned off."""
-    def __init__(self, basedir, nknots=4, kf=None, mf=None):
+    def __init__(self, basedir, nknots=4, kf=None, mf=None, npart=256, box=40):
         param_names = {'herei':nknots, 'heref':nknots+1, 'alphaq': nknots+2, 'hub':nknots+3, 'omegamh2':nknots+4}
         #Assign names like AA, BB, etc.
         for i in range(nknots):
             param_names[string.ascii_uppercase[i]*2] = i
         self.nknots = nknots
         param_limits = np.append(np.repeat(np.array([[0.6,1.5]]),nknots,axis=0),[[3.5,4.5],[2.5,3.2],[0.65,0.75],[0.14,0.146]],axis=0)
-        super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits, kf=kf, mf=mf)
+        super().__init__(basedir=basedir, param_names = param_names, param_limits = param_limits, kf=kf, mf=mf, npart=npart, box=box)
         #Linearly spaced knots in k space:
         #these do not quite hit the edges of the forest region, because we want some coverage over them.
         self.knot_pos = np.linspace(0.15, 1.5,nknots)
         #Used for early iterations.
         #self.knot_pos = [0.15,0.475,0.75,1.19]
 
-    def _do_ic_generation(self,ev,npart,box):
+    def do_ic_generation(self,ev):
         """Do the actual IC generation."""
         outdir = os.path.join(self.basedir, self.build_dirname(ev))
         if os.path.exists(outdir):
@@ -439,9 +440,9 @@ class KnotEmulator(Emulator):
         hub = ev[pn['hub']]
         om0 = ev[pn['omegamh2']]/hub**2
         omb = self.omegabh2 / hub**2
-        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=box,npart=npart, knot_pos = self.knot_pos, knot_val=ev[0:self.nknots],
-                                             hubble=hub, redend=2.2, here_f = hef, here_i = hei, alpha_q = aq, omega0=om0, omegab=omb,
-                                             unitary=True, seed=422317)
+        ss = lyasimulation.LymanAlphaKnotICs(outdir=outdir, box=self.box,npart=self.npart, knot_pos = self.knot_pos,
+                                             knot_val=ev[0:self.nknots],hubble=hub, redend=2.2, here_f = hef, here_i = hei,
+                                             alpha_q = aq, omega0=om0, omegab=omb, unitary=True, seed=422317)
         try:
             ss.make_simulation()
         except RuntimeError as e:

@@ -122,8 +122,8 @@ class LikelihoodClass:
             #Add a slope to the parameter limits
             t0_slope = np.array([-0.25, 0.25])
             self.mf_slope = True
-            slopehigh = np.max(mflux.mean_flux_slope_to_factor(np.linspace(2.2, max_z, 11), 0.25))
-            slopelow = np.min(mflux.mean_flux_slope_to_factor(np.linspace(2.2, max_z, 11), -0.25))
+            slopehigh = np.max(mflux.mean_flux_slope_to_factor(self.zout[::-1], 0.25))
+            slopelow = np.min(mflux.mean_flux_slope_to_factor(self.zout[::-1], -0.25))
             dense_limits = np.array([np.array(t0_factor) * np.array([slopelow, slopehigh])])
             mf = mflux.MeanFluxFactor(dense_limits=dense_limits)
         else:

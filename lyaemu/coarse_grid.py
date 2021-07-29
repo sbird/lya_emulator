@@ -80,6 +80,8 @@ class Emulator:
         #This is the Planck best-fit value. We do not have to change it because
         #it is a) very well measured and b) mostly degenerate with the mean flux.
         self.omegabh2 = 0.0224
+        self.max_z = 5.4
+        self.min_z = 2.0
         self.sample_params = []
         self.basedir = os.path.expanduser(basedir)
         self.tau_thresh = tau_thresh
@@ -141,6 +143,7 @@ class Emulator:
         ev[pn['omegamh2']] = sics["omega0"]*sics["hubble"]**2
         ev[pn['hireionz']] = sics["hireionz"]
         ev[pn['bhfeedback']] = sics["bhfeedback"]
+        assert abs(sics["redend"] - self.min_z) < 0.01
         wmap = sics["scalar_amp"]
         #Convert pivot of the scalar amplitude from amplitude
         #at 8 Mpc (k = 0.78) to pivot scale of 0.05
@@ -193,7 +196,7 @@ class Emulator:
         self.tau_thresh = tau_thresh
         self.basedir = real_basedir
         self.set_maxk()
-        self.myspec = flux_power.MySpectra(max_z=5.4, min_z=1.9, max_k=self.maxk)
+        self.myspec = flux_power.MySpectra(max_z=self.max_z, min_z=self.min_z, max_k=self.maxk)
 
     def get_outdir(self, pp, strsz=3):
         """Get the simulation output directory path for a parameter set."""
@@ -282,7 +285,7 @@ class Emulator:
         powerspectra = self.myspec.get_snapshot_list(base=di)
         return powerspectra
 
-    def get_emulator(self, max_z=4.2, min_z=1.9):
+    def get_emulator(self, max_z=4.2, min_z=2.0):
         """ Build an emulator for the desired k_F and our simulations.
             kf gives the desired k bins in s/km.
             Mean flux rescaling is handled (if mean_flux=True) as follows:
@@ -293,14 +296,14 @@ class Emulator:
         gp = self._get_custom_emulator(emuobj=None, max_z=max_z, min_z=min_z)
         return gp
 
-    def _get_custom_emulator(self, *, emuobj, max_z=4.2, min_z=1.9):
+    def _get_custom_emulator(self, *, emuobj, max_z=4.2, min_z=2.0):
         """Helper to allow supporting different emulators."""
         aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
         plimits = self.get_param_limits(include_dense=True)
         gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
         return gp
 
-    def get_flux_vectors(self, max_z=4.2, min_z=1.9, kfunits="kms"):
+    def get_flux_vectors(self, max_z=4.2, min_z=2.0, kfunits="kms"):
         """Get the desired flux vectors and their parameters"""
         pvals = self.get_parameters()
         nparams = np.shape(pvals)[1]
@@ -345,12 +348,12 @@ class Emulator:
         else:
             kf = kfmpc
         #Cut out redshifts that we don't want this time
-        minbin = int((self.myspec.zout[0] - max_z)/0.2)
-        assert minbin >= 0
-        maxbin = int((self.myspec.zout[-1] - min_z)/0.2)-1
-        assert maxbin < 0
+        assert np.round(self.myspec.zout[-1], 1) <= min_z
+        maxbin = np.where(np.round(self.myspec.zout, 1) >= min_z)[0].max() + 1
+        assert np.round(self.myspec.zout[0], 1) >= max_z
+        minbin = np.where(np.round(self.myspec.zout, 1) <= max_z)[0].min()
         kflen = np.shape(kf)[-1]
-        newflux = np.array([ff[minbin*kflen:maxbin*kflen] for ff in flux_vectors])
+        newflux = flux_vectors[:, minbin*kflen:maxbin*kflen]
         return aparams, kf, newflux
 
     def save_flux_vectors(self, aparams, kfmpc, kfkms, flux_vectors, mfc="mf", savefile="emulator_flux_vectors.hdf5"):

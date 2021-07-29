@@ -7,7 +7,7 @@ import numpy as np
 from fake_spectra import spectra
 from fake_spectra import abstractsnapshot as absn
 
-def rebin_power_to_kms(kfkms, kfmpc, flux_powers, zbins, omega_m, omega_l = None):
+def rebin_power_to_kms(kfkms, kfmpc, flux_powers, zbins, omega_m, omega_l=None):
     """Rebins a power spectrum to constant km/s bins.
     Bins larger than the box are discarded. The return type is thus a list,
     with each redshift bin having potentially different lengths."""
@@ -103,7 +103,7 @@ class MySpectra:
     """This class stores the randomly positioned sightlines once,
        so that they are the same for each emulator point.
        max_k is in comoving h/Mpc."""
-    def __init__(self, numlos = 32000, max_z= 5.4, min_z = 1.9, max_k = 5.):
+    def __init__(self, numlos=32000, max_z=5.4, min_z=2.0, max_k=5.):
         self.NumLos = numlos
         #For SDSS or BOSS the spectral resolution is
         #60 km/s at 5000 A and 80 km/s at 4300 A.
@@ -120,7 +120,7 @@ class MySpectra:
         self.pix_res = 10.
         self.NumLos = numlos
         #Want output every 0.2 from z=max to z=2.0, matching SDSS.
-        self.zout = np.arange(max_z,min_z,-0.2)
+        self.zout = np.append(np.arange(max_z, min_z, -0.2), min_z)
         self.max_k = max_k
         self.savefile = "lya_forest_spectra.hdf5"
 
@@ -203,7 +203,7 @@ class MySpectra:
         #Make sure we have enough outputs, ignoring missing values at the start and the end
         if powerspectra.len() != np.size(self.zout):
             reds = [ss.red for ss in powerspectra.snaps]
-            self.zout = np.arange(np.max(reds), np.min(reds)-0.02, -0.2)
+            self.zout = np.append(np.arange(np.max(reds), np.min(reds), -0.2), np.min(reds))
             print("Redshift now from z=%g to %g" % (self.zout[0], self.zout[-1]))
         if powerspectra.len() != np.size(self.zout):
             raise ValueError("Found only",powerspectra.len(),"of",np.size(self.zout),"z=",self.zout[0], self.zout[-1],"from snaps:",powerspectra.snaps)

@@ -337,12 +337,12 @@ class Emulator:
         else:
             kf = kfmpc
         #Cut out redshifts that we don't want this time
-        minbin = int((self.myspec.zout[0] - max_z)/0.2)
-        assert minbin >= 0
-        maxbin = int((self.myspec.zout[-1] - min_z)/0.2)-1
-        assert maxbin < 0
+        assert np.round(self.myspec.zout[-1], 1) <= min_z
+        maxbin = np.where(np.round(self.myspec.zout, 1) >= min_z)[0].max() + 1
+        assert np.round(self.myspec.zout[0], 1) >= max_z
+        minbin = np.where(np.round(self.myspec.zout, 1) <= max_z)[0].min()
         kflen = np.shape(kf)[-1]
-        newflux = np.array([ff[minbin*kflen:maxbin*kflen] for ff in flux_vectors])
+        newflux = flux_vectors[:, minbin*kflen:maxbin*kflen]
         return aparams, kf, newflux
 
     def save_flux_vectors(self, aparams, kfmpc, kfkms, flux_vectors, mfc="mf", savefile="emulator_flux_vectors.hdf5"):

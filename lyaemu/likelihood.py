@@ -189,14 +189,16 @@ class LikelihoodClass:
         return covar_bin
 
     def get_data_correction(self, okf, params, redshift):
-        # First, apply the DLA correction to the prediction
+        """Get the DLA and SiIII flux power corrections."""
+        # First, get the DLA correction
         dla_corr = DLAcorr(okf, redshift, params[self.data_params['a_lls']:self.data_params['a_ldla']+1])
-        # Then apply the SiIII correction
+        # Then the SiIII correction
         tau_eff = 0.0046*(1+redshift)**3.3 # model from Palanque-Delabrouille 2013, arXiv:1306.5896
         siIII_corr = SiIIIcorr(params[self.data_params['fSiIII']], tau_eff, okf)
         return dla_corr*siIII_corr
 
     def data_correction_prior(self, params):
+        """Return a prior on the DLA and SiIII correction parameters."""
         sigma_dla = 0.2 # somewhat arbitrary values for the prior widths
         dla = -np.sum((params[self.data_params['a_lls']:self.data_params['a_ldla']+1]/sigma_dla)**2)
         sigma_siIII = 1e-2
@@ -248,35 +250,41 @@ class LikelihoodClass:
         return chi2
 
     def make_cobaya_dict(self, *, data_power, burnin, nsamples, pscale=50, emu_error=True):
+        """Return a dictionary that can be used to run Cobaya MCMC sampling."""
+        # Parameter names
         pnames = self.emulator.print_pnames()
-        #Set up mean flux
+        # Add mean flux parameters
         if self.mf_slope:
             pnames = [('dtau0', r'd\tau_0'),]+pnames
         # Add DLA, SiIII correction parameters
         if len(self.data_params) != 0:
             pnames = pnames + self.dnames
-        # get parameter ranges for rough estimate of proposal pdf width for mcmc sampler
+        # Get parameter ranges for use as a rough estimate of proposal pdf width
         prange = (self.param_limits[:, 1]-self.param_limits[:, 0])
+        # Build the dictionary
         info = {}
         info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z,
                                                                     "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value,
                                                                     "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr,
                                                                     "tau_thresh": self.tau_thresh, "include_emu": emu_error, "data_power": data_power}}
-        # each of the parameters (name should match those in input_params) has prior with limits and proposal width
-        # (the proposal covariance matrix is learned, so the value given needs only be small enough to accept steps)
+        # Each of the parameters has a prior with limits and a proposal width (the proposal covariance matrix
+        # is learned, so the value given needs to be small enough for the sampler to get started)
         info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale,
                                          'latex': pnames[i][1]} for i in range(self.ndim)}
-        # set up the mcmc sampler options (to do seed runs, add below the option seed: integer between 0 and 2**32 - 1)
-        # default for computing Gelman-Rubin is to split chain into 4; to change, add option Rminus1_single_split: integer
+        # Set up the mcmc sampler options (to do seed runs, add the option 'seed': integer between 0 and 2**32 - 1)
+        # Default for computing Gelman-Rubin is to split chain into 4; to change, add option 'Rminus1_single_split': integer
         info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True,
                                     "learn_proposal_Rminus1_max": 30, "learn_proposal_Rminus1_max_early": 30}}
         return info
 
     def do_acceptance_check(self, info, steps=100):
+        """Run a short chain to check the initial acceptance rate.
+        Optional check in the do_sampling function, and can be run separately as well
+        (make_cobaya_dict -> do_acceptance_check)"""
         print("-----------------------------------------------------")
         print("Test run to check acceptance rate")
         info_test = info.copy()
-        # don't do a burn-in, limit the sample to steps, and increase the max_tries to ensure an acceptance rate
+        # Don't do a burn-in, limit the sample to steps, and increase the max_tries to ensure it succeeds
         info_test.update({"sampler": {"mcmc": {"burn_in": 0, "max_samples": steps, "max_tries": '1000d'}}})
         updated_info, sampler = cobaya_run(info_test)
         print('Acceptance rate:', sampler.get_acceptance_rate())
@@ -284,7 +292,8 @@ class LikelihoodClass:
         assert sampler.get_acceptance_rate() > 0.01, "Acceptance rate very low. Consider decreasing the proposal width by increasing the pscale parameter"
 
     def do_sampling(self, savefile=None, datadir=None, burnin=3000, nsamples=3e5, pscale=50, include_emu_error=True, test_accept=True):
-        """Initialise and run MCMC using Cobaya."""
+        """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
+        burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
         data_power = None
         if datadir is not None:
@@ -322,11 +331,13 @@ class LikelihoodClass:
         return sampler, full_chain
 
     def combine_chains(self, all_chains, savefile):
+        """Combine multiple chains into a single file."""
+        # Will work even when there is only a single chain, no MPI
         full_chain = all_chains[0]
         for chain in all_chains[1:]:
             full_chain.append(chain)
         if savefile is not None:
-            # Set up the save the same way as Cobaya
+            # Save the file with the same formatting as Cobaya
             n_float = 8
             width_col = lambda col: max(7 + n_float, len(col))
             numpy_fmts = ["%{}.{}".format(width_col(col), n_float) + "g" for col in full_chain.data.columns]
@@ -383,8 +394,8 @@ class LikelihoodClass:
 
 
 class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
-    """Class to contain likelihood computations."""
-
+    """Class inheriting Cobaya functionality. Strictly for use with Cobaya sampling."""
+    # Cobaya automatically recognizes (and sets as default) inputs with the following names
     basedir: str
     mean_flux: str = 's'
     max_z: float = 4.6
@@ -397,16 +408,21 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     tau_thresh: int = None
     data_power: float = None
     include_emu: bool = True
+    # Required for Cobaya to correctly parse which parameters are for input
     input_params_prefix: str = ""
 
     def initialize(self):
-        """Initialise the emulator by loading the flux power spectra from the simulations."""
+        """Initialization of Cobaya likelihood using LikelihoodClass init.
+        Gets the emulator by loading the flux power spectra from the simulations."""
         LikelihoodClass.__init__(self, self.basedir, mean_flux=self.mean_flux, max_z=self.max_z, min_z=self.min_z,
                          emulator_class=self.emulator_class, t0_training_value=self.t0_training_value,
                          optimise_GP=self.optimise_GP, emulator_json_file=self.emulator_json_file,
                          data_corr=self.data_corr, tau_thresh=self.tau_thresh)
 
     def logp(self, **params_values):
-        """Cobaya-compatible call to the base class likelihood function."""
+        """Cobaya-compatible call to the base class likelihood function.
+        Must be called logp."""
+        # self.input_params is specially recognized by Cobaya (will be the "params" section
+        # of the Cobaya dictionary passed to it)
         params = np.array([params_values[p] for p in self.input_params])
         return self.likelihood(params, include_emu=self.include_emu, data_power=self.data_power)

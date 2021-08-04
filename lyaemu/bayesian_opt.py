@@ -3,7 +3,7 @@ The main routine is BayesianOpt.find_new_trials
 
 To perform Bayesian optimisation, do:
 
-bayes.BayesianOpt(emulatordir, datadir)
+bayes.BayesianOpt(emulatordir, datadir, tau_thresh)
 new_sims = bayes.find_new_trials(1-3)
 bayes.gen_new_simulations(new_sims)
 
@@ -23,11 +23,11 @@ from . import gpemulator
 
 class BayesianOpt:
     """Class for doing Bayesian optimisation with the likelihood."""
-    def __init__(self, emudir, datadir):
-        self.like = likelihood.LikelihoodClass(emudir, mean_flux='s', data_corr=False)
+    def __init__(self, emudir, datadir, tau_thresh):
+        self.like = likelihood.LikelihoodClass(emudir, mean_flux='s', data_corr=False, tau_thresh=tau_thresh)
         self.param_limits = self.like.param_limits
-        #This will be replaced with real data
-        self.data_fluxpower = likelihood.load_data(datadir, kf=self.like.kf, t0=self.like.t0_training_value)
+        #This will be replaced with real data (set equal to None to use default BOSS data)
+        self.data_fluxpower = likelihood.load_data(datadir, kf=self.like.kf, t0=self.like.t0_training_value, tau_thresh=tau_thresh)
         #Parameters to calculate the exploration weight. In practice exploration is usually subdominant so these are not very important.
         self.delta = 0.5
         self.nu = 1

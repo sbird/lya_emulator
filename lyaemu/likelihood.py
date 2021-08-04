@@ -1,14 +1,14 @@
 """Module for computing the likelihood function for the forest emulator."""
-import math
 from datetime import datetime
 import numpy as np
 import scipy.interpolate
-import emcee
 from . import coarse_grid
 from . import flux_power
 from . import lyman_data
 from . import mean_flux as mflux
 from .quadratic_emulator import QuadraticEmulator
+from cobaya.likelihood import Likelihood
+from cobaya.run import run as cobaya_run
 
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""
@@ -16,7 +16,7 @@ def _siIIIcorr(kf):
     kmids = np.zeros(np.size(kf)+1)
     kmids[1:-1] = np.exp((np.log(kf[1:])+np.log(kf[:-1]))/2.)
     #arbitrary final point
-    kmids[-1] = 2*math.pi/2271 + kmids[-2]
+    kmids[-1] = 2*np.pi/2271 + kmids[-2]
     # This is the average of cos(2271k) across the k interval in the bin
     siform = np.zeros_like(kf)
     siform = (np.sin(2271*kmids[1:])-np.sin(2271*kmids[:-1]))/(kmids[1:]-kmids[:-1])/2271.
@@ -47,20 +47,7 @@ def DLAcorr(kf, z, alpha):
         factor += alpha[i] * ((1+z)/(1+z_0))**-3.55 * (a_z[i]*np.exp(b_z[i]*kf) - 1)**-2
     return factor
 
-def gelman_rubin(chain):
-    """Compute the Gelman-Rubin statistic for a chain"""
-    ssq = np.var(chain, axis=1, ddof=1)
-    W = np.mean(ssq, axis=0)
-    tb = np.mean(chain, axis=1)
-    tbb = np.mean(tb, axis=0)
-    m = chain.shape[0]
-    n = chain.shape[1]
-    B = n / (m - 1) * np.sum((tbb - tb)**2, axis=0)
-    var_t = (n - 1) / n * W + 1 / n * B
-    R = np.sqrt(var_t / W)
-    return R
-
-def load_data(datadir, *, kf, max_z=4.2, min_z=2.2, t0=1., tau_thresh=None):
+def load_data(datadir, *, kf, max_z=4.6, min_z=2.2, t0=1., tau_thresh=None):
     """Load and initialise a "fake data" flux power spectrum"""
     #Load the data directory
     myspec = flux_power.MySpectra(max_z=max_z, min_z=min_z)
@@ -72,34 +59,39 @@ def load_data(datadir, *, kf, max_z=4.2, min_z=2.2, t0=1., tau_thresh=None):
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z=4.2, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None):
+    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
-        #Use the BOSS covariance matrix
-        self.sdss = lyman_data.BOSSData()
-        #Default data is flux power from Chabanier 2019 (BOSS DR14)
-        #Pass datafile='dr9' to use data from Palanque-Delabrouille 2013
+        # Needed for Cobaya dictionary construction
+        self.basedir = basedir
+        self.mean_flux = mean_flux
+        self.emulator_class = emulator_class
+        self.emulator_json_file = emulator_json_file
+        self.data_corr = data_corr
+        self.tau_thresh = tau_thresh
+
         self.max_z = max_z
         self.min_z = min_z
+        self.t0_training_value = t0_training_value
         myspec = flux_power.MySpectra(max_z=max_z, min_z=min_z)
         self.zout = myspec.zout
+        # Default data is flux power from Chabanier 2019 (BOSS DR14),
+        # pass datafile='dr9' to use data from Palanque-Delabrouille 2013
+        self.sdss = lyman_data.BOSSData()
         self.kf = self.sdss.get_kf()
-
-        self.t0_training_value = t0_training_value
-        #Load BOSS data vector
-        self.BOSS_flux_power = self.sdss.pf.reshape(-1, self.kf.shape[0])[:self.zout.shape[0]][::-1] #km / s; n_z * n_k
+        # Load BOSS data vector
+        self.BOSS_flux_power = self.sdss.pf.reshape(-1, self.kf.shape[0])[:self.zout.shape[0]][::-1]
+        # Units: km / s; Size: n_z * n_k
 
         self.mf_slope = False
-        #Param limits on t0
+        # Param limits on t0
         t0_factor = np.array([0.75, 1.25])
-        #Get the emulator
         if mean_flux == 'c':
             mf = mflux.ConstMeanFlux(value=t0_training_value)
-        #As each redshift bin is independent, for redshift-dependent mean flux models
-        #we just need to convert the input parameters to a list of mean flux scalings
-        #in each redshift bin.
-        #This is an example which parametrises the mean flux as an amplitude and slope.
+        # Redshift bins are independent -- for redshift-dependent mean flux models
+        # we convert the input parameters to a list of mean flux scalings in each redshift bin.
+        # This parametrises the mean flux as an amplitude and slope.
         elif mean_flux == 's':
-            #Add a slope to the parameter limits
+            # Add a slope to the parameter limits
             t0_slope = np.array([-0.25, 0.25])
             self.mf_slope = True
             slopehigh = np.max(mflux.mean_flux_slope_to_factor(self.zout[::-1], 0.25))
@@ -108,6 +100,8 @@ class LikelihoodClass:
             mf = mflux.MeanFluxFactor(dense_limits=dense_limits)
         else:
             mf = mflux.MeanFluxFactor()
+
+        # Select emulator type
         if emulator_class == "standard":
             self.emulator = coarse_grid.Emulator(basedir, kf=self.kf, mf=mf, tau_thresh=tau_thresh)
         elif emulator_class == "knot":
@@ -116,14 +110,18 @@ class LikelihoodClass:
             self.emulator = QuadraticEmulator(basedir, kf=self.kf, mf=mf)
         else:
             raise ValueError("Emulator class not recognised")
+
+        # Load the parameters, etc. associated with this emulator (overwrite defaults)
         self.emulator.load(dumpfile=emulator_json_file)
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
         if mean_flux == 's':
-            #Add a slope to the parameter limits
+            # Add a slope to the parameter limits
             self.param_limits = np.vstack([t0_slope, self.param_limits])
-            #Shrink param limits t0 so that even with
-            #a slope they are within the emulator range
+            # Shrink param limits t0 so that even with
+            # a slope they are within the emulator range
             self.param_limits[1, :] = t0_factor
+
+        # Set up SiIII and DLA corrections, if requested
         self.data_params = {}
         self.dla_data_corr = data_corr
         if data_corr:
@@ -137,10 +135,13 @@ class LikelihoodClass:
             self.param_limits = np.vstack([self.param_limits, alpha_limits, fSiIII_limits])
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
-        print('Beginning to generate emulator at', str(datetime.now()))
+
+        # Generate emulator
         if optimise_GP:
+            print('Beginning to generate emulator at', str(datetime.now()))
             self.gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
-        print('Finished generating emulator at', str(datetime.now()))
+            print('Finished generating emulator at', str(datetime.now()))
+
 
     def get_predicted(self, params):
         """Helper function to get the predicted flux power spectrum and error, rebinned to match the desired kbins."""
@@ -164,64 +165,6 @@ class LikelihoodClass:
         _, std = flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=self.gpemu.kf, flux_powers=std_nat[0], zbins=self.zout, omega_m=omega_m)
         return okf, predicted, std
 
-    def likelihood(self, params, include_emu=True, data_power=None):
-        """A simple likelihood function for the Lyman-alpha forest.
-        Assumes data is quadratic with a covariance matrix.
-        The covariance for the emulator points is assumed to be
-        completely correlated with each z bin, as the emulator
-        parameters are estimated once per z bin."""
-        if data_power is None:
-            data_power = np.copy(self.data_fluxpower)
-        #Set parameter limits as the hull of the original emulator.
-        if np.any(params >= self.param_limits[:, 1]) or np.any(params <= self.param_limits[:, 0]):
-            return -np.inf
-
-        okf, predicted, std = self.get_predicted(params[:self.ndim-len(self.data_params)])
-
-        nkf = int(np.size(self.kf))
-        nz = np.shape(predicted)[0]
-        assert nz == int(np.size(data_power)/nkf)
-        #Likelihood using full covariance matrix
-        chi2 = 0
-
-        for bb in range(nz):
-            idp = np.where(self.kf >= okf[bb][0])
-            if len(self.data_params) != 0:
-                # First, apply the DLA correction to the prediction
-                predicted[bb] = predicted[bb]*DLAcorr(okf[bb], self.zout[bb], params[self.data_params['a_lls']:self.data_params['a_ldla']+1])
-                # Then apply the SiIII correction
-                tau_eff = 0.0046*(1+self.zout[bb])**3.3 # model from Palanque-Delabrouille 2013, arXiv:1306.5896
-                predicted[bb] = predicted[bb]*SiIIIcorr(params[self.data_params['fSiIII']], tau_eff, okf[bb])
-            diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
-            std_bin = std[bb]
-            bindx = np.min(idp)
-            covar_bin = self.get_BOSS_error(bb)[bindx:, bindx:]
-
-            assert np.shape(np.outer(std_bin, std_bin)) == np.shape(covar_bin)
-            if include_emu:
-                #Assume each k bin is independent
-#                 covar_emu = np.diag(std_bin**2)
-                #Assume completely correlated emulator errors within this bin
-                covar_emu = np.outer(std_bin, std_bin)
-                covar_bin += covar_emu
-            icov_bin = np.linalg.inv(covar_bin)
-            (_, cdet) = np.linalg.slogdet(covar_bin)
-            dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
-            chi2 += dcd -0.5 * cdet
-            # Add a prior to the DLA and SiIII correction parameters (zero-centered normal)
-            if len(self.data_params) != 0:
-                sigma_dla = 0.2 # somewhat arbitrary values for the prior widths
-                chi2 += -np.sum((params[self.data_params['a_lls']:self.data_params['a_ldla']+1]/sigma_dla)**2)
-                sigma_siIII = 1e-2
-                chi2 += -(params[self.data_params['fSiIII']]/sigma_siIII)**2
-            assert 0 > chi2 > -2**31
-            assert not np.isnan(chi2)
-        return chi2
-
-    def load(self, savefile):
-        """Load the chain from a savefile"""
-        self.flatchain = np.loadtxt(savefile)
-
     def get_BOSS_error(self, zbin):
         """Get the BOSS covariance matrix error."""
         #Redshifts
@@ -238,53 +181,121 @@ class LikelihoodClass:
             covar_bin = self.sdss.get_covar(sdssz[zbin])
         return covar_bin
 
-    def do_sampling(self, savefile, datadir=None, nwalkers=150, burnin=3000, nsamples=3000, while_loop=True, include_emulator_error=True, maxsample=20):
-        """Initialise and run emcee."""
+    def get_data_correction(self, okf, params, redshift):
+        # First, apply the DLA correction to the prediction
+        dla_corr = DLAcorr(okf, redshift, params[self.data_params['a_lls']:self.data_params['a_ldla']+1])
+        # Then apply the SiIII correction
+        tau_eff = 0.0046*(1+redshift)**3.3 # model from Palanque-Delabrouille 2013, arXiv:1306.5896
+        siIII_corr = SiIIIcorr(params[self.data_params['fSiIII']], tau_eff, okf)
+        return dla_corr*siIII_corr
+
+    def data_correction_prior(self, params):
+        sigma_dla = 0.2 # somewhat arbitrary values for the prior widths
+        dla = -np.sum((params[self.data_params['a_lls']:self.data_params['a_ldla']+1]/sigma_dla)**2)
+        sigma_siIII = 1e-2
+        siIII = -(params[self.data_params['fSiIII']]/sigma_siIII)**2
+        return dla + siIII
+
+    def likelihood(self, params, include_emu=True, data_power=None):
+        """A simple likelihood function for the Lyman-alpha forest.
+        Assumes data is quadratic with a covariance matrix.
+        The covariance for the emulator points is assumed to be
+        completely correlated with each z bin, as the emulator
+        parameters are estimated once per z bin."""
+        # Default data to use is BOSS data
+        if data_power is None:
+            data_power = np.copy(self.BOSS_flux_power.flatten())
+        # Set parameter limits as the hull of the original emulator.
+        if np.any(params >= self.param_limits[:, 1]) or np.any(params <= self.param_limits[:, 0]):
+            return -np.inf
+
+        okf, predicted, std = self.get_predicted(params[:self.ndim-len(self.data_params)])
+        nkf = int(np.size(self.kf))
+        nz = np.shape(predicted)[0]
+        assert nz == int(np.size(data_power)/nkf)
+
+        # Likelihood using full covariance matrix
+        chi2 = 0
+        for bb in range(nz):
+            idp = np.where(self.kf >= okf[bb][0])
+            if len(self.data_params) != 0:
+                # Add a prior for the DLA and SiIII correction parameters (zero-centered normal)
+                chi2 += self.data_correction_prior(params)
+                # Get and apply the DLA and SiIII corrections to the prediction
+                predicted[bb] = predicted[bb]*self.get_data_correction(okf[bb], params, self.zout[bb])
+            diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
+            std_bin = std[bb]
+            bindx = np.min(idp)
+            covar_bin = self.get_BOSS_error(bb)[bindx:, bindx:]
+            assert np.shape(np.outer(std_bin, std_bin)) == np.shape(covar_bin)
+            if include_emu:
+                # Assume completely correlated emulator errors within this bin
+                covar_emu = np.outer(std_bin, std_bin)
+                covar_bin += covar_emu
+            icov_bin = np.linalg.inv(covar_bin)
+            (_, cdet) = np.linalg.slogdet(covar_bin)
+            dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
+            chi2 += dcd -0.5 * cdet
+            assert 0 > chi2 > -2**31
+            assert not np.isnan(chi2)
+        return chi2
+
+    def make_cobaya_dict(self, *, data_power, burnin, nsamples, pscale=50, emu_error=True):
         pnames = self.emulator.print_pnames()
-        if datadir is None:
-            #Default is to use the flux power data from BOSS (dr14 or dr9)
-            self.data_fluxpower = self.BOSS_flux_power.flatten()
-        else:
-            #Load the data directory (i.e. use a simulation flux power as data)
-            self.data_fluxpower = load_data(datadir, kf=self.kf, t0=self.t0_training_value, min_z=self.min_z)
         #Set up mean flux
         if self.mf_slope:
             pnames = [('dtau0', r'd\tau_0'),]+pnames
         # Add DLA, SiIII correction parameters
         if len(self.data_params) != 0:
             pnames = pnames + self.dnames
-        with open(savefile+"_names.txt", 'w') as ff:
-            for pp in pnames:
-                ff.write("%s %s\n" % pp)
-        #Limits: we need to hard-prior to the volume of our emulator.
-        pr = (self.param_limits[:, 1]-self.param_limits[:, 0])
-        #Priors are assumed to be in the middle.
-        cent = (self.param_limits[:, 1]+self.param_limits[:, 0])/2.
-        p0 = [cent+2*pr/16.*np.random.rand(self.ndim)-pr/16. for _ in range(nwalkers)]
-        assert np.all([np.isfinite(self.likelihood(pp, include_emu=include_emulator_error)) for pp in p0])
-        emcee_sampler = emcee.EnsembleSampler(nwalkers, self.ndim, self.likelihood, args=(include_emulator_error,))
-        start = datetime.now()
-        pos, _, _ = emcee_sampler.run_mcmc(p0, burnin)
-        print('Burnin completion time:', str(datetime.now()-start))
-        #Check things are reasonable
-        assert np.all(emcee_sampler.acceptance_fraction > 0.01)
-        emcee_sampler.reset()
-        self.cur_results = emcee_sampler
-        gr = 10.
-        count = 0
-        while np.any(gr > 1.01) and count < maxsample:
-            start = datetime.now()
-            emcee_sampler.run_mcmc(pos, nsamples)
-            print(str(count+1)+'/'+str(maxsample)+' completion time:', str(datetime.now()-start))
-            gr = gelman_rubin(emcee_sampler.chain)
-            print("Total samples:", nsamples, " Gelman-Rubin: ", gr)
-            np.savetxt(savefile, emcee_sampler.flatchain)
-            count += 1
-            if while_loop is False:
-                break
-        self.flatchain = emcee_sampler.flatchain
-        np.savetxt(savefile+'_lnprob', emcee_sampler.flatlnprobability)
-        return emcee_sampler
+        # get parameter ranges for rough estimate of proposal pdf width for mcmc sampler
+        prange = (self.param_limits[:, 1]-self.param_limits[:, 0])
+        info = {}
+        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z,
+                                                                    "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value,
+                                                                    "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr,
+                                                                    "tau_thresh": self.tau_thresh, "include_emu": emu_error, "data_power": data_power}}
+        # each of the parameters (name should match those in input_params) has prior with limits and proposal width
+        # (the proposal covariance matrix is learned, so the value given needs only be small enough to accept steps)
+        info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale,
+                                         'latex': pnames[i][1]} for i in range(self.ndim)}
+        # set up the mcmc sampler options (to do seed runs, add below the option seed: integer between 0 and 2**32 - 1)
+        # default for computing Gelman-Rubin is to split chain into 4; to change, add option Rminus1_single_split: integer
+        info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True,
+                                    "learn_proposal_Rminus1_max": 30, "learn_proposal_Rminus1_max_early": 30}}
+        return info
+
+    def do_acceptance_check(self, info, steps=100):
+        print("-----------------------------------------------------")
+        print("Test run to check acceptance rate")
+        info_test = info.copy()
+        # don't do a burn-in, limit the sample to steps, and increase the max_tries to ensure an acceptance rate
+        info_test.update({"sampler": {"mcmc": {"burn_in": 0, "max_samples": steps, "max_tries": '1000d'}}})
+        updated_info, sampler = cobaya_run(info_test)
+        print('Acceptance rate:', sampler.get_acceptance_rate())
+        print("----------------------------------------------------- \n")
+        assert sampler.get_acceptance_rate() > 0.01, "Acceptance rate very low. Consider decreasing the proposal width by increasing the pscale parameter"
+
+    def do_sampling(self, savefile=None, datadir=None, burnin=3000, nsamples=50000, pscale=50, include_emu_error=True, test_accept=True):
+        """Initialise and run MCMC using Cobaya."""
+        # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
+        data_power = None
+        if datadir is not None:
+            # Load the data directory (i.e. use a simulation flux power as data)
+            data_power = load_data(datadir, kf=self.kf, t0=self.t0_training_value, max_z=self.max_z, min_z=self.min_z, tau_thresh=self.tau_thresh)
+
+        # Construct the "info" dictionary used by Cobaya
+        info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples)
+
+        # Test run a fraction of the full chain to check acceptance rate before running full chain
+        if test_accept is True:
+            self.do_acceptance_check(info, steps=100)
+
+        if savefile is not None:
+            info["output"] = savefile
+        # Run the sampler, Cobaya MCMC -- resume will only work if a savefile is given (so it can load previous chain)
+        updated_info, sampler = cobaya_run(info, resume=True)
+        return sampler
 
     def get_covar_det(self, params, include_emu):
         """Get the determinant of the covariance matrix.for certain parameters"""
@@ -329,3 +340,33 @@ class LikelihoodClass:
         grid_y = grid_y * (self.param_limits[j, 1] - self.param_limits[j, 0]) + self.param_limits[j, 0]
         grid = scipy.interpolate.griddata(rsamples[:, (i, j)], randscores, (grid_x, grid_y), fill_value=0)
         return grid
+
+
+class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
+    """Class to contain likelihood computations."""
+
+    basedir: str
+    mean_flux: str = 's'
+    max_z: float = 4.6
+    min_z: float = 2.2
+    emulator_class: str = "standard"
+    t0_training_value: float = 1.
+    optimise_GP: bool = True
+    emulator_json_file: str = 'emulator_params.json'
+    data_corr: bool = True
+    tau_thresh: int = None
+    data_power: float = None
+    include_emu: bool = True
+    input_params_prefix: str = ""
+
+    def initialize(self):
+        """Initialise the emulator by loading the flux power spectra from the simulations."""
+        LikelihoodClass.__init__(self, self.basedir, mean_flux=self.mean_flux, max_z=self.max_z, min_z=self.min_z,
+                         emulator_class=self.emulator_class, t0_training_value=self.t0_training_value,
+                         optimise_GP=self.optimise_GP, emulator_json_file=self.emulator_json_file,
+                         data_corr=self.data_corr, tau_thresh=self.tau_thresh)
+
+    def logp(self, **params_values):
+        """Cobaya-compatible call to the base class likelihood function."""
+        params = np.array([params_values[p] for p in self.input_params])
+        return self.likelihood(params, include_emu=self.include_emu, data_power=self.data_power)

@@ -11,6 +11,7 @@ from cobaya.likelihood import Likelihood
 from cobaya.run import run as cobaya_run
 from cobaya.log import LoggedError
 from mpi4py import MPI
+import json
 
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""
@@ -96,8 +97,12 @@ class LikelihoodClass:
             # Add a slope to the parameter limits
             t0_slope = np.array([-0.25, 0.25])
             self.mf_slope = True
-            slopehigh = np.max(mflux.mean_flux_slope_to_factor(self.zout[::-1], 0.25))
-            slopelow = np.min(mflux.mean_flux_slope_to_factor(self.zout[::-1], -0.25))
+            # Get the min_z and max_z for the emulator, regardless of what is requested
+            with open(basedir+"/"+emulator_json_file, "r") as emulator_json:
+                loaded = json.load(emulator_json)
+                z_mflux = np.append(np.arange(loaded["min_z"], loaded["max_z"], 0.2), loaded["max_z"])
+            slopehigh = np.max(mflux.mean_flux_slope_to_factor(z_mflux, 0.25))
+            slopelow = np.min(mflux.mean_flux_slope_to_factor(z_mflux, -0.25))
             dense_limits = np.array([np.array(t0_factor) * np.array([slopelow, slopehigh])])
             mf = mflux.MeanFluxFactor(dense_limits=dense_limits)
         else:
@@ -172,7 +177,7 @@ class LikelihoodClass:
         #Redshifts
         sdssz = self.sdss.get_redshifts()
         #Fix maximum redshift bug
-        sdssz = sdssz[sdssz <= self.max_z]
+        sdssz = sdssz[(sdssz <= self.max_z)*(sdssz >= self.min_z)]
         #Important assertion
         np.testing.assert_allclose(sdssz, self.zout, atol=1.e-16)
         #print('SDSS redshifts are', sdssz)
@@ -278,7 +283,7 @@ class LikelihoodClass:
         print("----------------------------------------------------- \n")
         assert sampler.get_acceptance_rate() > 0.01, "Acceptance rate very low. Consider decreasing the proposal width by increasing the pscale parameter"
 
-    def do_sampling(self, savefile=None, datadir=None, burnin=3000, nsamples=50000, pscale=50, include_emu_error=True, test_accept=True):
+    def do_sampling(self, savefile=None, datadir=None, burnin=3000, nsamples=3e5, pscale=50, include_emu_error=True, test_accept=True):
         """Initialise and run MCMC using Cobaya."""
         # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
         data_power = None
@@ -312,23 +317,25 @@ class LikelihoodClass:
         # Now recombine chains into a single combined file and save
         all_chains = comm.gather(sampler.products()["sample"], root=0)
         if rank == 0:
-            self.combine_chains(all_chains)
+            full_chain = self.combine_chains(all_chains, savefile)
+        # The returned objects will be the same when running a single chain
+        return sampler, full_chain
 
-        return sampler
-
-    def combine_chains(self, all_chains):
+    def combine_chains(self, all_chains, savefile):
         full_chain = all_chains[0]
         for chain in all_chains[1:]:
             full_chain.append(chain)
-        # Set up the save the same way as Cobaya
-        n_float = 8
-        width_col = lambda col: max(7 + n_float, len(col))
-        numpy_fmts = ["%{}.{}".format(width_col(col), n_float) + "g" for col in full_chain.data.columns]
-        header_formatter = [eval('lambda s, w=width_col(col): ''("{:>" + "{}".format(w) + "s}").format(s)', {'width_col': width_col, 'col': col}) for col in full_chain.data.columns]
-        with open(full_chain.root_file_name[2:]+".combined.txt", "w", encoding="utf-8") as out:
-            out.write("#" + " ".join(f(col) for f, col in zip(header_formatter, full_chain.data.columns))[1:] + "\n")
-        with open(full_chain.root_file_name[2:]+".combined.txt", "a", encoding="utf-8") as out:
-            np.savetxt(out, full_chain.data.to_numpy(), fmt=numpy_fmts)
+        if savefile is not None:
+            # Set up the save the same way as Cobaya
+            n_float = 8
+            width_col = lambda col: max(7 + n_float, len(col))
+            numpy_fmts = ["%{}.{}".format(width_col(col), n_float) + "g" for col in full_chain.data.columns]
+            header_formatter = [eval('lambda s, w=width_col(col): ''("{:>" + "{}".format(w) + "s}").format(s)', {'width_col': width_col, 'col': col}) for col in full_chain.data.columns]
+            with open(savefile+".combined.txt", "w", encoding="utf-8") as out:
+                out.write("#" + " ".join(f(col) for f, col in zip(header_formatter, full_chain.data.columns))[1:] + "\n")
+            with open(savefile+".combined.txt", "a", encoding="utf-8") as out:
+                np.savetxt(out, full_chain.data.to_numpy(), fmt=numpy_fmts)
+        return full_chain
 
     def get_covar_det(self, params, include_emu):
         """Get the determinant of the covariance matrix.for certain parameters"""

@@ -26,7 +26,7 @@ class BayesianOpt:
     def __init__(self, emudir, datadir):
         self.like = likelihood.LikelihoodClass(emudir, mean_flux='s', data_corr=False)
         self.param_limits = self.like.param_limits
-        #This will be replaced with real data
+        #This will be replaced with real data (set equal to None to use default BOSS data)
         self.data_fluxpower = likelihood.load_data(datadir, kf=self.like.kf, t0=self.like.t0_training_value)
         #Parameters to calculate the exploration weight. In practice exploration is usually subdominant so these are not very important.
         self.delta = 0.5

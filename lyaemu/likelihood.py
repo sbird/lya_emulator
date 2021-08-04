@@ -9,6 +9,8 @@ from . import mean_flux as mflux
 from .quadratic_emulator import QuadraticEmulator
 from cobaya.likelihood import Likelihood
 from cobaya.run import run as cobaya_run
+from cobaya.log import LoggedError
+from mpi4py import MPI
 
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""
@@ -293,9 +295,40 @@ class LikelihoodClass:
 
         if savefile is not None:
             info["output"] = savefile
-        # Run the sampler, Cobaya MCMC -- resume will only work if a savefile is given (so it can load previous chain)
-        updated_info, sampler = cobaya_run(info, resume=True)
+
+        # Set up MPI protections (as suggested in Cobaya documentation)
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        success = False
+        try:
+            # Run the sampler, Cobaya MCMC -- resume will only work if a savefile is given (so it can load previous chain)
+            updated_info, sampler = cobaya_run(info, resume=True)
+            success = True
+        except LoggedError as err:
+            pass
+        success = all(comm.allgather(success))
+        if not success and rank == 0:
+            print("Sampling failed!")
+        # Now recombine chains into a single combined file and save
+        all_chains = comm.gather(sampler.products()["sample"], root=0)
+        if rank == 0:
+            self.combine_chains(all_chains)
+
         return sampler
+
+    def combine_chains(self, all_chains):
+        full_chain = all_chains[0]
+        for chain in all_chains[1:]:
+            full_chain.append(chain)
+        # Set up the save the same way as Cobaya
+        n_float = 8
+        width_col = lambda col: max(7 + n_float, len(col))
+        numpy_fmts = ["%{}.{}".format(width_col(col), n_float) + "g" for col in full_chain.data.columns]
+        header_formatter = [eval('lambda s, w=width_col(col): ''("{:>" + "{}".format(w) + "s}").format(s)', {'width_col': width_col, 'col': col}) for col in full_chain.data.columns]
+        with open(full_chain.root_file_name[2:]+".combined.txt", "w", encoding="utf-8") as out:
+            out.write("#" + " ".join(f(col) for f, col in zip(header_formatter, full_chain.data.columns))[1:] + "\n")
+        with open(full_chain.root_file_name[2:]+".combined.txt", "a", encoding="utf-8") as out:
+            np.savetxt(out, full_chain.data.to_numpy(), fmt=numpy_fmts)
 
     def get_covar_det(self, params, include_emu):
         """Get the determinant of the covariance matrix.for certain parameters"""

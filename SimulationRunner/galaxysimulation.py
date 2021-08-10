@@ -51,8 +51,8 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         #Black hole feedback model
         config['BlackHoleFeedbackFactor'] = self.bhfeedback
         config['BlackHoleFeedbackMethod'] = "spline | mass"
-        #2 generations only for numerical sanity.
-        config['Generations'] = 2
+        #1 generation only to reduce number of stars
+        config['Generations'] = 1
         #This scales with the mass of a DM particle because
         #it stops the DM scattering the BH out of the halo.
         #Newton's constant in Mpc^3 / (internal mass units)

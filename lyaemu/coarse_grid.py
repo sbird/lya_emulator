@@ -168,6 +168,8 @@ class Emulator:
                 backup = fdump + "_r"+str(r)+".backup"
                 r+=1
             shutil.move(fdump, backup)
+        myspec = self.myspec
+        self.myspec = None
         #Arrays can't be serialised so convert them back and forth to lists
         self.really_arrays = []
         mf = self.mf
@@ -180,6 +182,7 @@ class Emulator:
             json.dump(self.__dict__, jsout)
         self._fromarray()
         self.mf = mf
+        self.myspec = myspec
 
     def load(self,dumpfile="emulator_params.json"):
         """Load parameters from a textfile."""

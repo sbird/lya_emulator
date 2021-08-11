@@ -64,7 +64,7 @@ class LymanAlphaSim(simulationics.SimulationICs):
         #Default bubble size and variance follows McQuinn 2009, Method II, Figure 2.
         config['QSOMeanBubble'] = 35000
         config['QSOVarBubble'] = 10000
-        if self.box < 60000:
+        if self.box < 60:
             #Use a smaller bubble in small boxes
             config['QSOMeanBubble'] = 10000
             config['QSOVarBubble'] = 5000

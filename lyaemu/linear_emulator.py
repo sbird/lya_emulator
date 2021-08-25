@@ -1,13 +1,12 @@
 """Test the emulator using a simple linear theory model."""
 import numpy as np
-# import emcee
 from . import gpemulator
 from . import lyman_data
 from . import linear_theory
 from . import latin_hypercube
 
 def lnlike_linear(params, *, gp=None, data=None):
-    """A simple emcee likelihood function for the Lyman-alpha forest using the
+    """A simple likelihood function for the Lyman-alpha forest using the
        simple linear model with only cosmological parameters.
        This neglects many important properties!"""
     assert gp is not None

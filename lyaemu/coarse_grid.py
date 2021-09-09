@@ -54,7 +54,7 @@ class Emulator:
                                           [0.65, 0.75], # hub: hubble constant (also changes omega_M)
                                           [0.14, 0.146],# omegam h^2: We fix omega_m h^2 = 0.143+-0.001 (Planck 2018 best-fit) and vary omega_m and h^2 to match it.
                                                         # h^2 itself has little effect on the forest.
-                                          [6.5,8.5],   #Mid-point of HI reionization
+                                          [6.5,8],   #Mid-point of HI reionization
                                           [0.03, 0.07],  # BH feedback parameter
                                        #   [3.2, 4.2] # Wind speed
                                 ])

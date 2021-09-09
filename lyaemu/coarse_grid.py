@@ -37,7 +37,7 @@ class Emulator:
     - mf: mean flux object, which takes mean flux parameters and outputs the mean flux in each redshift bin
     - limitfac: factor to uniformly grow the parameter limits by.
     """
-    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1, tau_thresh=None, npart=256, box=40):
+    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1, tau_thresh=None, npart=512, box=60):
         if param_names is None:
             self.param_names = {'ns':0, 'Ap':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8}
         else:

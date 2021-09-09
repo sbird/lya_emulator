@@ -46,7 +46,7 @@ class Emulator:
         if param_limits is None:
             self.param_limits = np.array([[0.8, 0.995], # ns: 0.8 - 0.995. Notice that this is not ns at the CMB scale!
                                           [1.2e-09, 2.6e-09], #Ap: amplitude of power spectrum at 8/2pi Mpc scales (see 1812.04654)!
-                                          [4.0, 4.5], #herei: redshift at which helium reionization starts.
+                                          [3.5, 4.1], #herei: redshift at which helium reionization starts.
                                                       # 4.0 is default, we use a linear history with 3.5-4.5
                                           [2.6, 3.2], # heref: redshift at which helium reionization finishes. 2.8 is default.
                                                       # Thermal history suggests late, HeII Lyman alpha suggests earlier.

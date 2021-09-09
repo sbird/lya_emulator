@@ -49,6 +49,8 @@ class LymanAlphaSim(simulationics.SimulationICs):
         config['DensityKernelType'] = 'cubic'
         config['DensityIndependentSphOn'] = 0
         config['SlotsIncreaseFactor'] = 0.1
+        #Boost the temperature after each particle undergoes HI reionization
+        config['HIReionTemp'] = 20000
         return self._heii_model_params(config)
 
     def _heii_model_params(self, config):
@@ -61,13 +63,15 @@ class LymanAlphaSim(simulationics.SimulationICs):
         except NameError:
             self.qsolightup = 0
         config['QSOLightupOn'] = self.qsolightup
-        #Default bubble size and variance follows McQuinn 2009, Method II, Figure 2.
-        config['QSOMeanBubble'] = 35000
-        config['QSOVarBubble'] = 10000
-        if self.box < 60:
+        #Default bubble size and variance. We follow McQuinn 2009, 0807.2799, Method II, Figure 2.
+        # Note that the figure is in comoving Mpc, we are in comoving Mpc/h, so 20 Mpc/h = 28 Mpc.
+        # McQuinn has a large variance spread, but we want to avoid a single large bubble
+        #ionizing everything too early, so we turn it off.
+        config['QSOMeanBubble'] = 20000
+        config['QSOVarBubble'] = 0
+        if self.box <= 60:
             #Use a smaller bubble in small boxes
             config['QSOMeanBubble'] = 10000
-            config['QSOVarBubble'] = 5000
             #And smaller halos: Tinker HMF has 30 of these in a 40Mpc box at z=4.
             config['QSOMinMass'] = 50
         config['ReionHistFile'] = hefile

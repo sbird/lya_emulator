@@ -202,7 +202,7 @@ class MySpectra:
                 continue
         #Make sure we have enough outputs, ignoring missing values at the start and the end
         if powerspectra.len() != np.size(self.zout):
-            reds = [ss.red for ss in powerspectra.snaps]
+            reds = [ss.red for ss in powerspectra.spectrae]
             self.zout = np.append(np.arange(np.max(reds), np.min(reds), -0.2), np.min(reds))
             print("Redshift now from z=%g to %g" % (self.zout[0], self.zout[-1]))
         if powerspectra.len() != np.size(self.zout):

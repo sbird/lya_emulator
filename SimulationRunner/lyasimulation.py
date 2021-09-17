@@ -49,8 +49,6 @@ class LymanAlphaSim(simulationics.SimulationICs):
         config['DensityKernelType'] = 'cubic'
         config['DensityIndependentSphOn'] = 0
         config['SlotsIncreaseFactor'] = 0.1
-        #Boost the temperature after each particle undergoes HI reionization
-        config['HIReionTemp'] = 20000
         return self._heii_model_params(config)
 
     def _heii_model_params(self, config):
@@ -76,6 +74,8 @@ class LymanAlphaSim(simulationics.SimulationICs):
             config['QSOMinMass'] = 50
         config['ReionHistFile'] = hefile
         config['UVFluctuationFile'] = "UVFluctuationFile"
+        #Boost the temperature after each particle undergoes HI reionization
+        config['HIReionTemp'] = 20000
         return config
 
     def generate_times(self):

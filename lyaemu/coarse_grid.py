@@ -51,7 +51,7 @@ class Emulator:
                                                       # 4.0 is default, we use a linear history with 3.5-4.5
                                           [2.6, 3.2], # heref: redshift at which helium reionization finishes. 2.8 is default.
                                                       # Thermal history suggests late, HeII Lyman alpha suggests earlier.
-                                          [1.4, 2.5], # alphaq: quasar spectral index. 1 - 2.5 Controls IGM temperature.
+                                          [1.6, 2.5], # alphaq: quasar spectral index. 1 - 2.5 Controls IGM temperature.
                                           [0.65, 0.75], # hub: hubble constant (also changes omega_M)
                                           [0.14, 0.146],# omegam h^2: We fix omega_m h^2 = 0.143+-0.001 (Planck 2018 best-fit) and vary omega_m and h^2 to match it.
                                                         # h^2 itself has little effect on the forest.

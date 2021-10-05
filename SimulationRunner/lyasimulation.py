@@ -20,7 +20,7 @@ class LymanAlphaSim(simulationics.SimulationICs):
         uvb - UV background model.
     """
     __doc__ = __doc__+simulationics.SimulationICs.__doc__
-    def __init__(self, *, here_i = 4.0, here_f = 2.8, alpha_q = 1.7, redend = 2.2, hireionz=7.5, heatamp = 1., uvb="fg19", **kwargs):
+    def __init__(self, *, here_i = 4.0, here_f = 2.8, alpha_q = 1.7, redend = 2.2, hireionz=7.5, heatamp = 1., uvb="fg20", **kwargs):
         #This includes the helium reionization table!
         super().__init__(redend=redend, uvb=uvb, **kwargs)
         assert self.separate_gas
@@ -79,9 +79,10 @@ class LymanAlphaSim(simulationics.SimulationICs):
         #Boost the temperature after each particle undergoes HI reionization
         config['HIReionTemp'] = 20000
         #Scale the overall heating by a constant factor
-        config['HeliumHeatOn'] = 1
-        config['HeliumHeatAmp'] = self.heatamp
-        config['HeliumHeatExp'] = 0
+        if np.abs(self.heatamp -1) > 0.01:
+            config['HeliumHeatOn'] = 1
+            config['HeliumHeatAmp'] = self.heatamp
+            config['HeliumHeatExp'] = 0
         return config
 
     def generate_times(self):

@@ -39,8 +39,7 @@ class Emulator:
     """
     def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1, tau_thresh=None, npart=512, box=60):
         if param_names is None:
-            self.param_names = {'ns':0, 'Ap':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6,
-                                'hireionz':7, 'bhfeedback':8, 'heatamp': 9,}
+            self.param_names = {'ns':0, 'Ap':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8}
         else:
             self.param_names = param_names
         #Parameters:
@@ -58,7 +57,6 @@ class Emulator:
                                           [6.5,8],   #Mid-point of HI reionization
                                           [0.03, 0.07],  # BH feedback parameter
                                        #   [3.2, 4.2] # Wind speed
-                                          [0.6, 1.0], # Heating amplitude scale
                                 ])
         else:
             self.param_limits = param_limits
@@ -140,7 +138,6 @@ class Emulator:
         ev[pn['heref']] = sics["here_f"]
         ev[pn['herei']] = sics["here_i"]
         ev[pn['alphaq']] = sics["alpha_q"]
-        ev[pn['heatamp']] = sics["heatamp"]
         ev[pn['hub']] = sics["hubble"]
         ev[pn['ns']] = sics["ns"]
         ev[pn['omegamh2']] = sics["omega0"]*sics["hubble"]**2
@@ -252,7 +249,6 @@ class Emulator:
         href = ev[pn['heref']]
         hrei = ev[pn['herei']]
         aq = ev[pn['alphaq']]
-        heatamp = ev[pm['heatamp']]
         hub = ev[pn['hub']]
         #Convert pivot of the scalar amplitude from amplitude
         #at 8 Mpc (k = 0.78) to pivot scale of 0.05
@@ -263,8 +259,7 @@ class Emulator:
         omb = self.omegabh2 / hub**2
         wmap = (0.05/(2*math.pi/8.))**(ns-1.) * ev[pn['Ap']]
         ss = galaxysimulation.GalaxySim(outdir=outdir, box=self.box, npart=self.npart, ns=ns, scalar_amp=wmap, redend=2.0,
-                                         here_f = href, here_i = hrei, alpha_q = aq, heatamp = heatamp,
-                                         hubble=hub, omega0=om0, omegab=omb,
+                                         here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,
                                          hireionz = hireionz, bhfeedback = bhfeedback,
                                          unitary=True, seed=422317, timelimit=6)
         try:

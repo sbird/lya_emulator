@@ -107,7 +107,7 @@ def get_uvb_filename(uvb):
     elif uvb == "fg19":
         fuvb = get_fg19_filename()
     elif uvb == "fg20":
-        fuvb = get_fg19_filename()
+        fuvb = get_fg20_filename()
     else:
         raise ValueError("Unsupported UVB table")
     return fuvb

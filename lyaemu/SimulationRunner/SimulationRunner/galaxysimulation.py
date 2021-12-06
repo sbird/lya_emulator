@@ -21,11 +21,6 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         self.bhfeedback = bhfeedback
         self.windsigma = windsigma
 
-    def _feedback_config_options(self, config, prefix=""):
-        """Config options specific to the Lyman alpha forest star formation criterion"""
-        #No feedback!
-        _,_=config,prefix
-
     def _feedback_params(self, config):
         """Galaxy formation config options from ASTERIX."""
         #Stellar feedback parameters

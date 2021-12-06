@@ -33,11 +33,6 @@ class LymanAlphaSim(simulationics.SimulationICs):
         #Midpoint of the HI reionization model
         self.hireionz = hireionz
 
-    def _feedback_config_options(self, config, prefix=""):
-        """Config options specific to the Lyman alpha forest star formation criterion"""
-        #No feedback!
-        _,_=config,prefix
-
     def _feedback_params(self, config):
         """Config options specific to the lyman alpha forest"""
         #These are parameters for the Quick Lyman alpha star formation.

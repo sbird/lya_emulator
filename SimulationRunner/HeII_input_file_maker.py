@@ -12,7 +12,7 @@ photons (photons that contribute to the creation of HeIII bubbles) in electron v
 (4) Duration and timing of HeII reionization. The options are 'quasar' and 'linear'. The 'quasar' option uses a quasar emissivity function to determine the reionization history.
 The quasar emissivity histories are from Khaire et al. (2015) and Haardt and Madau (2012). The default is Khaire et al. (2015).
 The 'linear' option allows the user to select the starting and ending redshift of HeII reionization. The HeIII fraction will be a linear function in redshift between
-these two redshifts. This parameter is optional and will default to 'quasar' if not provided.
+these two redshifts. This parameter is optional and will default to 'linear' if not provided.
 
 (5) If 'linear', the starting HeII reionization redshift. Only to be used when (3) is 'linear'. Default is 4.0
 
@@ -82,10 +82,10 @@ class HeIIheating:
     Immediate TODO: double check approximations."""
     def __init__(self, hist=None, hub=0.678, OmegaM = 0.3175, Omegab = 0.048, z_i = 4.0, z_f = 2.8, alpha_q = 1.7, Emax = 150, clumping_fac = 3.):
         self.cosmo = Cosmology(hub=hub, OmegaM = OmegaM, Omegab = Omegab)
-        if hist == 'linear':
-            self.hist = LinearHistory(z_i=z_i, z_f=z_f)
-        else:
+        if hist == 'quasar':
             self.hist = QuasarHistory(z_i=z_i, z_f=z_f, alpha_q = alpha_q, cosmo=self.cosmo, clumping_fac = clumping_fac)
+        else:       
+            self.hist = LinearHistory(z_i=z_i, z_f=z_f)
         self.alpha_q = alpha_q
         self.Emax = Emax
         self.clumping_fac = clumping_fac
@@ -143,7 +143,7 @@ class HeIIheating:
 
     def specific_intensity(self, z0, E):
         """Specific intensity based on powerlaw QSO spectrum"""
-        func = lambda z: (self.speed_of_light/(4.*np.pi))*(1./(self.cosmo.Hubble(z)*(1+z)))*(1+z0)**3./((1+z)**3.)*self.a_norm(z)*np.exp(-self.tau(z,z0,E))
+        func = lambda z: (self.speed_of_light/(4.*np.pi))*(1./(self.cosmo.Hubble(z)*(1+z)))*(1+z0)**3./((1+z)**3.)*self.a_norm(z)*E**(-self.alpha_q)*np.exp(-self.tau(z,z0,E))
         J_E = scipy.integrate.quad(func,z0,10., limit=100)
         return J_E[0]
 
@@ -163,14 +163,15 @@ class HeIIheating:
             return dGamma_int
         #Do the double integral of E from Emax to Elim and zz from redshift to 10.
         w = scipy.integrate.dblquad(_dGamma_dt_int,self.Emax,E_lim, redshift, 10)
-        dGammadt = 4.*np.pi*w[0]*self.eVtoerg*self.cosmo.nHe(redshift)
+        xHeII = np.amax([1 - self.hist.XHeIII(redshift), 0.])
+        dGammadt = 4.*np.pi*w[0]*self.eVtoerg*self.cosmo.nHe(redshift)*xHeII
         return dGammadt
 
-    def WriteInterpTable(self, outfile, numz = 100.):
+    def WriteInterpTable(self, outfile, numz = 100):
         """Built the interpolation table file, the main output of this code, loadable by the MP-Gadget reionization module."""
         print("Setting up interpolation table!")
 
-        z_quasar = np.logspace(np.log10(self.hist.z_i),np.log10(self.hist.z_f),int(numz))
+        z_quasar = np.logspace(np.log10(self.hist.z_i),np.log10(self.hist.z_f),numz)
         dQ_LMFP_dat = [self.dGamma_hard_dt(zqso) for zqso in z_quasar]
         XHeIII = [self.hist.XHeIII(zqso) for zqso in z_quasar]
 
@@ -205,7 +206,7 @@ class LinearHistory:
 class QuasarHistory:
     """Determines the HeII reionization history from a quasar emissivity function.
     Note: the initial reionization redshift is when the neutral fraction is zero"""
-    def __init__(self, cosmo, z_i = 6, z_f = 2, alpha_q = 1.7, clumping_fac = 2.):
+    def __init__(self, cosmo, z_i = 6, z_f = 2, alpha_q = 1.7, clumping_fac = 3.):
         self.h_erg_s = 6.626e-27 #erg s
         self.mpctocm = 3.086e24
         self.alpha_q = alpha_q
@@ -278,7 +279,7 @@ if __name__ == "__main__":
     parser.add_argument('--cf', type=float, default=3., help='Subgrid clumping factor', required=False)
     parser.add_argument('--z_i', type=float, default=-1, help='Start redshift of helium reionization', required=False)
     parser.add_argument('--z_f', type=float, default=-1, help='End redshift of helium reionization', required=False)
-    parser.add_argument('--hist', type=str, default="quasar", help='Type of reionization history', required=True, choices=["linear", "quasar"])
+    parser.add_argument('--hist', type=str, default="linear", help='Type of reionization history', required=True, choices=["linear", "quasar"])
     parser.add_argument('--outfile', type=str, default="HeIIReionizationTable", help='Name of file to save to', required=False)
     args = parser.parse_args()
 

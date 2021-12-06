@@ -217,10 +217,10 @@ class StampedeClass(ClusterClass):
     """Subclassed for Stampede2's Skylake nodes.
     This has 48 cores (96 threads) per node, each with two sockets, shared memory of 192GB per node, 96 GB per socket.
     Charged in node-hours, uses SLURM and icc."""
-    def __init__(self, *args, nproc=2,timelimit=3,**kwargs):
+    def __init__(self, *args, nproc=8,timelimit=3,**kwargs):
         super().__init__(*args, nproc=nproc,timelimit=timelimit, **kwargs)
 
-    def _queue_directive(self, name, timelimit, nproc=2, prefix="#SBATCH",ntasks=2):
+    def _queue_directive(self, name, timelimit, nproc=8, prefix="#SBATCH",ntasks=2):
         """Generate mpi_submit with stampede specific parts"""
         _ = timelimit
         qstring = prefix+" --partition=skx-normal\n"
@@ -279,7 +279,7 @@ class FronteraClass(StampedeClass):
         qstring += "ibrun "+command+"\n"
         return qstring
 
-    def _queue_directive(self, name, timelimit, nproc=2, prefix="#SBATCH",ntasks=2):
+    def _queue_directive(self, name, timelimit, nproc=16, prefix="#SBATCH",ntasks=2):
         """Generate mpi_submit with stampede specific parts"""
         _ = timelimit
         qstring = prefix+" --partition=normal\n"

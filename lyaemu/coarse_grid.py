@@ -37,7 +37,7 @@ class Emulator:
     - mf: mean flux object, which takes mean flux parameters and outputs the mean flux in each redshift bin
     - limitfac: factor to uniformly grow the parameter limits by.
     """
-    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1, tau_thresh=None, npart=512, box=60):
+    def __init__(self, basedir, param_names=None, param_limits=None, kf=None, mf=None, limitfac=1, tau_thresh=None, npart=512, box=60, fullphysics=True):
         if param_names is None:
             self.param_names = {'ns':0, 'Ap':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8}
         else:
@@ -60,6 +60,12 @@ class Emulator:
                                 ])
         else:
             self.param_limits = param_limits
+
+        #Remove the BH parameter for not full physics.
+        self.fullphysics = fullphysics
+        if not fullphysics:
+            bhind = self.param_names.pop('bhfeedback')
+            self.param_limits = np.delete(self.param_limits, bhind, 0)
         if limitfac != 1:
             param_cent = (self.param_limits[:,0] + self.param_limits[:,1])/2.
             param_width = (- self.param_limits[:,0] + self.param_limits[:,1])/2.
@@ -142,7 +148,8 @@ class Emulator:
         ev[pn['ns']] = sics["ns"]
         ev[pn['omegamh2']] = sics["omega0"]*sics["hubble"]**2
         ev[pn['hireionz']] = sics["hireionz"]
-        ev[pn['bhfeedback']] = sics["bhfeedback"]
+        if self.fullphysics:
+            ev[pn['bhfeedback']] = sics["bhfeedback"]
         assert abs(sics["redend"] - self.min_z) < 0.01
         wmap = sics["scalar_amp"]
         #Convert pivot of the scalar amplitude from amplitude
@@ -254,14 +261,19 @@ class Emulator:
         #at 8 Mpc (k = 0.78) to pivot scale of 0.05
         ns = ev[pn['ns']]
         hireionz = ev[pn['hireionz']]
-        bhfeedback = ev[pn['bhfeedback']]
         om0 = ev[pn['omegamh2']]/hub**2
         omb = self.omegabh2 / hub**2
         wmap = (0.05/(2*math.pi/8.))**(ns-1.) * ev[pn['Ap']]
-        ss = galaxysimulation.GalaxySim(outdir=outdir, box=self.box, npart=self.npart, ns=ns, scalar_amp=wmap, redend=2.0,
+        if self.fullphysics:
+            bhfeedback = ev[pn['bhfeedback']]
+            ss = galaxysimulation.GalaxySim(outdir=outdir, box=self.box, npart=self.npart, ns=ns, scalar_amp=wmap, redend=2.0,
                                          here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,
                                          hireionz = hireionz, bhfeedback = bhfeedback,
                                          unitary=True, seed=422317, timelimit=6)
+        else:
+            ss = lyasimulation.LymanAlphaSim(outdir=outdir, box=self.box, npart=self.npart, ns=ns, scalar_amp=wmap, redend=2.0,
+                                         here_f = href, here_i = hrei, alpha_q = aq, hubble=hub, omega0=om0, omegab=omb,
+                                         hireionz = hireionz, unitary=True, seed=422317, timelimit=6)
         try:
             ss.make_simulation()
             fpfile = os.path.join(os.path.dirname(__file__),"flux_power.py")

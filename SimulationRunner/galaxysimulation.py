@@ -33,16 +33,20 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         #Wind speed: controls the strength of the supernova feedback. Default is 3.7
         config['WindSpeedFactor'] = self.windsigma
         config['MetalReturnOn'] = 0
-        config['WindFreeTravelLength'] = 0
+        config['WindFreeTravelLength'] = 1000
+        config['WindFreeTravelDensFac'] = 0.1
+        config['MaxWindFreeTravelTime'] = 60
+        config['MinWindVelocity'] = 100
         #SPH parameters
-        config['DensityKernelType'] = 'quintic'
+        #Cubic kernel so that the DLAs are better.
+        config['DensityKernelType'] = 'cubic'
         config['DensityIndependentSphOn'] = 1
         config['OutputPotential'] = 0
         #Dynamic friction models for BH
         config['BlackHoleOn'] = 1
-        config['BlackHoleRepositionEnabled'] = 0
-        config['BH_DRAG'] = 1
-        config['BH_DynFrictionMethod'] = 2
+        config['BlackHoleRepositionEnabled'] = 1
+        config['BH_DRAG'] = 0
+        config['BH_DynFrictionMethod'] = 0
         #Black hole feedback model
         config['BlackHoleFeedbackFactor'] = self.bhfeedback
         config['BlackHoleFeedbackMethod'] = "spline | mass"
@@ -58,19 +62,21 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         DMmass = (self.omega0 - self.omegab) * omegatomass / self.npart**3
         barmass = self.omegab * omegatomass / self.npart**3
         starmass = barmass/ config['Generations']
-        config['SeedBHDynMass'] = DMmass * 1.5
+        config['SeedBHDynMass'] = 0.0114678
         #This is set by the smallest observed SMBH so leave it alone.
-        config['MinFoFMassForNewSeed'] = 0.5
+        config['MinFoFMassForNewSeed'] = 5
         #This is basically "any stars" so leave it alone
-        config['MinMStarForNewSeed'] = 2e-4
-        #Real seed mass: no dynamical effect. Power law distributed.
+        config['MinMStarForNewSeed'] = 0.2
+        #Real seed mass: no dynamical effect.
         #In practice this only affects subgrid accretion so leave it alone.
-        config['SeedBlackHoleMass'] = 3.0e-6
-        config['MaxSeedBlackHoleMass'] = 3.0e-5
+        config['SeedBlackHoleMass'] = 5.0e-5
+        config['MaxSeedBlackHoleMass'] = -1
         config['SeedBlackHoleMassIndex'] = -2
         #Accretion scaling. Also affects feedback strength.
         config['BlackHoleAccretionFactor'] = 100.0
         config['BlackHoleEddingtonFactor'] = 2.1
+        #This may help convergence a little.
+        config['BlackHoleFeedbackRadius'] = 3.
         return self._heii_model_params(config)
 
     def generate_times(self):

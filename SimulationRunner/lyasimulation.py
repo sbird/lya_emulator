@@ -41,11 +41,12 @@ class LymanAlphaSim(simulationics.SimulationICs):
         config['SnapshotWithFOF'] = 0
         #Quick star formation threshold from 1605.03462
         config["CritOverDensity"] = 1000.
-        config['WindModel'] = 'nowind'
+        #Winds go crazy with Quick Lya.
+        config['WindOn'] = 0
+        config['BlackHoleOn'] = 0
         #Forest uses old-style SPH for now.
         config['DensityKernelType'] = 'cubic'
-        config['DensityIndependentSphOn'] = 0
-        config['SlotsIncreaseFactor'] = 0.1
+        config['DensityIndependentSphOn'] = 1
         return self._heii_model_params(config)
 
     def _heii_model_params(self, config):
@@ -64,6 +65,7 @@ class LymanAlphaSim(simulationics.SimulationICs):
         #ionizing everything too early, so we turn it off.
         config['QSOMeanBubble'] = 20000
         config['QSOVarBubble'] = 0
+        config['QSOHeIIIReionFinishFrac'] = 0.995
         if self.box <= 60:
             #Use a smaller bubble in small boxes
             config['QSOMeanBubble'] = 10000
@@ -72,7 +74,7 @@ class LymanAlphaSim(simulationics.SimulationICs):
         config['ReionHistFile'] = hefile
         config['UVFluctuationFile'] = "UVFluctuationFile"
         #Boost the temperature after each particle undergoes HI reionization
-        config['HIReionTemp'] = 20000
+        config['HIReionTemp'] = 15000
         #Scale the overall heating by a constant factor
         if np.abs(self.heatamp -1) > 0.01:
             config['HeliumHeatOn'] = 1

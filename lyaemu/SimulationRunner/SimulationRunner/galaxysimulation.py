@@ -17,7 +17,8 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
     def __init__(self, *, bhfeedback = 0.05, windsigma=3.7, **kwargs):
         #super generates the helium reionization table
         super().__init__(**kwargs)
-        self.metalcool = "cooling_metal_UVB"
+        #self.metalcool = "cooling_metal_UVB"
+        self.metalcool = ""
         self.bhfeedback = bhfeedback
         self.windsigma = windsigma
 
@@ -44,9 +45,9 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         config['OutputPotential'] = 0
         #Dynamic friction models for BH
         config['BlackHoleOn'] = 1
-        config['BlackHoleRepositionEnabled'] = 1
+        config['BlackHoleRepositionEnabled'] = 0
         config['BH_DRAG'] = 0
-        config['BH_DynFrictionMethod'] = 0
+        config['BH_DynFrictionMethod'] = 2
         #Black hole feedback model
         config['BlackHoleFeedbackFactor'] = self.bhfeedback
         config['BlackHoleFeedbackMethod'] = "spline | mass"

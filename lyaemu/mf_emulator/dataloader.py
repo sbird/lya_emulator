@@ -62,11 +62,13 @@ def convert_h5_to_txt(
 
     f_lf = h5py.File(lf_filename, "r")
     f_hf = h5py.File(hf_filename, "r")
+    # TODO: test files
 
     with open(lf_json, "r") as param:
         param_lf = json.load(param)
     with open(hf_json, "r") as param:
         param_hf = json.load(param)
+    # TODO: test files
 
     param_limits = np.array(param_lf["param_limits"])
     assert np.all(param_limits == np.array(param_hf["param_limits"]))
@@ -76,6 +78,7 @@ def convert_h5_to_txt(
     for key in keys:
         assert key in f_lf.keys()
         assert key in f_hf.keys()
+        # TODO: test files
 
     print("Low-fidelity file:")
     print("----")
@@ -140,10 +143,11 @@ def convert_h5_to_txt(
     assert len(first_flux_vector) == f_lf["params"].shape[0]
     assert first_flux_vector.shape[1] == len(kfmpc)
 
+    # TODO: test files
+
     # output training files, one redshift per folder
     for i,z in enumerate(zout):
         print("Preparing training files in {:.3g}".format(z))
-        print("----")
 
         flux_vector_lf = get_flux_vector_at_z(i, flux_vector_lf)
         flux_vector_hf = get_flux_vector_at_z(i, flux_vector_hf)
@@ -175,6 +179,7 @@ def convert_h5_to_txt(
 
         np.savetxt(os.path.join("data", outdir, "input_limits.txt"), param_limits)
         np.savetxt(os.path.join("data", outdir, "kf.txt"), kfmpc)
+        # TODO: test files
 
 
 class FluxVectors:

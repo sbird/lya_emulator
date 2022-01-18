@@ -77,6 +77,7 @@ def convert_h5_to_txt(
     assert np.all(param_limits == np.array(param_test["param_limits"]))
 
     # make sure all keys are in the file
+    # TODO: also save kfkms for plotting purpose
     keys = ['flux_vectors', 'kfkms', 'kfmpc', 'params', 'zout']
     for key in keys:
         assert key in f_lf.keys()
@@ -204,16 +205,16 @@ def convert_h5_to_txt(
         )
 
         # only flux power needs a loop
-        np.savetxt(os.path.join(this_outdir, "train_output_fidelity_0.txt"), flux_vector_lf)
-        np.savetxt(os.path.join(this_outdir, "train_output_fidelity_1.txt"), flux_vector_hf)
-        np.savetxt(os.path.join(this_outdir, "test_output.txt"), flux_vector_test)
+        np.savetxt(os.path.join(this_outdir, "train_output_fidelity_0.txt"), np.log10(flux_vector_lf))
+        np.savetxt(os.path.join(this_outdir, "train_output_fidelity_1.txt"), np.log10(flux_vector_hf))
+        np.savetxt(os.path.join(this_outdir, "test_output.txt"), np.log10(flux_vector_test))
 
         np.savetxt(os.path.join(this_outdir, "train_input_fidelity_0.txt"), x_train_lf)
         np.savetxt(os.path.join(this_outdir, "train_input_fidelity_1.txt"), x_train_hf)
         np.savetxt(os.path.join(this_outdir, "test_input.txt"), x_train_test)
 
         np.savetxt(os.path.join(this_outdir, "input_limits.txt"), param_limits)
-        np.savetxt(os.path.join(this_outdir, "kf.txt"), kfmpc)
+        np.savetxt(os.path.join(this_outdir, "kf.txt"), np.log10(kfmpc))
 
 
 class FluxVectors:

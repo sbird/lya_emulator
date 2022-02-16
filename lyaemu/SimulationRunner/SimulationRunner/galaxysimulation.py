@@ -28,7 +28,8 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         config['StarformationCriterion'] = 'density' #Note no h2 star formation! Different from ASTERIX.
         config['WindModel'] = 'ofjt10'
         config['WindOn'] = 1
-        config['MetalCoolFile'] = self.metalcool
+        if self.metalcool != '':
+            config['MetalCoolFile'] = self.metalcool
         #Wind speed normalisation
         config['WindSigma0'] = 353.0 #km/s
         #Wind speed: controls the strength of the supernova feedback. Default is 3.7
@@ -89,6 +90,7 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         """Overload the genic file to also generate an HI table."""
         (genic_output, genic_param) = super().genicfile(camb_output)
         #Copy the metal cooling data
-        metalcoolfile = os.path.join(self.outdir, self.metalcool)
-        shutil.copytree(os.path.join(os.path.join(self.gadget_dir, "examples"), self.metalcool), metalcoolfile)
+        if self.metalcool != '':
+            metalcoolfile = os.path.join(self.outdir, self.metalcool)
+            shutil.copytree(os.path.join(os.path.join(self.gadget_dir, "examples"), self.metalcool), metalcoolfile)
         return (genic_output, genic_param)

@@ -137,7 +137,7 @@ class LikelihoodClass:
             self.dnames = [('a_lls', r'\alpha_{lls}'), ('a_sub', r'\alpha_{sub}'), ('a_sdla', r'\alpha_{sdla}'), ('a_ldla', r'\alpha_{ldla}'), ('fSiIII', 'fSiIII')]
             self.data_params = {self.dnames[i][0]:np.arange(self.ndim, self.ndim+np.shape(self.dnames)[0])[i] for i in range(np.shape(self.dnames)[0])}
             # Limits for the data correction parameters
-            alpha_limits = np.repeat(np.array([[-1., 1.]]), 4, axis=0)
+            alpha_limits = np.repeat(np.array([[-0.3, 0.3]]), 4, axis=0)
             fSiIII_limits = np.array([-0.03, 0.03])
             self.param_limits = np.vstack([self.param_limits, alpha_limits, fSiIII_limits])
         self.ndim = np.shape(self.param_limits)[0]
@@ -205,7 +205,32 @@ class LikelihoodClass:
         siIII = -(params[self.data_params['fSiIII']]/sigma_siIII)**2
         return dla + siIII
 
-    def likelihood(self, params, include_emu=True, data_power=None):
+    def hubble_prior(self, params, low_z=True):
+        """Return a prior on little h (either Planck or SH0ES based)"""
+        hh = self.emulator.param_names['hub']
+        if self.mf_slope:
+            hh = hh + 2
+        if low_z:
+            shoes_sigma = 0.0104 # SH0ES
+            shoes_mean = 0.7304 # https://arxiv.org/abs/2112.04510
+            h_prior = -((params[hh]-shoes_mean)/shoes_sigma)**2
+        else:
+            planck_sigma = 0.005 # Planck
+            planck_mean = 0.6741 # https://arxiv.org/abs/1807.06209
+            h_prior = -((params[hh]-planck_mean)/planck_sigma)**2
+        return h_prior
+
+    def omega_prior(self, params):
+        """Return a prior on Omega_m h^2 (Planck 2018)"""
+        oo = self.emulator.param_names['omegamh2']
+        if self.mf_slope:
+            oo = oo + 2
+        planck_sigma = 0.001 # Planck
+        planck_mean = 0.1424 # https://arxiv.org/abs/1807.06209
+        o_prior = -((params[hh]-planck_mean)/planck_sigma)**2
+        return o_prior
+
+    def likelihood(self, params, include_emu=True, data_power=None, cosmo_priors=True):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix.
         The covariance for the emulator points is assumed to be
@@ -232,6 +257,10 @@ class LikelihoodClass:
                 chi2 += self.data_correction_prior(params)
                 # Get and apply the DLA and SiIII corrections to the prediction
                 predicted[bb] = predicted[bb]*self.get_data_correction(okf[bb], params, self.zout[bb])
+            if cosmo_priors:
+                # add a prior on little h and omega_m h^2
+                chi2 += self.hubble_prior(params, low_z=True)
+                chi2 += self.omega_prior(params)
             diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
             std_bin = std[bb]
             bindx = np.min(idp)
@@ -269,8 +298,7 @@ class LikelihoodClass:
                                                                     "tau_thresh": self.tau_thresh, "include_emu": emu_error, "data_power": data_power}}
         # Each of the parameters has a prior with limits and a proposal width (the proposal covariance matrix
         # is learned, so the value given needs to be small enough for the sampler to get started)
-        info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale,
-                                         'latex': pnames[i][1]} for i in range(self.ndim)}
+        info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale, 'latex': pnames[i][1]} for i in range(self.ndim)}
         # Set up the mcmc sampler options (to do seed runs, add the option 'seed': integer between 0 and 2**32 - 1)
         # Default for computing Gelman-Rubin is to split chain into 4; to change, add option 'Rminus1_single_split': integer
         info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True,

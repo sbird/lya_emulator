@@ -70,3 +70,8 @@ def hf_optimize(
         loss_sum_z     = loss_sum_z3,
         zout           = flux_lf.zout,
     )
+
+    # print the loaded filenames
+    print("Used files:", filename, json_name)
+    print("Previous selected index", selected_index)
+    print("N optimization restarts", n_optimization_restarts)

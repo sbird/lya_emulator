@@ -43,7 +43,7 @@ def hf_optimize(
         )
     else:
         # search for the optimal (num_selected)th
-        all_z_next_loss, loss_sum_z, all_z_next_selected_index, selected_index_sum_z = search_next(
+        loss_sum_z, selected_index_sum_z = search_next(
             flux_lf, None, selected_index, n_optimization_restarts=n_optimization_restarts,
         )
 

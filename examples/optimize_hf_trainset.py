@@ -37,11 +37,16 @@ def hf_optimize(
         all_z_loss, loss_sum_z, all_z_selected_index, selected_index = direct_search(
             flux_lf, num_selected=num_selected - 1, n_optimization_restarts=n_optimization_restarts,
         )
+        # search for the optimal (num_selected)th
+        all_z_next_loss, loss_sum_z, all_z_next_selected_index, selected_index_sum_z = search_next(
+            flux_lf, all_z_selected_index, selected_index, n_optimization_restarts=n_optimization_restarts,
+        )
+    else:
+        # search for the optimal (num_selected)th
+        all_z_next_loss, loss_sum_z, all_z_next_selected_index, selected_index_sum_z = search_next(
+            flux_lf, None, selected_index, n_optimization_restarts=n_optimization_restarts,
+        )
 
-    # search for the optimal (num_selected)th
-    all_z_next_loss, loss_sum_z, all_z_next_selected_index, selected_index_sum_z = search_next(
-        flux_lf, all_z_selected_index, selected_index, n_optimization_restarts=n_optimization_restarts,
-    )
 
     # [Direct search] for validation.
     all_z_loss3, loss_sum_z3, all_z_selected_index3, selected_index_sum_z3 = direct_search(

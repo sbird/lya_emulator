@@ -182,7 +182,7 @@ def direct_search(
 
 def search_next(
         data: FluxVectorLowFidelity,
-        all_z_selected_index: np.ndarray,
+        all_z_selected_index: Optional[np.ndarray],
         selected_index_sum_z: np.ndarray,
         n_optimization_restarts: int = 10,
     ) -> np.ndarray:
@@ -196,43 +196,9 @@ def search_next(
                           shape=(num of zs, num of selected points)
     selected_index_sum_z: Optimal selection across zs.
                           shape=(num of selected points, )
+    
+    TODO: make this function cleaner.
     """
-    ## First Part: individual z
-    all_z_next_loss = []
-    all_z_next_selected_index = []
-
-    # Loop over all redshifts.
-    # You still need to loop over (X, Y) for train_opt.
-    for i, selected_index in enumerate(all_z_selected_index):
-
-        # if not log scale, some selections cannot be trained, which might
-        # indicate log scale is a better normalization for GP
-        Y = np.log10(data.get_flux_vector_at_z(i))
-        print("[Info] Getting flux vector at z = {:.3g} ...".format(data.zout[i]))
-        print("[Info] Turn the flux power into log scale.")
-
-        # you need to instantiate the train_open per loop, since
-        # Y is different for different zs.
-        train_opt = TrainSetOptimize(X=data.X, Y=Y)
-
-        # turn integers into a boolean array
-        prev_ind = np.zeros(data.num_samples, dtype=np.bool)
-        prev_ind[np.array(selected_index)] = True
-
-        assert np.sum(prev_ind) == len(selected_index)
-        
-        # this method loop over all index \in {1..N} - {prev_ind}
-        # and compute the loss
-        next_index, next_loss = train_opt.optimize(prev_ind, n_optimization_restarts=n_optimization_restarts)
-
-        # optimal next selection indices
-        selected_index = np.append(selected_index, next_index)
-
-        assert np.where(~prev_ind)[0][np.argmin(next_loss)] == next_index
-
-        all_z_next_selected_index.append(selected_index)
-        all_z_next_loss.append(next_loss)
-
 
     ## Second Part: Summing over all z
     all_z_next_loss_sum_z = []
@@ -267,17 +233,56 @@ def search_next(
     # optimal next selection indices
     selected_index_sum_z = np.append(selected_index_sum_z, next_index_sum_z)
 
+    if all_z_selected_index is None:
+        return loss_sum_z, selected_index_sum_z
 
-    # print all
-    for i,z in enumerate(data.zout):
+    elif all_z_selected_index is not None:
+        ## First Part: individual z
+        all_z_next_loss = []
+        all_z_next_selected_index = []
 
-        selected_index = all_z_next_selected_index[i]
+        # Loop over all redshifts.
+        # You still need to loop over (X, Y) for train_opt.
+        for i, selected_index in enumerate(all_z_selected_index):
 
-        print("Optimal three for z = {:.3g}".format(z), selected_index)
+            # if not log scale, some selections cannot be trained, which might
+            # indicate log scale is a better normalization for GP
+            Y = np.log10(data.get_flux_vector_at_z(i))
+            print("[Info] Getting flux vector at z = {:.3g} ...".format(data.zout[i]))
+            print("[Info] Turn the flux power into log scale.")
 
-    print("Optimal three (summing over all redshifts)", selected_index_sum_z)
+            # you need to instantiate the train_open per loop, since
+            # Y is different for different zs.
+            train_opt = TrainSetOptimize(X=data.X, Y=Y)
 
-    return all_z_next_loss, loss_sum_z, all_z_next_selected_index, selected_index_sum_z
+            # turn integers into a boolean array
+            prev_ind = np.zeros(data.num_samples, dtype=np.bool)
+            prev_ind[np.array(selected_index)] = True
+
+            assert np.sum(prev_ind) == len(selected_index)
+            
+            # this method loop over all index \in {1..N} - {prev_ind}
+            # and compute the loss
+            next_index, next_loss = train_opt.optimize(prev_ind, n_optimization_restarts=n_optimization_restarts)
+
+            # optimal next selection indices
+            selected_index = np.append(selected_index, next_index)
+
+            assert np.where(~prev_ind)[0][np.argmin(next_loss)] == next_index
+
+            all_z_next_selected_index.append(selected_index)
+            all_z_next_loss.append(next_loss)
+
+        # print all
+        for i,z in enumerate(data.zout):
+
+            selected_index = all_z_next_selected_index[i]
+
+            print("Optimal three for z = {:.3g}".format(z), selected_index)
+
+        print("Optimal three (summing over all redshifts)", selected_index_sum_z)
+
+        return all_z_next_loss, loss_sum_z, all_z_next_selected_index, selected_index_sum_z
 
 
 

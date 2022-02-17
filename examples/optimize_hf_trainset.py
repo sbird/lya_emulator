@@ -20,6 +20,9 @@ def hf_optimize(
     Optimize the HF choice and validate the choice using direct search.
     """
 
+    # fix the random seed
+    np.random.seed(0)
+
     flux_lf = FluxVectorLowFidelity(filename, json_name)
 
     if selected_index is not None:

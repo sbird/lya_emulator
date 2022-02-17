@@ -22,8 +22,9 @@ def hf_optimize(
 
     flux_lf = FluxVectorLowFidelity(filename, json_name)
 
-    # your previously selected index is shorted than num_selected
-    assert len(selected_index) + 1 == num_selected
+    if selected_index is not None:
+        # your previously selected index is shorted than num_selected
+        assert len(selected_index) + 1 == num_selected
 
     # if you previously selected index, direct search the num_selected - 1, and
     # search the (num_selected)th one.

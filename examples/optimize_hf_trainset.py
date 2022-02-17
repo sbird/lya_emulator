@@ -3,6 +3,7 @@ Functions to select the optimal HF samples, and validate the selection.
 """
 from typing import List, Optional
 
+import os, json
 import numpy as np
 
 from lyaemu.mf_emulator.hf_optimizes import *
@@ -75,3 +76,24 @@ def hf_optimize(
     print("Used files:", filename, json_name)
     print("Previous selected index", selected_index)
     print("N optimization restarts", n_optimization_restarts)
+
+    # to avoid running again
+    folder_name = "hf_{}_{}_{}".format(num_selected, "-".join(map(str, selected_index)), n_optimization_restarts)
+    outdir = os.path.join("output", "hf_optimals", folder_name)
+    os.makedirs(outdir, exist_ok=True)
+
+    basic_info = {
+        "filename" : filename,
+        "json_name" : json_name,
+        "num_selected" : num_selected,
+        "selected_index" : selected_index.tolist(),
+        "n_optimization_restarts" : n_optimization_restarts,
+    }
+
+    np.savetxt(os.path.join(outdir, "all_z_loss3"), all_z_loss3)
+    np.savetxt(os.path.join(outdir, "loss_sum_z3"), loss_sum_z3)
+    np.savetxt(os.path.join(outdir, "selected_index_sum_z"), selected_index_sum_z)
+    np.savetxt(os.path.join(outdir, "selected_index_sum_z3"), selected_index_sum_z3)
+
+    with open("basic_info.json", "w") as f:
+        json.dump(basic_info, f, indent=4)

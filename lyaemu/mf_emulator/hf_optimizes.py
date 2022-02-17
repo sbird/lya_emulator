@@ -9,6 +9,7 @@ Procedures to optimize the hf training set,
 import json
 # for getting all combinations of the highres choice
 from itertools import combinations
+from typing import List, Optional
 
 import numpy as np
 import h5py
@@ -278,3 +279,37 @@ def search_next(
 
     return all_z_next_loss, loss_sum_z, all_z_next_selected_index, selected_index_sum_z
 
+
+
+
+
+def better_than(
+        num_selected: int, num_samples: int, selected_index: List, all_z_loss: List,
+        loss_sum_z: Optional[List], zout: List,
+    )-> None:
+    """
+    Small function to check the performance of your selection across redshifts. 
+
+    Parameters:
+    ----
+    num_selected: the number of selected HF simulations.
+    num_samples: the total number of simulations in LF.
+    selected_index: the selected optimal index, shape=(num of selected points)
+    all_z_loss: the loss of LF emulator, shape=(zs, num of selections)
+    loss_sum_z: the loss of LF emulator across redshifts, shape=(num of selections, )
+    zout: redshifts, shape=(zs, )
+    """
+
+    all_combinations = np.array(list(combinations(range(num_samples), num_selected)))
+
+    # what's the index of our optimal selection
+    idx = np.where(np.all(all_combinations == np.sort(selected_index), axis=1))[0][0]
+
+    for i, loss in enumerate(all_z_loss):
+        # how many selections have larger loss than our optimal one?
+        better_than = np.sum(loss[idx] < np.array(loss)) / len(loss)
+        print("Better than {:.3g} of the selections at z = {:.2g}".format(better_than, zout[i]))
+
+    # compared with summing across redshifts
+    better_than = np.sum(loss_sum_z[idx] < np.array(loss_sum_z)) / len(loss_sum_z)
+    print("Better than {:.3g} of the selections (summing over all redshifts)".format(better_than))

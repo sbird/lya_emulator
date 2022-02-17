@@ -15,6 +15,7 @@ def hf_optimize(
         json_name: str = "data/emu_30mpc_lores/emulator_params.json",
         selected_index: Optional[List] = None,
         n_optimization_restarts: int = 10,
+        outname: str = "", ## added filename
     ) -> None:
     """
     Optimize the HF choice and validate the choice using direct search.
@@ -88,7 +89,7 @@ def hf_optimize(
 
     # to avoid running again
     folder_name = "hf_{}_{}_{}".format(num_selected, "-".join(map(str, selected_index)), n_optimization_restarts)
-    outdir = os.path.join("output", "hf_optimals", folder_name)
+    outdir = os.path.join("output", "hf_optimals", folder_name + outname)
     os.makedirs(outdir, exist_ok=True)
 
     basic_info = {

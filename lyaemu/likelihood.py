@@ -227,7 +227,7 @@ class LikelihoodClass:
             oo = oo + 2
         planck_sigma = 0.001 # Planck
         planck_mean = 0.1424 # https://arxiv.org/abs/1807.06209
-        o_prior = -((params[hh]-planck_mean)/planck_sigma)**2
+        o_prior = -((params[oo]-planck_mean)/planck_sigma)**2
         return o_prior
 
     def likelihood(self, params, include_emu=True, data_power=None, cosmo_priors=True):
@@ -351,30 +351,9 @@ class LikelihoodClass:
         success = all(comm.allgather(success))
         if not success and rank == 0:
             print("Sampling failed!")
-        # Now recombine chains into a single combined file and save
-        all_chains = comm.gather(sampler.products()["sample"], root=0)
-        if rank == 0:
-            full_chain = self.combine_chains(all_chains, savefile)
-        # The returned objects will be the same when running a single chain
-        return sampler, full_chain
-
-    def combine_chains(self, all_chains, savefile):
-        """Combine multiple chains into a single file."""
-        # Will work even when there is only a single chain, no MPI
-        full_chain = all_chains[0]
-        for chain in all_chains[1:]:
-            full_chain.append(chain)
-        if savefile is not None:
-            # Save the file with the same formatting as Cobaya
-            n_float = 8
-            width_col = lambda col: max(7 + n_float, len(col))
-            numpy_fmts = ["%{}.{}".format(width_col(col), n_float) + "g" for col in full_chain.data.columns]
-            header_formatter = [eval('lambda s, w=width_col(col): ''("{:>" + "{}".format(w) + "s}").format(s)', {'width_col': width_col, 'col': col}) for col in full_chain.data.columns]
-            with open(savefile+".combined.txt", "w", encoding="utf-8") as out:
-                out.write("#" + " ".join(f(col) for f, col in zip(header_formatter, full_chain.data.columns))[1:] + "\n")
-            with open(savefile+".combined.txt", "a", encoding="utf-8") as out:
-                np.savetxt(out, full_chain.data.to_numpy(), fmt=numpy_fmts)
-        return full_chain
+        else:
+            all_chains = comm.gather(sampler.products()["sample"], root=0)
+            return sampler, all_chains
 
     def get_covar_det(self, params, include_emu):
         """Get the determinant of the covariance matrix.for certain parameters"""

@@ -97,6 +97,8 @@ def hf_optimize(
         "json_name" : json_name,
         "num_selected" : num_selected,
         "selected_index" : selected_index.tolist(),
+        "selected_index_sum_z": selected_index_sum_z.tolist(),
+        "selected_index_sum_z3": selected_index_sum_z3.tolist(),
         "n_optimization_restarts" : n_optimization_restarts,
     }
 
@@ -105,5 +107,5 @@ def hf_optimize(
     np.savetxt(os.path.join(outdir, "selected_index_sum_z"), selected_index_sum_z)
     np.savetxt(os.path.join(outdir, "selected_index_sum_z3"), selected_index_sum_z3)
 
-    with open("basic_info.json", "w") as f:
+    with open(os.path.join(outdir, "basic_info.json"), "w") as f:
         json.dump(basic_info, f, indent=4)

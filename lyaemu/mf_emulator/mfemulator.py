@@ -3,11 +3,14 @@ Multi-Fidelity Emulation on Lyman alpha flux power spectrum
 
 * Jan 6, 2022: condition emulator at one redshift due to it's too
 computational expensive to train multiple MFEmulators.
+
+TODO: Combine TrainSetOptimize to MFEmulator.
 """
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 
+from .gpemulator_singlebin import SingleBinLinearGP, SingleBinNonLinearGP
 from .dataloader import FluxVectors
 from ..coarse_grid import Emulator
 
@@ -19,7 +22,8 @@ class MFEmulator(Emulator):
 
     Training data are loaded from .dataloader.FluxVectors
 
-    Keep the original attributes, and allow them to be HF training set.
+    Keep the original attributes, and allow them to be low-fidelity training set,
+        so we can add a method to optimize the highres training set.
     Keep the MF data as a class instance in another attribute.
 
     - basedir: directory to load or create emulator
@@ -84,8 +88,8 @@ class MFEmulator(Emulator):
         mf: Optional[str] = None,
         limitfac: int = 1,
         tau_thresh: Optional[float] = None,
-        npart: int = 384,
-        box: int = 15,
+        npart: int = 256,
+        box: int = 30,
         fullphysics: bool = True,
     ):
         # this is for single-fidelity emulator only; assume here to be highres
@@ -102,8 +106,64 @@ class MFEmulator(Emulator):
             fullphysics=fullphysics,
         )
 
-        # multi-fidelity data
+        # multi-fidelity data; TODO: add an example here.
         # note this is only for one redshift
         self.mfdata = mfdata
 
-    
+    def get_mf_emulator(
+        self,
+        method: str = "ar1",
+        n_fidelities: int = 2,
+        ARD_last_fidelity: bool = False,
+        n_optimization_restarts: int = 20,
+    ) -> Union[SingleBinLinearGP, SingleBinNonLinearGP]:
+        """
+        Build a multi-fidelity emulator based on the self.mfdata stored in the class.
+        Note: this is for single redshift.
+
+        Parameters:
+        ----
+        method: either 'ar1', autoregressive GP, or 'nargp', non-linear autoregressive GP.
+        n_fidelities: number of fidelities. This serves as a double-check parameter since
+            you can easily know how many fidelities from self.mfdata.
+        ARD_last_fidelity: whether to turn on ARD for high-fidelity. If it's turned on, you
+            will have (nparams - 1) more parameters at high-fidelity.
+        n_optimization_restarts: number of optimization resarts for GP optimizations. The
+            optimization will repeat multiple times, and the best hyperparameters are chosen.
+
+        Return:
+        ----
+        mf_emulator: refer to SingleBinLinearGP or SingleBinNonLinearGP.
+        """
+        all_methods = ["ar1", "nargp"]
+
+        if method == "ar1":
+            # linear multi-fidelity
+            ar1 = SingleBinLinearGP(
+                self.mfdata.X_train_norm,
+                self.mfdata.Y_train_norm,
+                kernel_list=None, # default RBF, ARD is on for low-fidelity 
+                n_fidelities=n_fidelities,
+                ARD_last_fidelity=ARD_last_fidelity,
+            )
+            # this is just a placeholder to be consistent with nargp;
+            # remember to apply it when you actually run it.
+            ar1.n_optimization_restarts = n_optimization_restarts
+
+            return ar1
+
+        elif method == "nargp":
+            # non-linear multi-fidelity
+            nargp = SingleBinNonLinearGP(
+                self.mfdata.X_train_norm,
+                self.mfdata.Y_train_norm,
+                n_fidelities=n_fidelities,
+                n_samples=500,
+                optimization_restarts=n_optimization_restarts,
+                turn_off_bias=False,
+                ARD_last_fidelity=ARD_last_fidelity,
+            )
+
+            return nargp
+        else:
+            raise NameError("You need to choose between {}".format(",".join(map(str, all_methods))) )

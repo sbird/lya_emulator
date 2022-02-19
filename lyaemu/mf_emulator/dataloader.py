@@ -190,7 +190,7 @@ def convert_h5_to_txt(
             param_lf["box"],
             len(x_train_hf),
             param_hf["npart"],
-            param_lf["box"],
+            param_hf["box"],
             z,
         )
 

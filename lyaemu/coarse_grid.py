@@ -446,7 +446,7 @@ class Emulator:
             di = [self.get_outdir(aparams[i], strsz=3) for i in range(nsims)]
             # and snapshot numbers for each of them
             snaps = [self.myspec.get_snapshot_list(base=di[i]) for i in range(nsims)]
-            meanT = np.array([tempdens.get_median_temp(i, di[j], plot=False) for j in range(nsims) for i in snaps[j].snaps])
+            meanT = np.array([tempdens.get_median_temp(i, di[j]) for j in range(nsims) for i in snaps[j].snaps])
             meanT = meanT.reshape([nsims, self.myspec.zout.size])
             self.save_meanT(aparams, meanT)
         return aparams, meanT

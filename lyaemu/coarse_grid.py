@@ -15,6 +15,7 @@ from . import latin_hypercube
 from . import flux_power
 from . import lyman_data
 from . import gpemulator
+from . import tempdens
 from .mean_flux import ConstMeanFlux
 
 def get_latex(key):
@@ -431,6 +432,47 @@ class Emulator:
         flux_predict, std_predict = gp.predict(aparams[remove, :].reshape(1, -1))
         err = (flux_vectors[remove,:] - flux_predict[0])/std_predict[0]
         return kf, flux_vectors[remove,:] / flux_predict[0] - 1, err
+
+    def get_meanT(self):
+        """Get the desired flux vectors and their parameters"""
+        aparams = self.get_parameters()
+        nsims, nparams = np.shape(aparams)
+        assert nparams == len(self.param_names)
+        try:
+            meanT = self.load_meanT(aparams)
+        except (AssertionError, OSError):
+            print("Could not load T0, regenerating from disc")
+            # get all simulation directories for the emulator
+            di = [self.get_outdir(aparams[i], strsz=3) for i in range(nsims)]
+            # and snapshot numbers for each of them
+            snaps = [self.myspec.get_snapshot_list(base=di[i]) for i in range(nsims)]
+            meanT = np.array([tempdens.get_median_temp(i, di[j], plot=False) for j in range(nsims) for i in snaps[j].snaps])
+            meanT = meanT.reshape([nsims, self.myspec.zout.size])
+            self.save_meanT(aparams, meanT)
+        return aparams, meanT
+
+    def save_meanT(self, aparams, meanT, savefile="emulator_meanT.hdf5"):
+        """Save the mean temperatures and parameters to a file."""
+        save = h5py.File(os.path.join(self.basedir, savefile), 'w')
+        save.attrs["classname"] = str(self.__class__)
+        save["params"] = aparams
+        save["zout"] = self.myspec.zout
+        save["meanT"] = meanT
+        save.close()
+
+    def load_meanT(self, aparams, savefile="emulator_meanT.hdf5"):
+        """Load the mean temperatures and parameters from a file."""
+        load = h5py.File(os.path.join(self.basedir, savefile), 'r')
+        inparams = np.array(load["params"])
+        meanT = np.array(load["meanT"])
+        zout = np.array(load["zout"])
+        self.myspec.zout = zout
+        name = str(load.attrs["classname"])
+        load.close()
+        assert name.split(".")[-1] == str(self.__class__).split(".")[-1]
+        assert np.shape(inparams) == np.shape(aparams)
+        assert np.all(inparams - aparams < 1e-3)
+        return meanT
 
 class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.

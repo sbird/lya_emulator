@@ -86,6 +86,9 @@ selected_index=[1,17,18],\
 n_optimization_restarts=10)"
 ```
 
+In the above case, the previously selected optimal 3 points are [1, 17, 18].
+
+Note that the selected index might differ for different computers due to the random seed. However, we can always validate whether this selection is optimal by comparing the results with the direct search. For example, we can compare the low-fidelity emulation accuracy of the optimal choice with all possible combinations. The above example includes validating the selection on all possible combinations.
 
 ## Requirements
 

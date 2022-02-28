@@ -5,7 +5,6 @@ From h5 and json files to generate training folders,
 from training folders to build emulators,
 from emulators to output testing  results.
 """
-from tkinter import N
 from typing import List
 
 import os, json

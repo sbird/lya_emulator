@@ -58,9 +58,14 @@ def hf_optimize(
 
 
     # [Direct search] for validation.
-    all_z_loss3, loss_sum_z3, all_z_selected_index3, selected_index_sum_z3 = direct_search(
-        flux_lf, num_selected=num_selected, n_optimization_restarts=n_optimization_restarts,
-    )
+    if mpi == True:
+        all_z_loss3, loss_sum_z3, all_z_selected_index3, selected_index_sum_z3 = mpi_direct_search(
+            flux_lf, num_selected=num_selected, n_optimization_restarts=n_optimization_restarts,
+        )
+    else:
+        all_z_loss3, loss_sum_z3, all_z_selected_index3, selected_index_sum_z3 = direct_search(
+            flux_lf, num_selected=num_selected, n_optimization_restarts=n_optimization_restarts,
+        )
 
     # Summarize the results
     print("Search next for {} optimals:".format(num_selected), selected_index_sum_z)

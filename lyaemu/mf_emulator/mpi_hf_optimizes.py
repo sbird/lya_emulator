@@ -57,8 +57,8 @@ def direct_search(
 
         # Start MPI loops
         # ----
-        total_loss = np.full((n, ), dtype=np.float) # Array to store all local loss
-        
+        total_loss = np.full((n, ), fill_value=np.nan, dtype=np.float) # Array to store all local loss
+
         local_i = my_rank * local_n                 # start point to run on this processor
         local_f = local_i + local_n                 # end   point to run on this processor
 

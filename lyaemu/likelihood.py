@@ -100,7 +100,8 @@ class LikelihoodClass:
             # Get the min_z and max_z for the emulator, regardless of what is requested
             with open(basedir+"/"+emulator_json_file, "r") as emulator_json:
                 loaded = json.load(emulator_json)
-                z_mflux = np.append(np.arange(loaded["min_z"], loaded["max_z"], 0.2), loaded["max_z"])
+                nz = int(np.round((loaded["max_z"]-loaded["min_z"])/0.2, 1)) + 1
+                z_mflux = np.linspace(loaded["min_z"], loaded["max_z"], nz)
             slopehigh = np.max(mflux.mean_flux_slope_to_factor(z_mflux, 0.25))
             slopelow = np.min(mflux.mean_flux_slope_to_factor(z_mflux, -0.25))
             dense_limits = np.array([np.array(t0_factor) * np.array([slopelow, slopehigh])])

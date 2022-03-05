@@ -120,7 +120,8 @@ class MySpectra:
         self.pix_res = 10.
         self.NumLos = numlos
         #Want output every 0.2 from z=max to z=2.0, matching SDSS.
-        self.zout = np.append(np.arange(max_z, min_z, -0.2), min_z)
+        nz = int(np.round((max_z-min_z)/0.2, 1)) + 1
+        self.zout = np.linspace(max_z, min_z, nz)
         self.max_k = max_k
         self.savefile = "lya_forest_spectra.hdf5"
 
@@ -203,7 +204,8 @@ class MySpectra:
         #Make sure we have enough outputs, ignoring missing values at the start and the end
         if powerspectra.len() != np.size(self.zout):
             reds = [ss.red for ss in powerspectra.spectrae]
-            self.zout = np.append(np.arange(np.max(reds), np.min(reds), -0.2), np.min(reds))
+            nz = int(np.round((np.max(reds)-np.min(reds))/0.2, 1)) + 1
+            self.zout = np.linspace(np.max(reds), np.min(reds), nz)
             print("Redshift now from z=%g to %g" % (self.zout[0], self.zout[-1]))
         if powerspectra.len() != np.size(self.zout):
             raise ValueError("Found only",powerspectra.len(),"of",np.size(self.zout),"z=",self.zout[0], self.zout[-1],"from snaps:",powerspectra.snaps)

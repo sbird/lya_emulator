@@ -436,32 +436,48 @@ class Emulator:
     def get_meanT(self):
         """Get the desired flux vectors and their parameters"""
         aparams = self.get_parameters()
-        nsims, nparams = np.shape(aparams)
-        assert nparams == len(self.param_names)
+        assert np.shape(aparams)[1] == len(self.param_names)
         try:
             meanT = self.load_meanT(aparams)
         except (AssertionError, OSError):
             print("Could not load T0, regenerating from disc")
-            # get all simulation directories for the emulator
-            di = [self.get_outdir(aparams[i], strsz=3) for i in range(nsims)]
-            # and snapshot numbers for each of them
-            snaps = [self.myspec.get_snapshot_list(base=di[i]) for i in range(nsims)]
-            meanT = np.array([tempdens.get_median_temp(i, di[j]) for j in range(nsims) for i in snaps[j].snaps])
-            meanT = meanT.reshape([nsims, self.myspec.zout.size])
-            self.save_meanT(aparams, meanT)
+            new_params, meanT, aparams = self.check_meanT(aparams)
+            for params in new_params:
+                di = self.get_outdir(params, strsz=3)
+                snaps = self.myspec.get_snapshot_list(base=di)
+                new_meanT = np.array([tempdens.get_median_temp(i, di) for i in snaps.snaps])
+                aparams = np.append(aparams, [params], axis=0)
+                meanT = np.append(meanT, [new_meanT], axis=0)
+                self.save_meanT(aparams, meanT)
         return aparams, meanT
+
+    def check_meanT(self, aparams, savefile="emulator_meanT.hdf5"):
+        """Cross-reference existing file samples with requested."""
+        nparams, nz = np.shape(aparams)[1], self.myspec.zout.size
+        if not os.path.exists(os.path.join(self.basedir, savefile)):
+            return aparams, np.empty((0, nz)), np.empty((0, nparams))
+        load = h5py.File(os.path.join(self.basedir, savefile), 'r')
+        inparams = np.array(load["params"])
+        meanT = np.array(load["meanT"])
+        load.close()
+        unique, num = np.unique(np.concatenate([aparams, inparams]), axis=0, return_counts=True)
+        assert num.size == np.shape(aparams)[0], "Non-matching file '%s' exists on path. Move or delete to generate T0 file." % savefile
+        assert num.min() == 1, "Loaded samples match. Check load_meanT assertions."
+        new_params = unique[np.where(num == 1)]
+        return new_params, meanT.reshape(-1, nz), inparams.reshape(-1, nparams)
+
 
     def save_meanT(self, aparams, meanT, savefile="emulator_meanT.hdf5"):
         """Save the mean temperatures and parameters to a file."""
         save = h5py.File(os.path.join(self.basedir, savefile), 'w')
         save.attrs["classname"] = str(self.__class__)
-        save["params"] = aparams
         save["zout"] = self.myspec.zout
+        save["params"] = aparams
         save["meanT"] = meanT
         save.close()
 
     def load_meanT(self, aparams, savefile="emulator_meanT.hdf5"):
-        """Load the mean temperatures and parameters from a file."""
+        """Load the mean temperatures from a file."""
         load = h5py.File(os.path.join(self.basedir, savefile), 'r')
         inparams = np.array(load["params"])
         meanT = np.array(load["meanT"])

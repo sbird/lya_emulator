@@ -60,7 +60,6 @@ def get_median_temp(num, base):
 
     mean_dens = mean_density(hubble, redshift, unit=unit, omegab=snap.get_omega_baryon())
     T0 = get_temp_meandensity(dens/mean_dens, temp)
-    print("z=%f T0(K) = %f" %(redshift, T0))
     return T0
 
 def fit_td_rel_plot(num, base, nhi=True, nbins=500, gas="raw", plot=True):

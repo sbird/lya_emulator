@@ -97,10 +97,11 @@ class T0Emulator(Emulator):
         inparams = np.array(load["params"])
         meanT = np.array(load["meanT"])
         load.close()
-        unique, num = np.unique(np.concatenate([aparams, inparams]), axis=0, return_counts=True)
+        comb_params = np.concatenate([aparams, inparams])
+        unique, num = np.unique(comb_params, axis=0, return_counts=True)
         assert num.size == np.shape(aparams)[0], "Non-matching file '%s' exists on path. Move or delete to generate T0 file." % savefile
         assert num.min() == 1, "Loaded samples match. Check load_meanT assertions."
-        new_params = unique[np.where(num == 1)]
+        new_params = aparams[np.where(num == 2)[0].size:]
         return new_params, meanT.reshape(-1, nz), inparams.reshape(-1, nparams)
 
 

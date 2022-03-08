@@ -8,6 +8,14 @@ from itertools import combinations
 from .hf_optimizes import FluxVectorLowFidelity
 from .mf_trainset_optimize import TrainSetOptimize
 
+# MPI World:
+# ----
+comm = MPI.COMM_WORLD     # shared by all computers
+my_rank = comm.Get_rank() # id for this computer
+
+p = comm.Get_size()       # number of processors
+
+
 def direct_search(
         data: FluxVectorLowFidelity,
         num_selected: int = 3,
@@ -28,13 +36,6 @@ def direct_search(
 
     # looking for all possible combinations
     all_combinations = list(combinations(range(data.num_samples), num_selected))
-
-    # MPI World:
-    # ----
-    comm = MPI.COMM_WORLD     # shared by all computers
-    my_rank = comm.Get_rank() # id for this computer
-
-    p = comm.Get_size()       # number of processors
 
     # MPI settings
     # ----
@@ -89,35 +90,42 @@ def direct_search(
     else:
         comm.Send([all_z_local_loss, MPI.FLOAT], dest=dest)
 
+    # No more MPI intructions beyond this point, but the MPI processors will
+    # still run in their own rank.
     MPI.Finalize
 
-    # [sum over all redshifts] To account for all available redshift,
-    # we sum the MSE loss from each z. The optimal one should have the
-    # lowest average MSE loss across all z. 
-    loss_sum_z = np.nansum(all_z_loss, axis=0)
+    # The array all_z_loss only fully-specified in rank 0.
+    if my_rank == 0:
+        # [sum over all redshifts] To account for all available redshift,
+        # we sum the MSE loss from each z. The optimal one should have the
+        # lowest average MSE loss across all z. 
+        loss_sum_z = np.nansum(all_z_loss, axis=0)
 
-    # find the best samples to minimize the loss
-    all_z_selected_index = [] # this is for individual z
+        # find the best samples to minimize the loss
+        all_z_selected_index = [] # this is for individual z
 
-    # need to print for all redshifts
-    for i,z in enumerate(data.zout):
+        # need to print for all redshifts
+        for i,z in enumerate(data.zout):
 
-        all_loss = all_z_loss[i]
+            all_loss = all_z_loss[i]
 
-        # the optimal one is the one has lowest MSE loss
-        selected_index = np.array(all_combinations[np.argmin(all_loss)])
+            # the optimal one is the one has lowest MSE loss
+            selected_index = np.array(all_combinations[np.argmin(all_loss)])
 
-        print("Optimal selection for z = {:.3g}".format(z))
-        print(selected_index)
+            print("Optimal selection for z = {:.3g}".format(z))
+            print(selected_index)
 
-        all_z_selected_index.append(selected_index)
+            all_z_selected_index.append(selected_index)
 
-    # [sum over all redshifts]
-    selected_index_sum_z = np.array(all_combinations[np.argmin(loss_sum_z)])
-    print("Optimal selection (summing over all redshifts)", selected_index_sum_z)
+        # [sum over all redshifts]
+        selected_index_sum_z = np.array(all_combinations[np.argmin(loss_sum_z)])
+        print("Optimal selection (summing over all redshifts)", selected_index_sum_z)
 
-    return all_z_loss, loss_sum_z, all_z_selected_index, selected_index_sum_z
+        return all_z_loss, loss_sum_z, all_z_selected_index, selected_index_sum_z
 
+    # Don't return things if it's not rank 0
+    else:
+        return None
 
 def compute_local_loss(
         local_i: int,

@@ -7,7 +7,6 @@ import os, json
 import numpy as np
 
 from lyaemu.mf_emulator.hf_optimizes import *
-from lyaemu.mf_emulator.mpi_hf_optimizes import direct_search as mpi_direct_search
 
 def hf_optimize(
         num_selected: int,
@@ -16,7 +15,6 @@ def hf_optimize(
         selected_index: Optional[List] = None,
         n_optimization_restarts: int = 10,
         outname: str = "", ## added filename
-        mpi: bool = False,
     ) -> None:
     """
     Optimize the HF choice and validate the choice using direct search.
@@ -31,20 +29,16 @@ def hf_optimize(
         # your previously selected index is shorted than num_selected
         assert len(selected_index) + 1 == num_selected
 
+        selected_index = np.array(selected_index)
+
     # if you previously selected index, direct search the num_selected - 1, and
     # search the (num_selected)th one.
     if selected_index is None:
         
-        if mpi == True:
-            # direct search optimal (num_selected-1)
-            all_z_loss, loss_sum_z, all_z_selected_index, selected_index = mpi_direct_search(
-                flux_lf, num_selected=num_selected - 1, n_optimization_restarts=n_optimization_restarts,
-            )
-        else:
-            # direct search optimal (num_selected-1)
-            all_z_loss, loss_sum_z, all_z_selected_index, selected_index = direct_search(
-                flux_lf, num_selected=num_selected - 1, n_optimization_restarts=n_optimization_restarts,
-            )
+        # direct search optimal (num_selected-1)
+        all_z_loss, loss_sum_z, all_z_selected_index, selected_index = direct_search(
+            flux_lf, num_selected=num_selected - 1, n_optimization_restarts=n_optimization_restarts,
+        )
 
         # search for the optimal (num_selected)th
         all_z_next_loss, loss_sum_z, all_z_next_selected_index, selected_index_sum_z = search_next(
@@ -58,14 +52,9 @@ def hf_optimize(
 
 
     # [Direct search] for validation.
-    if mpi == True:
-        all_z_loss3, loss_sum_z3, all_z_selected_index3, selected_index_sum_z3 = mpi_direct_search(
-            flux_lf, num_selected=num_selected, n_optimization_restarts=n_optimization_restarts,
-        )
-    else:
-        all_z_loss3, loss_sum_z3, all_z_selected_index3, selected_index_sum_z3 = direct_search(
-            flux_lf, num_selected=num_selected, n_optimization_restarts=n_optimization_restarts,
-        )
+    all_z_loss3, loss_sum_z3, all_z_selected_index3, selected_index_sum_z3 = direct_search(
+        flux_lf, num_selected=num_selected, n_optimization_restarts=n_optimization_restarts,
+    )
 
     # Summarize the results
     print("Search next for {} optimals:".format(num_selected), selected_index_sum_z)

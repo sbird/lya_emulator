@@ -78,7 +78,7 @@ def direct_search(
             "json_name" : json_name,
             "num_selected" : num_selected,
             "selected_index_sum_z3": selected_index_sum_z3.tolist(),
-            "all_z_selected_index3" : all_z_selected_index3.tolist(),
+            "all_z_selected_index3" : [idx.tolist() for idx in all_z_selected_index3],
             "n_optimization_restarts" : n_optimization_restarts,
             "nth_division" : nth_division,
             "num_divisions" : num_divisions,

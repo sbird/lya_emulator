@@ -87,7 +87,7 @@ def direct_search(
 
     # the receiver rank
     if my_rank == 0:
-        all_z_loss[i, local_i:local_f] = all_z_local_loss
+        all_z_loss[:, local_i:local_f] = all_z_local_loss
 
         # receive the results for each mpi rank
         for source in range(1, p):
@@ -98,7 +98,7 @@ def direct_search(
             local_i = source * local_n
             local_f = local_i + local_n
 
-            all_z_loss[i, local_i:local_f] = all_z_local_loss_i
+            all_z_loss[:, local_i:local_f] = all_z_local_loss_i
 
     # send message to the receiver rank
     else:

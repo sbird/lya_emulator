@@ -29,7 +29,7 @@ def search_next(
 
     Note:
     ----
-    Default save path = "output/hf_optimals/hf_{num_selected}_{selected_index}/search_next/
+    Default save path = "output/hf_optimals/hf_{num_selected}_{selected_index}_{n_optimization_restarts}/search_next/
     """
 
     # fix the random seed

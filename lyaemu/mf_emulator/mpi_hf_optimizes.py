@@ -20,6 +20,8 @@ def direct_search(
         data: FluxVectorLowFidelity,
         num_selected: int = 3,
         n_optimization_restarts: int = 10,
+        num_divisions: int = 10,
+        nth_division: int = 0, # 1 2 3 4 5 6 7 8 9
     ):
     """
     Direct search the optimal N HF from LF simulations.
@@ -32,10 +34,20 @@ def direct_search(
         Y_train = log10(flux power spectra)
         
         loss = sum_{zi}^{zf} (MSE(z))
+
+    Parameters:
+    ----
+    data: Low-fidelity training data.
+    num_selected: Number of optimal points you want to select.
+    n_optimization_restarts: Number of GP optimizations.
+    num_divisions: We separate this loop into num_divisions.
+    nth_division: The Nth division we are going to run.
     """
 
     # looking for all possible combinations
     all_combinations = list(combinations(range(data.num_samples), num_selected))
+    # nth division in n divisions
+    all_combinations = all_combinations[nth_division::num_divisions]
 
     # MPI settings
     # ----
@@ -52,7 +64,7 @@ def direct_search(
     # loop over all redshifts, but separate the loop of combinations into MPI ranks
     for i, z in enumerate(data.zout):
 
-        print("[Info] Getting flux vector at z = {:.3g} ...".format(z))
+        print("[Info] {} rank, Getting flux vector at z = {:.3g} ...".format(my_rank, z))
 
         # if not log scale, some selections cannot be trained, which might
         # indicate log scale is a better normalization for GP
@@ -70,6 +82,8 @@ def direct_search(
 
         all_z_local_loss[i, :] = local_loss
 
+
+    print("[Info] {} rank, finished.".format(my_rank))
 
     # the receiver rank
     if my_rank == 0:
@@ -89,6 +103,8 @@ def direct_search(
     # send message to the receiver rank
     else:
         comm.Send([all_z_local_loss, MPI.FLOAT], dest=dest)
+        print("[Info] {} rank, sent.".format(my_rank))
+
 
     # No more MPI intructions beyond this point, but the MPI processors will
     # still run in their own rank.
@@ -121,10 +137,14 @@ def direct_search(
         selected_index_sum_z = np.array(all_combinations[np.argmin(loss_sum_z)])
         print("Optimal selection (summing over all redshifts)", selected_index_sum_z)
 
-        return all_z_loss, loss_sum_z, all_z_selected_index, selected_index_sum_z
+        print("[Info] {} rank, returned.".format(my_rank))
+
+        return all_z_loss, loss_sum_z, all_z_selected_index, selected_index_sum_z, all_combinations # return all_combinations for checking
 
     # Don't return things if it's not rank 0
     else:
+        print("[Info] {} rank, returned.".format(my_rank))
+
         return None
 
 def compute_local_loss(

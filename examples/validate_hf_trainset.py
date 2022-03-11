@@ -27,6 +27,8 @@ def direct_search(
         filename: str = "data/emu_30mpc_lores/cc_emulator_flux_vectors_tau1000000.hdf5",
         json_name: str = "data/emu_30mpc_lores/emulator_params.json",
         n_optimization_restarts: int = 10,
+        num_divisions: int = 10,
+        nth_division: int = 0, # 1 2 3 4 5 6 7 8 9
         outname: str = "", ## added filename
         ) -> None:
     """
@@ -43,15 +45,20 @@ def direct_search(
 
     flux_lf = FluxVectorLowFidelity(filename, json_name)
 
+    print("[Info] {} rank, running {}th division out of {} of divisions".format(
+        my_rank, nth_division, num_divisions,
+    ))
 
     # [Direct search] for validation.
     if my_rank != 0:
         mpi_direct_search(
             flux_lf, num_selected=num_selected, n_optimization_restarts=n_optimization_restarts,
+            num_divisions=num_divisions, nth_division=nth_division,
         )
     else:
-        all_z_loss3, loss_sum_z3, all_z_selected_index3, selected_index_sum_z3 = mpi_direct_search(
+        all_z_loss3, loss_sum_z3, all_z_selected_index3, selected_index_sum_z3, all_combinations = mpi_direct_search(
             flux_lf, num_selected=num_selected, n_optimization_restarts=n_optimization_restarts,
+            num_divisions=num_divisions, nth_division=nth_division,
         )
 
         print("Direct search for {} optimals:".format(num_selected), selected_index_sum_z3)
@@ -62,7 +69,8 @@ def direct_search(
 
         # to avoid running again
         folder_name = "hf_{}_{}".format(num_selected, n_optimization_restarts)
-        outdir = os.path.join("output", "hf_optimals", folder_name + outname, "direct_search")
+        division_name = "nth_{}_num_{}".format(nth_division, num_divisions)
+        outdir = os.path.join("output", "hf_optimals", folder_name + outname, "direct_search", division_name)
         os.makedirs(outdir, exist_ok=True)
 
         basic_info = {
@@ -70,7 +78,11 @@ def direct_search(
             "json_name" : json_name,
             "num_selected" : num_selected,
             "selected_index_sum_z3": selected_index_sum_z3.tolist(),
+            "all_z_selected_index3" : all_z_selected_index3.tolist(),
             "n_optimization_restarts" : n_optimization_restarts,
+            "nth_division" : nth_division,
+            "num_divisions" : num_divisions,
+            "all_combinations" : all_combinations,
         }
 
         np.savetxt(os.path.join(outdir, "all_z_loss3"), all_z_loss3)

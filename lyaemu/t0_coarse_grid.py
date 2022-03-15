@@ -29,23 +29,12 @@ class T0Emulator(Emulator):
     def __init__(self, basedir, param_names=None, param_limits=None, tau_thresh=None, npart=512, box=60, fullphysics=True):
         super().__init__(basedir=basedir, param_names=param_names, param_limits=param_limits, kf=None, mf=None, npart=npart, box=box, tau_thresh=tau_thresh, fullphysics=fullphysics)
 
-    # def get_emulator(self, max_z=4.2, min_z=2.0):
-    #     """ Build an emulator for the desired k_F and our simulations.
-    #         kf gives the desired k bins in s/km.
-    #         Mean flux rescaling is handled (if mean_flux=True) as follows:
-    #         1. A set of flux power spectra are generated for every one of a list of possible mean flux values.
-    #         2. Each flux power spectrum in the set is rescaled to the same mean flux.
-    #         3.
-    #     """
-    #     gp = self._get_custom_emulator(emuobj=None, max_z=max_z, min_z=min_z)
-    #     return gp
-    #
-    # def _get_custom_emulator(self, *, emuobj, max_z=4.2, min_z=2.0):
-    #     """Helper to allow supporting different emulators."""
-    #     aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
-    #     plimits = self.get_param_limits(include_dense=True)
-    #     gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
-    #     return gp
+    def get_emulator(self, max_z=4.2, min_z=2.0):
+        """ Build an emulator for T0 from simulations."""
+        aparams, meanT = self.get_meanT(max_z=max_z, min_z=min_z)
+        plimits = self.get_param_limits(include_dense=False)
+        gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers=flux_vectors, param_limits=plimits, singleGP=None)
+        return gp
 
     # def do_loo_cross_validation(self, *, remove=None, max_z=4.2, subsample=None):
     #     """Do cross-validation by constructing an emulator missing

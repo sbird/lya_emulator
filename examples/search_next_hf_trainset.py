@@ -10,7 +10,7 @@ import numpy as np
 from lyaemu.mf_emulator.hf_optimizes import FluxVectorLowFidelity, search_next
 
 
-def search_next(
+def search_next_hf_trainset(
         num_selected: int,
         filename: str = "data/emu_30mpc_lores/cc_emulator_flux_vectors_tau1000000.hdf5",
         json_name: str = "data/emu_30mpc_lores/emulator_params.json",

@@ -67,31 +67,30 @@ class T0Emulator(Emulator):
             meanT = self.load_meanT(aparams)
         except (AssertionError, OSError):
             print("Could not load T0, regenerating from disc")
-            new_params, meanT, aparams = self.check_meanT(aparams)
-            for params in new_params:
-                di = self.get_outdir(params, strsz=3)
+            new_inds, meanT = self.check_meanT(aparams)
+            for ind in new_inds:
+                di = self.get_outdir(aparams[ind], strsz=3)
                 snaps = self.get_snaps(di)
-                new_meanT = np.array([tempdens.get_median_temp(i, di) for i in snaps])
-                aparams = np.append(aparams, [params], axis=0)
-                meanT = np.append(meanT, [new_meanT], axis=0)
+                new_meanT = np.array([tempdens.get_median_temp(snap, di) for snap in snaps])
+                meanT[ind] = new_meanT
                 self.save_meanT(aparams, meanT)
         return aparams, meanT
 
     def check_meanT(self, aparams, savefile="emulator_meanT.hdf5"):
         """Cross-reference existing file samples with requested."""
-        nparams, nz = np.shape(aparams)[1], self.myspec.zout.size
+        nsims, nz = np.shape(aparams)[0], self.myspec.zout.size
+        meanT = np.zeros([nsims, nz])
         if not os.path.exists(os.path.join(self.basedir, savefile)):
-            return aparams, np.empty((0, nz)), np.empty((0, nparams))
+            return np.arange(nsims), meanT
         load = h5py.File(os.path.join(self.basedir, savefile), 'r')
-        inparams = np.array(load["params"])
-        meanT = np.array(load["meanT"])
+        inparams, old_meanT = np.array(load["params"]), np.array(load["meanT"])
         load.close()
-        comb_params = np.concatenate([aparams, inparams])
-        unique, num = np.unique(comb_params, axis=0, return_counts=True)
-        assert num.size == np.shape(aparams)[0], "Non-matching file '%s' exists on path. Move or delete to generate T0 file." % savefile
-        assert num.min() == 1, "Loaded samples match. Check load_meanT assertions."
-        new_params = aparams[np.where(num == 2)[0].size:]
-        return new_params, meanT.reshape(-1, nz), inparams.reshape(-1, nparams)
+        subset = np.isin(aparams, inparams).all(axis=1)
+        new_inds = np.where(subset == False)[0] # indices of aparams that are not in inparams
+        meanT[subset] = old_meanT # fill meanT with already computed values
+        assert np.isin(inparams, aparams).all(axis=1).min() == 1, "Non-matching file '%s' exists on path. Move or delete to generate T0 file." % savefile
+        assert np.isin(inparams, aparams).all(axis=1).sum() != np.shape(aparams)[0], "Loaded samples match. Check load_meanT assertions."
+        return new_inds, meanT
 
 
     def save_meanT(self, aparams, meanT, savefile="emulator_meanT.hdf5"):

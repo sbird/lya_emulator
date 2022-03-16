@@ -153,7 +153,7 @@ def better_than_validation(
     )
 
     # validate the select next optimal
-    print("Performance from searching next for the 3rd optimal:")
+    print("Performance from searching next for the {} optimals:".format(num_selected))
     print("----")
     better_than(
         num_selected   = num_selected,
@@ -165,7 +165,7 @@ def better_than_validation(
     )
     print("")
 
-    print("Performance from directly selecting the optimal three:")
+    print("Performance from directly selecting the optimal {}:".format(num_selected))
     print("----")
     better_than(
         num_selected   = num_selected,

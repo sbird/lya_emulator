@@ -80,16 +80,20 @@ class T0Emulator(Emulator):
         """Cross-reference existing file samples with requested."""
         nsims, nz = np.shape(aparams)[0], self.myspec.zout.size
         meanT = np.zeros([nsims, nz])
+        # check if file exists -- if not, return 'empty' meanT and all indices
         if not os.path.exists(os.path.join(self.basedir, savefile)):
             return np.arange(nsims), meanT
         load = h5py.File(os.path.join(self.basedir, savefile), 'r')
         inparams, old_meanT = np.array(load["params"]), np.array(load["meanT"])
         load.close()
+        assert np.isin(inparams, aparams).all(axis=1).min() == 1, "Non-matching file '%s' exists on path. Move or delete to generate T0 file." % savefile
+        # continue running if no new parameters -- return indices yet to be filled
+        if np.all(inparams == aparams):
+            return np.where(np.all(old_meanT == 0, axis=1))[0], old_meanT
+        # otherwise, find new parameters and return indices for them
         subset = np.isin(aparams, inparams).all(axis=1)
         new_inds = np.where(subset == False)[0] # indices of aparams that are not in inparams
         meanT[subset] = old_meanT # fill meanT with already computed values
-        assert np.isin(inparams, aparams).all(axis=1).min() == 1, "Non-matching file '%s' exists on path. Move or delete to generate T0 file." % savefile
-        assert np.isin(inparams, aparams).all(axis=1).sum() != np.shape(aparams)[0], "Loaded samples match. Check load_meanT assertions."
         return new_inds, meanT
 
 
@@ -114,6 +118,7 @@ class T0Emulator(Emulator):
         assert name.split(".")[-1] == str(self.__class__).split(".")[-1]
         assert np.shape(inparams) == np.shape(aparams)
         assert np.all(inparams - aparams < 1e-3)
+        assert np.all(meanT != 0)
         return meanT
 
     def get_snaps(self, base):

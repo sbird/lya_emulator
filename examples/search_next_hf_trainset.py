@@ -120,9 +120,9 @@ def better_than_validation(
         
         # file: (number of redshifts, number of combinations)
         # We need to append axis=1
-        filename = "all_z_loss3"
+        loss_filename = "all_z_loss3"
 
-        loss = np.loadtxt(os.path.join(loaddir, filename))
+        loss = np.loadtxt(os.path.join(loaddir, loss_filename))
 
         # ref: mpi_hf_optimizes.direct_search
         all_loss[:, nth_division::num_divisions] = loss[:, :]

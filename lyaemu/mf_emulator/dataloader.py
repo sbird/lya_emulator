@@ -100,7 +100,7 @@ def convert_h5_to_txt(
     assert np.all(np.abs(kfmpc - f_hf["kfmpc"][()]) < 1e-10)
 
     zout = f_lf["zout"][()]
-    assert np.all(zout == f_hf["zout"][()])
+    np.all( (zout - f_hf["zout"][()]) < 1e-10 )
 
     # flux power spectra, all redshifts
     flux_vectors_lf = f_lf["flux_vectors"][()]

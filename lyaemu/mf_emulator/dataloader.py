@@ -319,11 +319,17 @@ class FluxVectors:
         their sample mean. Don't change high-fidelity data.
         """
         y_train_norm = []
-        for y_train in self.Y_train[:-1]:
-            mean = y_train.mean(axis=0)
-            y_train_norm.append(y_train - mean)
 
-        # don't change high-fidelity data
-        y_train_norm.append(self.Y_train[-1])
+        #Normalise the flux vectors by the median power spectrum.
+        #This ensures that the GP prior (a zero-mean input) is close to true.
+        medind = np.argsort(np.mean(self.Y_train[0], axis=1))[np.shape(self.Y_train[0])[0]//2]
 
-        return y_train_norm
+        self.scalefactors = self.Y_train[0][medind,:]
+
+        y_normspectra = []
+        for y_train in self.Y_train:
+            normspectra = y_train / self.scalefactors - 1.
+
+            y_normspectra.append(normspectra)
+
+        return y_normspectra

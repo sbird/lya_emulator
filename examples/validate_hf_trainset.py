@@ -27,7 +27,7 @@ def direct_search(
         filename: str = "data/emu_30mpc_lores/cc_emulator_flux_vectors_tau1000000.hdf5",
         json_name: str = "data/emu_30mpc_lores/emulator_params.json",
         n_optimization_restarts: int = 10,
-        num_divisions: int = 10,
+        num_divisions: int = 1,
         nth_division: int = 0, # 1 2 3 4 5 6 7 8 9
         outname: str = "", ## added filename
         ) -> None:

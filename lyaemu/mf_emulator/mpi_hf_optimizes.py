@@ -20,7 +20,7 @@ def direct_search(
         data: FluxVectorLowFidelity,
         num_selected: int = 3,
         n_optimization_restarts: int = 10,
-        num_divisions: int = 10,
+        num_divisions: int = 1,
         nth_division: int = 0, # 1 2 3 4 5 6 7 8 9
     ):
     """

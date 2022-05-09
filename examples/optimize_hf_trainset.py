@@ -8,7 +8,6 @@ import numpy as np
 
 from lyaemu.mf_emulator.hf_optimizes import *
 
-
 def hf_optimize(
         num_selected: int,
         filename: str = "data/emu_30mpc_lores/cc_emulator_flux_vectors_tau1000000.hdf5",
@@ -30,14 +29,17 @@ def hf_optimize(
         # your previously selected index is shorted than num_selected
         assert len(selected_index) + 1 == num_selected
 
+        selected_index = np.array(selected_index)
+
     # if you previously selected index, direct search the num_selected - 1, and
     # search the (num_selected)th one.
     if selected_index is None:
-
+        
         # direct search optimal (num_selected-1)
         all_z_loss, loss_sum_z, all_z_selected_index, selected_index = direct_search(
             flux_lf, num_selected=num_selected - 1, n_optimization_restarts=n_optimization_restarts,
         )
+
         # search for the optimal (num_selected)th
         all_z_next_loss, loss_sum_z, all_z_next_selected_index, selected_index_sum_z = search_next(
             flux_lf, all_z_selected_index, selected_index, n_optimization_restarts=n_optimization_restarts,

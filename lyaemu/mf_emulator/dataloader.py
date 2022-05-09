@@ -1,5 +1,5 @@
 """
-Class to read lyman alpha flux power spectra from 
+Class to read lyman alpha flux power spectra from
 multi-fidelity data structure.
 """
 from typing import List
@@ -20,11 +20,11 @@ def input_normalize(
     """
     Map the parameters onto a unit cube so that all the variations are
     similar in magnitude.
-    
+
     :param params: (n_points, n_dims) parameter vectors
-    :param param_limits: (n_dim, 2) param_limits is a list 
+    :param param_limits: (n_dim, 2) param_limits is a list
         of parameter limits.
-    :return: params_cube, (n_points, n_dims) parameter vectors 
+    :return: params_cube, (n_points, n_dims) parameter vectors
         in a unit cube.
     """
     nparams = np.shape(params)[1]
@@ -100,7 +100,7 @@ def convert_h5_to_txt(
     assert np.all(np.abs(kfmpc - f_hf["kfmpc"][()]) < 1e-10)
 
     zout = f_lf["zout"][()]
-    assert np.all( (zout - f_hf["zout"][()]) < 1e-10 )
+    assert np.all( np.abs(zout - f_hf["zout"][()]) < 1e-10 )
 
     # flux power spectra, all redshifts
     flux_vectors_lf = f_lf["flux_vectors"][()]
@@ -247,7 +247,7 @@ class FluxVectors:
 
         assert len(X_test) == 1
         assert len(Y_test) == 1
-        
+
         self.parameter_limits = parameter_limits
         self.kf = kf
 

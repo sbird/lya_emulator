@@ -59,21 +59,21 @@ class T0Emulator(Emulator):
     #     err = (flux_vectors[remove,:] - flux_predict[0])/std_predict[0]
     #     return kf, flux_vectors[remove,:] / flux_predict[0] - 1, err
 
-    def get_meanT(self):
+    def get_meanT(self, filename="emulator_meanT.hdf5"):
         """Get and save the T0 and parameters"""
         aparams = self.get_parameters()
         assert np.shape(aparams)[1] == len(self.param_names)
         try:
-            meanT = self.load_meanT(aparams)
+            meanT = self.load_meanT(aparams, savefile=filename)
         except (AssertionError, OSError):
             print("Could not load T0, regenerating from disc")
-            new_inds, meanT = self.check_meanT(aparams)
+            new_inds, meanT = self.check_meanT(aparams, savefile=filename)
             for ind in new_inds:
                 di = self.get_outdir(aparams[ind], strsz=3)
                 snaps = self.get_snaps(di)
                 new_meanT = np.array([tempdens.get_median_temp(snap, di) for snap in snaps])
                 meanT[ind] = new_meanT
-                self.save_meanT(aparams, meanT)
+                self.save_meanT(aparams, meanT, savefile=filename)
         return aparams, meanT
 
     def check_meanT(self, aparams, savefile="emulator_meanT.hdf5"):

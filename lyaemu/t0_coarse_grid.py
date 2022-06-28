@@ -3,6 +3,7 @@
 import os
 import numpy as np
 import h5py
+import json
 from . import flux_power
 from . import t0_gpemulator
 from . import tempdens
@@ -41,7 +42,7 @@ class T0Emulator:
     - tau_thresh: threshold optical depth for spectra. Kept here only for consistency with json parameter file.
     - npart, box: particle number and box size of emulator simulations.
     """
-    def __init__(self, basedir, param_names=None, param_limits=None, tau_thresh=None, npart=512, box=60, fullphysics=True):
+    def __init__(self, basedir, param_names=None, param_limits=None, tau_thresh=None, npart=512, box=60, fullphysics=True, max_z=5.4, min_z=2.0):
         if param_names is None:
             self.param_names = {'ns':0, 'Ap':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8}
         else:
@@ -74,8 +75,8 @@ class T0Emulator:
         self.npart = npart
         self.box = box
         self.omegabh2 = 0.0224
-        self.max_z = 5.4
-        self.min_z = 2.0
+        self.max_z = max_z
+        self.min_z = min_z
         self.sample_params = []
         self.basedir = os.path.expanduser(basedir)
         self.tau_thresh = tau_thresh
@@ -91,7 +92,7 @@ class T0Emulator:
         self._fromarray()
         self.tau_thresh = tau_thresh
         self.basedir = real_basedir
-        self.myspec = flux_power.MySpectra(max_z=self.max_z, min_z=self.min_z, max_k=self.maxk)
+        self.myspec = flux_power.MySpectra(max_z=self.max_z, min_z=self.min_z)
 
     def _fromarray(self):
         """Convert the data stored as lists back to arrays."""
@@ -99,20 +100,14 @@ class T0Emulator:
             self.__dict__[arr] = np.array(self.__dict__[arr])
         self.really_arrays = []
 
-    def get_emulator(self, max_z=4.2, min_z=2.0):
+    def get_emulator(self, max_z=5.4, min_z=2.0):
         """ Build an emulator for T0 from simulations."""
-        # ADD MAX_Z AND MIN_Z SO REDSHIFTS CAN BE SELECTED
-        # ADD MAX_Z AND MIN_Z SO REDSHIFTS CAN BE SELECTED
-        # ADD MAX_Z AND MIN_Z SO REDSHIFTS CAN BE SELECTED
-        # ADD MAX_Z AND MIN_Z SO REDSHIFTS CAN BE SELECTED
-        # ADD MAX_Z AND MIN_Z SO REDSHIFTS CAN BE SELECTED
-        # ADD MAX_Z AND MIN_Z SO REDSHIFTS CAN BE SELECTED
-        aparams, meanT = self.get_meanT()
+        aparams, meanT = self.get_meanT(max_z=max_z, min_z=min_z)
         plimits = self.get_param_limits()
         gp = t0_gpemulator.T0MultiBinGP(params=aparams, temps=meanT, param_limits=plimits)
         return gp
 
-    def get_meanT(self, filename="emulator_meanT.hdf5"):
+    def get_meanT(self, filename="emulator_meanT.hdf5", max_z=5.4, min_z=2.0):
         """Get and save the T0 and parameters"""
         aparams = self.get_parameters()
         assert np.shape(aparams)[1] == len(self.param_names)
@@ -127,6 +122,13 @@ class T0Emulator:
                 new_meanT = np.array([tempdens.get_median_temp(snap, di) for snap in snaps])
                 meanT[ind] = new_meanT
                 self.save_meanT(aparams, meanT, savefile=filename)
+        # get meanT for specified redshift range (z goes from high to low)
+        assert np.round(self.myspec.zout[-1], 1) <= min_z
+        maxbin = np.where(np.round(self.myspec.zout, 1) >= min_z)[0].max() + 1
+        assert np.round(self.myspec.zout[0], 1) >= max_z
+        minbin = np.where(np.round(self.myspec.zout, 1) <= max_z)[0].min()
+        meanT = meanT[:, minbin:maxbin]
+        self.myspec.zout = self.myspec.zout[minbin:maxbin]
         return aparams, meanT
 
     def check_meanT(self, aparams, savefile="emulator_meanT.hdf5"):

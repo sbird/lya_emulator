@@ -9,7 +9,7 @@ class T0MultiBinGP:
                     temps is a list of mean temperatures (shape nparams, nz).
                     param_limits is a list of parameter limits (shape params, 2)."""
     def __init__(self, *, params, temps, param_limits):
-        #Build an emulator for each redshift separately.
+        # Build an emulator for each redshift separately.
         self.nz = np.shape(temps)[1]
         gp = lambda i: T0SingleBinGP(params=params, temps=temps[:,i], param_limits=param_limits)
         print('Number of redshifts for emulator generation=%d' % (self.nz))
@@ -35,7 +35,6 @@ class T0SingleBinGP:
     def __init__(self, *, params, temps, param_limits):
         self.params = params
         self.param_limits = param_limits
-        # build an emulator
         self._get_interp(mean_temps=temps.reshape(-1, 1))
 
     def _get_interp(self, mean_temps):

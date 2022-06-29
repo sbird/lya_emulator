@@ -8,70 +8,37 @@ from . import flux_power
 from . import t0_gpemulator
 from . import tempdens
 
-
-    # def do_loo_cross_validation(self, *, remove=None, max_z=4.2, subsample=None):
-    #     """Do cross-validation by constructing an emulator missing
-    #        a single simulation and checking accuracy.
-    #        The remove parameter chooses which simulation to leave out. If None this is random."""
-    #     aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
-    #     rng = np.random.default_rng()
-    #     if remove is None:
-    #         nsims = np.shape(aparams)[0]
-    #         rng = np.random.default_rng()
-    #         remove = rng.integers(0,nsims)
-    #     aparams_rem = np.delete(aparams, remove, axis=0)
-    #     flux_vectors_rem = np.delete(flux_vectors, remove, axis=0)
-    #     if subsample is not None:
-    #         nsims = np.shape(aparams_rem)[0]
-    #         reorder = rng.permutation(nsims)
-    #         aparams_rem = aparams_rem[reorder[:subsample]]
-    #         flux_vectors_rem = flux_vectors_rem[reorder[:subsample]]
-    #     plimits = self.get_param_limits(include_dense=True)
-    #     gp = gpemulator.MultiBinGP(params=aparams_rem, kf=kf, powers = flux_vectors_rem, param_limits = plimits)
-    #     flux_predict, std_predict = gp.predict(aparams[remove, :].reshape(1, -1))
-    #     err = (flux_vectors[remove,:] - flux_predict[0])/std_predict[0]
-    #     return kf, flux_vectors[remove,:] / flux_predict[0] - 1, err
-
 class T0Emulator:
     """Stores parameter names and limits, generates T0 file from particle snapshots, and gets an emulator.
-
     Parameters:
-    - basedir: directory to load or create emulator
-    - param_names: dictionary containing names of the parameters as well as a unique integer list of positions
-    - param_limits: Nx2 array containing upper and lower limits of each parameter, in the order given by the integer stored in param_names
-    - tau_thresh: threshold optical depth for spectra. Kept here only for consistency with json parameter file.
-    - npart, box: particle number and box size of emulator simulations.
+        - basedir: directory to load or create emulator
+        - param_names: dictionary containing names of the parameters as well as a unique integer list of positions
+        - param_limits: Nx2 array containing upper and lower limits of each parameter, in the order given by the integer stored in param_names
+        - tau_thresh: threshold optical depth for spectra. Kept here only for consistency with json parameter file.
+        - npart, box: particle number and box size of emulator simulations.
     """
     def __init__(self, basedir, param_names=None, param_limits=None, tau_thresh=None, npart=512, box=60, fullphysics=True, max_z=5.4, min_z=2.0):
         if param_names is None:
             self.param_names = {'ns':0, 'Ap':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8}
         else:
             self.param_names = param_names
-        #Parameters:
         if param_limits is None:
-            self.param_limits = np.array([[0.8, 0.995], # ns: 0.8 - 0.995. Notice that this is not ns at the CMB scale!
-                                          [1.2e-09, 2.6e-09], #Ap: amplitude of power spectrum at 8/2pi Mpc scales (see 1812.04654)!
-                                          [3.5, 4.1], #herei: redshift at which helium reionization starts.
-                                                      # 4.0 is default, we use a linear history with 3.5-4.5
-                                          [2.6, 3.2], # heref: redshift at which helium reionization finishes. 2.8 is default.
-                                                      # Thermal history suggests late, HeII Lyman alpha suggests earlier.
-                                          [1.6, 2.5], # alphaq: quasar spectral index. 1 - 2.5 Controls IGM temperature.
-                                          [0.65, 0.75], # hub: hubble constant (also changes omega_M)
-                                          [0.14, 0.146],# omegam h^2: We fix omega_m h^2 = 0.143+-0.001 (Planck 2018 best-fit) and vary omega_m and h^2 to match it.
-                                                        # h^2 itself has little effect on the forest.
-                                          [6.5,8],   #Mid-point of HI reionization
-                                          [0.03, 0.07],  # BH feedback parameter
-                                       #   [3.2, 4.2] # Wind speed
-                                ])
+            self.param_limits = np.array([[0.8, 0.995], # ns: not ns at the CMB scale!
+                                          [1.2e-09, 2.6e-09], # Amplitude of power spectrum at 8/2pi Mpc scales (see 1812.04654)!
+                                          [3.5, 4.1], # Redshift at which helium reionization starts.
+                                          [2.6, 3.2], # Redshift at which helium reionization finishes.
+                                          [1.6, 2.5], # Quasar spectral index. Controls IGM temperature.
+                                          [0.65, 0.75], # Hubble constant
+                                          [0.14, 0.146],# Omega_m h^2
+                                          [6.5,8],   # Mid-point of HI reionization
+                                          [0.03, 0.07]])  # BH feedback parameter
         else:
             self.param_limits = param_limits
-
         # Remove the BH parameter for not full physics.
         self.fullphysics = fullphysics
         if not fullphysics:
             bhind = self.param_names.pop('bhfeedback')
             self.param_limits = np.delete(self.param_limits, bhind, 0)
-
         self.npart = npart
         self.box = box
         self.omegabh2 = 0.0224
@@ -80,7 +47,6 @@ class T0Emulator:
         self.sample_params = []
         self.basedir = os.path.expanduser(basedir)
         self.tau_thresh = tau_thresh
-
 
     def load(self, dumpfile="emulator_params.json"):
         """Load parameters from a textfile."""
@@ -202,8 +168,6 @@ class T0Emulator:
     def build_dirname(self,params, strsz=3):
         """Make a directory name for a given set of parameter values"""
         parts = ['',]*(len(self.param_names))
-        # Transform the dictionary into a list of string parts,
-        # sorted in the same way as the parameter array.
         fstr = "%."+str(strsz)+"g"
         for nn,val in self.param_names.items():
             parts[val] = nn+fstr % params[val]

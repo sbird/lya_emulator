@@ -114,14 +114,14 @@ class T0Emulator:
         # otherwise, find new parameters and return indices for them
         subset = np.isin(aparams, inparams).all(axis=1)
         new_inds = np.where(subset == False)[0] # indices of aparams that are not in inparams
-        meanT[subset] = old_meanT # fill meanT with already computed values
+        for pp in range(np.shape(inparams)[0]): # fill meanT with already computed values
+            ii = np.where(np.all(aparams == inparams[pp], axis=1) == True)[0]
+            meanT[ii] = old_meanT[pp]
         return new_inds, meanT
-
 
     def save_meanT(self, aparams, meanT, savefile="emulator_meanT.hdf5"):
         """Save the mean temperatures and parameters to a file."""
         save = h5py.File(os.path.join(self.basedir, savefile), 'w')
-        save.attrs["classname"] = str(self.__class__)
         save["zout"] = self.myspec.zout
         save["params"] = aparams
         save["meanT"] = meanT
@@ -134,9 +134,7 @@ class T0Emulator:
         meanT = np.array(load["meanT"])
         zout = np.array(load["zout"])
         self.myspec.zout = zout
-        name = str(load.attrs["classname"])
         load.close()
-        assert name.split(".")[-1] == str(self.__class__).split(".")[-1]
         assert np.shape(inparams) == np.shape(aparams)
         assert np.all(inparams - aparams < 1e-3)
         assert np.all(meanT != 0)

@@ -41,22 +41,16 @@ class T0SingleBinGP:
         """Build the GP interpolator."""
         # Map the parameters onto a unit cube (so all variations have similar magnitude)
         nparams = np.shape(self.params)[1]
-        params_cube = map_to_unit_cube_list(self.params, self.param_limits)
-        # Check that we span the parameter space (comment out if using few samples)
-        for i in range(nparams):
-            assert np.max(params_cube[:,i]) > 0.8
-            assert np.min(params_cube[:,i]) < 0.2
-        # Normalise the mean temperature by the median value.
-        # This ensures that the GP prior (a zero-mean input) is close to true.
+        param_cube = map_to_unit_cube_list(self.params, self.param_limits)
+        # Ensure that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(mean_temps)[np.size(mean_temps)//2]
         self.scalefactors = mean_temps[medind]
         normtemps = mean_temps/self.scalefactors - 1.
-
         # Standard squared-exponential kernel with a different length scale for each
         # parameter, as they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)
-        kernel += GPy.kern.RBF(nparams)
-        self.gp = GPy.models.GPRegression(params_cube, normtemps, kernel=kernel, noise_var=1e-10)
+        kernel += GPy.kern.RBF(nparams, ARD=True)
+        self.gp = GPy.models.GPRegression(param_cube, normtemps, kernel=kernel, noise_var=1e-10)
         status = self.gp.optimize(messages=False)
         if status.status != 'Converged':
             print("Restarting optimization")

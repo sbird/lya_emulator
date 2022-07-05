@@ -8,6 +8,15 @@ from . import flux_power
 from . import t0_gpemulator
 from . import tempdens
 
+def get_latex(key):
+    """Get a latex name if it exists, otherwise return the key."""
+    #Names for pretty-printing some parameters in Latex
+    print_names = { 'ns': r'n_\mathrm{s}', 'Ap': r'A_\mathrm{P}', 'herei': r'z_\mathrm{He i}', 'heref': r'z_\mathrm{He f}', 'hub':'h', 'tau0':r'\tau_0', 'dtau0':r'd\tau_0'}
+    try:
+        return print_names[key]
+    except KeyError:
+        return key
+
 class T0Emulator:
     """Stores parameter names and limits, generates T0 file from particle snapshots, and gets an emulator.
     Parameters:
@@ -171,3 +180,11 @@ class T0Emulator:
             parts[val] = nn+fstr % params[val]
         name = ''.join(str(elem) for elem in parts)
         return name
+
+    def print_pnames(self):
+        """Get parameter names for printing"""
+        n_latex = []
+        sort_names = sorted(list(self.param_names.items()), key=lambda k:(k[1],k[0]))
+        for key, _ in sort_names:
+            n_latex.append((key, get_latex(key)))
+        return n_latex

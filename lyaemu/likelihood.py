@@ -258,7 +258,7 @@ class LikelihoodClass:
                 chi2 += self.data_correction_prior(params)
                 # Get and apply the DLA and SiIII corrections to the prediction
                 predicted[bb] = predicted[bb]*self.get_data_correction(okf[bb], params, self.zout[bb])
-            if cosmo_priors:
+            if cosmo_priors: #### THESE SHOULD ONLY BE ADDED ONCE, NOT FOR EVERY Z
                 # add a prior on little h and omega_m h^2
                 chi2 += self.hubble_prior(params, low_z=True)
                 chi2 += self.omega_prior(params)

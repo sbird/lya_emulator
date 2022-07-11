@@ -187,8 +187,8 @@ def do_validations(
 
     # Single-fidelity
     # high-fidelity only emulator
-    hf_only = SingleBinGP(data.X_train_norm[-1], data.Y_train[-1])
-    lf_only = SingleBinGP(data.X_train_norm[0], data.Y_train[0])
+    hf_only = SingleBinGP(data.X_train_norm[-1], data.Y_train_norm[-1])
+    lf_only = SingleBinGP(data.X_train_norm[0], data.Y_train_norm[0])
 
     # optimize each model
     ar1.optimize(n_optimization_restarts=n_optimization_restarts)
@@ -313,8 +313,8 @@ def validate_mf(data: FluxVectors, model: SingleBinNonLinearGP, fidelity: int = 
 
     Returns:
     ----
-    all_means: predictied means from the GP (in log10 scale).
-    all_vars: predictied variance from the GP (in log10 scale).
+    all_means: predictied means from the GP (in linear scale).
+    all_vars: predictied variance from the GP (in linear scale).
     all_pred_exacts: Predicted/Exact (in linear scale).
     """
     all_means = []
@@ -327,13 +327,22 @@ def validate_mf(data: FluxVectors, model: SingleBinNonLinearGP, fidelity: int = 
         x_test_index = np.concatenate(
             (x_test[None, :], np.ones((1, 1)) * fidelity), axis=1
         )
-        mean, var = model.predict(x_test_index)
+        flux_predict, var = model.predict(x_test_index)
 
-        all_means.append(mean[0])
-        all_vars.append(var[0])
+        flux_predict = flux_predict[0]
+        var = var[0]
+
+        mean = (flux_predict + 1) * data.scalefactors
+        std = np.sqrt(var) * data.scalefactors
+
+        # save variance
+        var = std**2
+
+        all_means.append(mean)
+        all_vars.append(var)
 
         # predicted/exact
-        all_pred_exacts.append(10 ** mean[0] / 10 ** y_test)
+        all_pred_exacts.append(mean / y_test)
 
     return all_means, all_vars, all_pred_exacts
 
@@ -344,8 +353,8 @@ def validate_sf(data: FluxVectors, model: SingleBinGP):
 
     Returns:
     ----
-    all_means: predictied means from the GP (in log10 scale).
-    all_vars: predictied variance from the GP (in log10 scale).
+    all_means: predictied means from the GP (in linear scale).
+    all_vars: predictied variance from the GP (in linear scale).
     all_pred_exacts: Predicted/Exact (in linear scale).
     """
     all_means = []
@@ -354,13 +363,22 @@ def validate_sf(data: FluxVectors, model: SingleBinGP):
     for n_validations, (x_test, y_test) in enumerate(
         zip(data.X_test_norm[0], data.Y_test[0])
     ):
-        mean, var = model.predict(x_test[None, :])
+        flux_predict, var = model.predict(x_test[None, :])
 
-        all_means.append(10 ** mean[0])
-        all_vars.append(10 ** var[0])
+        flux_predict = flux_predict[0]
+        var = var[0]
+
+        mean = (flux_predict + 1) * data.scalefactors
+        std = np.sqrt(var) * data.scalefactors
+
+        # save variance
+        var = std**2
+
+        all_means.append(mean)
+        all_vars.append(var)
 
         # predicted/exact
-        all_pred_exacts.append(10 ** mean[0] / 10 ** y_test)
+        all_pred_exacts.append(mean / y_test)
 
     return all_means, all_vars, all_pred_exacts
 

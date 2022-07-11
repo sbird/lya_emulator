@@ -67,12 +67,18 @@ def make_non_linear_kernels(base_kernel_class: Type[GPy.kern.Kern],
 
     base_dims_list = list(range(n_input_dims))
     out_dims_list = list(range(n_input_dims, n_input_dims + n_output_dim))
-    kernels = [base_kernel_class(n_input_dims, active_dims=base_dims_list, ARD=ARD, name='kern_fidelity_1')]
+    kernels = [
+        base_kernel_class(n_input_dims, active_dims=base_dims_list, ARD=ARD, name='kern_fidelity_1')
+        # TODO: check added Linear
+        + GPy.kern.Linear(n_input_dims, active_dims=base_dims_list, ARD=ARD, name='kern_fidelity_1_linear')
+    ]
     for i in range(1, n_fidelities):
         fidelity_name = 'fidelity' + str(i + 1)
         interaction_kernel = base_kernel_class(n_input_dims, active_dims=base_dims_list, ARD=ARD_last_fidelity,
                                                name='scale_kernel_no_ARD_' + fidelity_name)
-        scale_kernel = base_kernel_class(n_output_dim, active_dims=out_dims_list, name='previous_fidelity_' + fidelity_name)
+        scale_kernel = base_kernel_class(
+            n_output_dim, active_dims=out_dims_list, name='previous_fidelity_' + fidelity_name
+        ) + GPy.kern.Linear(n_output_dim, active_dims=out_dims_list, name='previous_fidelity_' + fidelity_name + "_linear") # TODO: check added Linear
         bias_kernel = base_kernel_class(n_input_dims, active_dims=base_dims_list,
                                         ARD=ARD_last_fidelity, name='bias_kernel_no_ARD_' + fidelity_name)
         if turn_off_bias:
@@ -209,13 +215,14 @@ class SingleBinLinearGP:
             for j in range(n_fidelities):
                 nparams = np.shape(X_train[j])[1]
 
-                # kernel = GPy.kern.Linear(nparams, ARD=True)
+                kernel = GPy.kern.Linear(nparams, ARD=True)
                 # kernel = GPy.kern.RatQuad(nparams, ARD=True)
-                kernel = GPy.kern.RBF(nparams, ARD=True)
+                kernel += GPy.kern.RBF(nparams, ARD=True)
                 
                 # final fidelity not ARD due to lack of training data
                 if j == n_fidelities - 1:
-                    kernel = GPy.kern.RBF(nparams, ARD=ARD_last_fidelity)
+                    kernel = GPy.kern.Linear(nparams, ARD=ARD_last_fidelity)
+                    kernel += GPy.kern.RBF(nparams, ARD=ARD_last_fidelity)
 
                 kernel_list.append(kernel)
 

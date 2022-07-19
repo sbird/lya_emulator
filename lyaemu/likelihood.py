@@ -143,11 +143,19 @@ class LikelihoodClass:
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
 
+        # Set up MPI protections (as suggested in Cobaya documentation)
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+
         # Generate emulator
         if optimise_GP:
-            print('Beginning to generate emulator at', str(datetime.now()))
-            self.gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
-            print('Finished generating emulator at', str(datetime.now()))
+            gpemu = None
+            if rank == 0:
+                #Build the emulator only on rank 0 and broadcast
+                print('Beginning to generate emulator at', str(datetime.now()))
+                gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
+                print('Finished generating emulator at', str(datetime.now()))
+            self.gpemu = comm.bcast(gpemu, root = 0)
 
 
     def get_predicted(self, params):

@@ -36,6 +36,16 @@ class T0LikelihoodClass:
         # Load data vector (Wavelet:1,2 Curvature:3,4 BPDF:5,6 FPS:7,8 Combined:9,10)
         meanT_file = os.path.join(os.path.dirname(__file__), 'data/Gaikwad/Gaikwad_2020b_T0_Evolution_All_Statistics.txt')
         self.obs_z, self.meanT, self.error = np.loadtxt(meanT_file, usecols=(0,7,8))[::-1].T
+        if max_z > 3.8:
+            boera = np.array([[5.0, 4.6, 4.2], [7.37e3, 7.31e3, 8.31e3], [1530., 1115., 1155.]])
+            high_z_gaikwad = np.array([[5.4], [11e3], [1.6e3]])
+            # self.obs_z = np.append(high_z_gaikwad[0], np.append(boera[0], self.obs_z))
+            # self.meanT = np.append(high_z_gaikwad[1], np.append(boera[1], self.meanT))
+            # self.error = np.append(high_z_gaikwad[2], np.append(boera[2], self.error))
+            self.obs_z = np.append(high_z_gaikwad[0], self.obs_z)
+            self.meanT = np.append(high_z_gaikwad[1], self.meanT)
+            self.error = np.append(high_z_gaikwad[2], self.error)
+        zinds = np.intersect1d(np.round(self.obs_z, 2), np.round(self.zout, 2), return_indices=True)[2][::-1]
 
         self.emulator = t0_coarse_grid.T0Emulator(basedir, tau_thresh=tau_thresh)
         # Load the parameters, etc. associated with this emulator (overwrite defaults)
@@ -47,6 +57,9 @@ class T0LikelihoodClass:
         if optimise_GP:
             print('Beginning to generate emulator at', str(datetime.now()))
             self.gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
+            self.gpemu.gps = list(np.array(self.gpemu.gps)[zinds])
+            self.gpemu.temps = self.gpemu.temps[:, zinds]
+            self.gpemu.nz = len(self.gpemu.gps)
             print('Finished generating emulator at', str(datetime.now()))
 
     def get_predicted(self, params):
@@ -59,13 +72,17 @@ class T0LikelihoodClass:
         # Default to use is Gaikwad data
         if data_meanT is None:
             data_meanT = self.meanT
+            data_error = self.error
+        else:
+            # if simulation is used as data, assume ~10% 'measurement' error
+            data_error = data_meanT*0.085
         # Set parameter limits as the hull of the original emulator.
         if np.any(params >= self.param_limits[:, 1]) or np.any(params <= self.param_limits[:, 0]):
             return -np.inf
         # get predicted and calculate chi^2
         predicted, std = self.get_predicted(params)
         diff = data_meanT - predicted
-        error = self.error**2 + std**2
+        error = data_error**2 + std**2
         chi2 = -np.sum(diff**2/(2*error) + 0.5*np.log(error))
         if cosmo_priors:
             # add a prior on little h and omega_m h^2
@@ -110,8 +127,7 @@ class T0LikelihoodClass:
         info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale, 'latex': pnames[i][1]} for i in range(self.ndim)}
         # Set up the mcmc sampler options (to do seed runs, add the option 'seed': integer between 0 and 2**32 - 1)
         # Default for computing Gelman-Rubin is to split chain into 4; to change, add option 'Rminus1_single_split': integer
-        info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True,
-                                    "learn_proposal_Rminus1_max": 20, "learn_proposal_Rminus1_max_early": 30}}
+        info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True, "learn_proposal_Rminus1_max": 20, "learn_proposal_Rminus1_max_early": 30}}
         return info
 
     def do_acceptance_check(self, info, steps=100):

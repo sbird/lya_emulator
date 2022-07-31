@@ -57,7 +57,7 @@ class T0Emulator:
         self.basedir = os.path.expanduser(basedir)
         self.tau_thresh = tau_thresh
 
-    def load(self, dumpfile="emulator_params.json"):
+    def load(self, dumpfile="T0emulator_params.json"):
         """Load parameters from a textfile."""
         tau_thresh = self.tau_thresh
         real_basedir = self.basedir

@@ -23,7 +23,7 @@ def load_data(datafile, index, max_z=3.8, min_z=2.0, tau_thresh=None):
 
 class T0LikelihoodClass:
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, max_z=3.8, min_z=2.0, optimise_GP=True, json_file='emulator_params.json', tau_thresh=None):
+    def __init__(self, basedir, max_z=3.8, min_z=2.0, optimise_GP=True, json_file='T0emulator_params.json', tau_thresh=None):
         """Initialise and train the emulator."""
         # Needed for Cobaya dictionary construction
         self.basedir = basedir
@@ -169,7 +169,7 @@ class T0CobayaLikelihoodClass(Likelihood, T0LikelihoodClass):
     max_z: float = 3.8
     min_z: float = 2.0
     optimise_GP: bool = True
-    json_file: str = 'emulator_params.json'
+    json_file: str = 'T0emulator_params.json'
     tau_thresh: int = None
     data_meanT: float = None
     # Required for Cobaya to correctly parse which parameters are for input

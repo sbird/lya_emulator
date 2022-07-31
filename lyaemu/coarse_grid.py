@@ -15,7 +15,6 @@ from . import latin_hypercube
 from . import flux_power
 from . import lyman_data
 from . import gpemulator
-from . import tempdens
 from .mean_flux import ConstMeanFlux
 
 def get_latex(key):
@@ -432,7 +431,6 @@ class Emulator:
         flux_predict, std_predict = gp.predict(aparams[remove, :].reshape(1, -1))
         err = (flux_vectors[remove,:] - flux_predict[0])/std_predict[0]
         return kf, flux_vectors[remove,:] / flux_predict[0] - 1, err
-
 
 class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.

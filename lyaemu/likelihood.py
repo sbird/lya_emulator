@@ -13,6 +13,8 @@ from cobaya.log import LoggedError
 from mpi4py import MPI
 import json
 
+from . import t0_likelihood
+
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""
     #Compute bin boundaries in logspace.
@@ -62,7 +64,7 @@ def load_data(datadir, *, kf, max_z=4.6, min_z=2.2, t0=1., tau_thresh=None):
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None):
+    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None, t0lk=True):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         # Needed for Cobaya dictionary construction
         self.basedir = basedir
@@ -71,6 +73,7 @@ class LikelihoodClass:
         self.emulator_json_file = emulator_json_file
         self.data_corr = data_corr
         self.tau_thresh = tau_thresh
+        self.t0lk = t0lk
 
         self.max_z = max_z
         self.min_z = min_z
@@ -144,11 +147,13 @@ class LikelihoodClass:
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
 
-        # Generate emulator
+        # Generate emulators
         if optimise_GP:
             print('Beginning to generate emulator at', str(datetime.now()))
             self.gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
             print('Finished generating emulator at', str(datetime.now()))
+        if self.t0lk:
+            self.t0_like = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=2.0, optimise_GP=True, tau_thresh=self.tau_thresh)
 
 
     def get_predicted(self, params):
@@ -231,7 +236,7 @@ class LikelihoodClass:
         o_prior = -((params[oo]-planck_mean)/planck_sigma)**2
         return o_prior
 
-    def likelihood(self, params, include_emu=True, data_power=None, cosmo_priors=True):
+    def likelihood(self, params, include_emu=True, data_power=None, cosmo_priors=False):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix.
         The covariance for the emulator points is assumed to be
@@ -277,6 +282,12 @@ class LikelihoodClass:
             chi2 += dcd -0.5 * cdet
             assert 0 > chi2 > -2**31
             assert not np.isnan(chi2)
+        if self.t0lk:
+            # omit mean flux and flux power data correction parameters
+            indi = 0
+            if self.mf_slope:
+                indi = 2
+            chi2 += self.t0_like.likelihood(params[indi:self.ndim-len(self.data_params)], cosmo_priors=cosmo_priors)
         return chi2
 
     def make_cobaya_dict(self, *, data_power, burnin, nsamples, pscale=50, emu_error=True):

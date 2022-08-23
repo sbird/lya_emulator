@@ -1,12 +1,11 @@
-"""Generate a coarse grid for constructing a median temperature emulator"""
-# from __future__ import print_function
+"""Generate a coarse grid for constructing a mean temperature emulator"""
 import os
 import numpy as np
 import h5py
 import json
-from . import flux_power
+from .. import flux_power
 from . import t0_gpemulator
-from . import tempdens
+from .. import tempdens
 
 def get_latex(key):
     """Get a latex name if it exists, otherwise return the key."""
@@ -48,11 +47,9 @@ class T0Emulator:
         if not fullphysics:
             bhind = self.param_names.pop('bhfeedback')
             self.param_limits = np.delete(self.param_limits, bhind, 0)
-        self.npart = npart
-        self.box = box
+        self.npart, self.box = npart, box
         self.omegabh2 = 0.0224
-        self.max_z = max_z
-        self.min_z = min_z
+        self.max_z, self.min_z = max_z, min_z
         self.sample_params = []
         self.basedir = os.path.expanduser(basedir)
         self.tau_thresh = tau_thresh
@@ -83,7 +80,7 @@ class T0Emulator:
         return gp
 
     def get_meanT(self, filename="emulator_meanT.hdf5", max_z=5.4, min_z=2.0):
-        """Get and save the T0 and parameters"""
+        """Get and save T0 and parameters"""
         aparams = self.get_parameters()
         assert np.shape(aparams)[1] == len(self.param_names)
         try:

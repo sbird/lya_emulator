@@ -1,6 +1,6 @@
 """Building a surrogate using a Gaussian Process."""
 import numpy as np
-from .latin_hypercube import map_to_unit_cube, map_to_unit_cube_list
+from ..latin_hypercube import map_to_unit_cube, map_to_unit_cube_list
 import GPy
 
 class T0MultiBinGP:
@@ -18,7 +18,7 @@ class T0MultiBinGP:
         self.params = params
 
     def predict(self, params):
-        """Get the predicted flux at a parameter set."""
+        """Get the predicted temperatures for a parameter set."""
         std = np.zeros(self.nz)
         means = np.zeros(self.nz)
         for i, gp in enumerate(self.gps):
@@ -28,10 +28,7 @@ class T0MultiBinGP:
         return means, std
 
 class T0SingleBinGP:
-    """An emulator wrapping a GP code for a single redshift.
-       Parameters: params is a list of parameter vectors.
-                   temps is a list of mean temperatures (same length as params).
-                   param_limits is a list of parameter limits (shape 2,params)."""
+    """An emulator wrapping a GP code for a single redshift."""
     def __init__(self, *, params, temps, param_limits):
         self.params = params
         self.param_limits = param_limits

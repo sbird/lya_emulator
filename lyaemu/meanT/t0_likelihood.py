@@ -1,8 +1,8 @@
-"""Module for computing the likelihood function for the forest emulator."""
+"""Module for computing the likelihood function for the IGM mean temperature emulator."""
 from datetime import datetime
 import numpy as np
 from . import t0_coarse_grid
-from . import flux_power
+from .. import flux_power
 from cobaya.likelihood import Likelihood
 from cobaya.run import run as cobaya_run
 from cobaya.log import LoggedError
@@ -22,29 +22,24 @@ def load_data(datafile, index, max_z=3.8, min_z=2.0, tau_thresh=None):
     return data_meanT
 
 class T0LikelihoodClass:
-    """Class to contain likelihood computations."""
+    """Class to contain likelihood and MCMC sampling computations."""
     def __init__(self, basedir, max_z=3.8, min_z=2.0, optimise_GP=True, json_file='T0emulator_params.json', tau_thresh=None):
-        """Initialise and train the emulator."""
         # Needed for Cobaya dictionary construction
-        self.basedir = basedir
-        self.json_file = json_file
+        self.basedir, self.json_file = basedir, json_file
         self.tau_thresh = tau_thresh
-        self.max_z = max_z
-        self.min_z = min_z
+        self.max_z, self.min_z = max_z, min_z
         myspec = flux_power.MySpectra(max_z=max_z, min_z=min_z)
         self.zout = myspec.zout
         # Load data vector (Wavelet:1,2 Curvature:3,4 BPDF:5,6 FPS:7,8 Combined:9,10)
-        meanT_file = os.path.join(os.path.dirname(__file__), 'data/Gaikwad/Gaikwad_2020b_T0_Evolution_All_Statistics.txt')
+        meanT_file = os.path.join(os.path.dirname(__file__), '../data/Gaikwad/Gaikwad_2020b_T0_Evolution_All_Statistics.txt')
+        ## ADD OPTION TO USE OTHER DATA
         self.obs_z, self.meanT, self.error = np.loadtxt(meanT_file, usecols=(0,7,8))[::-1].T
         if max_z > 3.8:
             boera = np.array([[5.0, 4.6, 4.2], [7.37e3, 7.31e3, 8.31e3], [1530., 1115., 1155.]])
             high_z_gaikwad = np.array([[5.4], [11e3], [1.6e3]])
-            # self.obs_z = np.append(high_z_gaikwad[0], np.append(boera[0], self.obs_z))
-            # self.meanT = np.append(high_z_gaikwad[1], np.append(boera[1], self.meanT))
-            # self.error = np.append(high_z_gaikwad[2], np.append(boera[2], self.error))
-            self.obs_z = np.append(high_z_gaikwad[0], self.obs_z)
-            self.meanT = np.append(high_z_gaikwad[1], self.meanT)
-            self.error = np.append(high_z_gaikwad[2], self.error)
+            self.obs_z = np.append(high_z_gaikwad[0], np.append(boera[0], self.obs_z))
+            self.meanT = np.append(high_z_gaikwad[1], np.append(boera[1], self.meanT))
+            self.error = np.append(high_z_gaikwad[2], np.append(boera[2], self.error))
         zinds = np.intersect1d(np.round(self.obs_z, 2), np.round(self.zout, 2), return_indices=True)[2][::-1]
 
         self.emulator = t0_coarse_grid.T0Emulator(basedir, tau_thresh=tau_thresh)
@@ -67,12 +62,11 @@ class T0LikelihoodClass:
         predicted, std = self.gpemu.predict(np.array(params).reshape(1, -1))
         return predicted, std
 
-    def likelihood(self, params, data_meanT=None, cosmo_priors=False):
-        """A simple likelihood function for the Lyman-alpha forest mean temperature."""
+    def likelihood(self, params, data_meanT=None, cosmo_priors=False, include_emu=True):
+        """A simple likelihood function for the mean temperature."""
         # Default to use is Gaikwad data
         if data_meanT is None:
-            data_meanT = self.meanT
-            data_error = self.error
+            data_meanT, data_error = self.meanT, self.error
         else:
             # if simulation is used as data, assume ~10% 'measurement' error
             data_error = data_meanT*0.085
@@ -82,7 +76,9 @@ class T0LikelihoodClass:
         # get predicted and calculate chi^2
         predicted, std = self.get_predicted(params)
         diff = data_meanT - predicted
-        error = data_error**2 + std**2
+        error = data_error**2
+        if include_emu:
+            error = data_error**2 + std**2
         chi2 = -np.sum(diff**2/(2*error) + 0.5*np.log(error))
         if cosmo_priors:
             # add a prior on little h and omega_m h^2
@@ -93,23 +89,20 @@ class T0LikelihoodClass:
         return chi2
 
     def hubble_prior(self, params, low_z=True):
-        """Return a prior on little h (either Planck or SH0ES based)"""
+        """Return a prior on little h (either Planck or SH0ES)"""
         hh = self.emulator.param_names['hub']
         if low_z:
-            shoes_sigma = 0.0104 # SH0ES
-            shoes_mean = 0.7304 # https://arxiv.org/abs/2112.04510
+            shoes_mean, shoes_sigma = 0.7304, 0.0104 # SH0ES arxiv: 2112.04510
             h_prior = -((params[hh]-shoes_mean)/shoes_sigma)**2
         else:
-            planck_sigma = 0.005 # Planck
-            planck_mean = 0.6741 # https://arxiv.org/abs/1807.06209
+            planck_mean, planck_sigma = 0.6741, 0.005 # Planck arxiv: 1807.06209
             h_prior = -((params[hh]-planck_mean)/planck_sigma)**2
         return h_prior
 
     def omega_prior(self, params):
         """Return a prior on Omega_m h^2 (Planck 2018)"""
         oo = self.emulator.param_names['omegamh2']
-        planck_sigma = 0.001 # Planck
-        planck_mean = 0.1424 # https://arxiv.org/abs/1807.06209
+        planck_mean, planck_sigma = 0.1424, 0.001 # Planck arxiv: 1807.06209
         o_prior = -((params[oo]-planck_mean)/planck_sigma)**2
         return o_prior
 
@@ -126,14 +119,11 @@ class T0LikelihoodClass:
         # is learned, so the value given needs to be small enough for the sampler to get started)
         info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale, 'latex': pnames[i][1]} for i in range(self.ndim)}
         # Set up the mcmc sampler options (to do seed runs, add the option 'seed': integer between 0 and 2**32 - 1)
-        # Default for computing Gelman-Rubin is to split chain into 4; to change, add option 'Rminus1_single_split': integer
         info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True, "learn_proposal_Rminus1_max": 20, "learn_proposal_Rminus1_max_early": 30}}
         return info
 
     def do_acceptance_check(self, info, steps=100):
-        """Run a short chain to check the initial acceptance rate.
-        Optional check in the do_sampling function, and can be run separately as well
-        (make_cobaya_dict -> do_acceptance_check)"""
+        """Run a short chain to check the initial acceptance rate."""
         print("-----------------------------------------------------")
         print("Test run to check acceptance rate")
         info_test = info.copy()

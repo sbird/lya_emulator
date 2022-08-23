@@ -12,8 +12,7 @@ from cobaya.run import run as cobaya_run
 from cobaya.log import LoggedError
 from mpi4py import MPI
 import json
-
-from . import t0_likelihood
+from .meanT import t0_likelihood
 
 def _siIIIcorr(kf):
     """For precomputing the shape of the SiIII correlation"""
@@ -64,20 +63,14 @@ def load_data(datadir, *, kf, max_z=4.6, min_z=2.2, t0=1., tau_thresh=None):
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None, t0lk=True):
+    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None, use_meant=False):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         # Needed for Cobaya dictionary construction
-        self.basedir = basedir
-        self.mean_flux = mean_flux
-        self.emulator_class = emulator_class
-        self.emulator_json_file = emulator_json_file
-        self.data_corr = data_corr
-        self.tau_thresh = tau_thresh
-        self.t0lk = t0lk
-
-        self.max_z = max_z
-        self.min_z = min_z
-        self.t0_training_value = t0_training_value
+        self.basedir, self.emulator_json_file = basedir, emulator_json_file
+        self.mean_flux, self.data_corr, self.tau_thresh = mean_flux, data_corr, tau_thresh
+        self.use_meant = use_meant
+        self.max_z, self.min_z = max_z, min_z
+        self.t0_training_value, self.emulator_class = t0_training_value, emulator_class
         myspec = flux_power.MySpectra(max_z=max_z, min_z=min_z)
         self.zout = myspec.zout
         # Default data is flux power from Chabanier 2019 (BOSS DR14),
@@ -128,13 +121,11 @@ class LikelihoodClass:
         if mean_flux == 's':
             # Add a slope to the parameter limits
             self.param_limits = np.vstack([t0_slope, self.param_limits])
-            # Shrink param limits t0 so that even with
-            # a slope they are within the emulator range
+            # Shrink param limits t0 so that they are within the emulator range
             self.param_limits[1, :] = t0_factor
 
         # Set up SiIII and DLA corrections, if requested
         self.data_params = {}
-        self.dla_data_corr = data_corr
         if data_corr:
             self.ndim = np.shape(self.param_limits)[0]
             # Create some useful objects for implementing the DLA and SiIII corrections
@@ -152,8 +143,8 @@ class LikelihoodClass:
             print('Beginning to generate emulator at', str(datetime.now()))
             self.gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
             print('Finished generating emulator at', str(datetime.now()))
-        if self.t0lk:
-            self.t0_like = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=2.0, optimise_GP=True, tau_thresh=self.tau_thresh)
+        if use_meant:
+            self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=2.0, optimise_GP=True, tau_thresh=self.tau_thresh)
 
 
     def get_predicted(self, params):
@@ -186,7 +177,6 @@ class LikelihoodClass:
         sdssz = sdssz[(sdssz <= self.max_z)*(sdssz >= self.min_z)]
         #Important assertion
         np.testing.assert_allclose(sdssz, self.zout, atol=1.e-16)
-        #print('SDSS redshifts are', sdssz)
         if zbin < 0:
             # Returns the covariance matrix in block format for all redshifts up to max_z (sorted low to high redshift)
             covar_bin = self.sdss.get_covar()[:sdssz.shape[0]*self.kf.shape[0], :sdssz.shape[0]*self.kf.shape[0]]
@@ -212,17 +202,15 @@ class LikelihoodClass:
         return dla + siIII
 
     def hubble_prior(self, params, low_z=True):
-        """Return a prior on little h (either Planck or SH0ES based)"""
+        """Return a prior on little h (either Planck or SH0ES)"""
         hh = self.emulator.param_names['hub']
         if self.mf_slope:
             hh = hh + 2
         if low_z:
-            shoes_sigma = 0.0104 # SH0ES
-            shoes_mean = 0.7304 # https://arxiv.org/abs/2112.04510
+            shoes_mean, shoes_sigma = 0.7304, 0.0104 # SH0ES arxiv: 2112.04510
             h_prior = -((params[hh]-shoes_mean)/shoes_sigma)**2
         else:
-            planck_sigma = 0.005 # Planck
-            planck_mean = 0.6741 # https://arxiv.org/abs/1807.06209
+            planck_mean, planck_sigma = 0.6741, 0.005 # Planck arxiv: 1807.06209
             h_prior = -((params[hh]-planck_mean)/planck_sigma)**2
         return h_prior
 
@@ -231,12 +219,11 @@ class LikelihoodClass:
         oo = self.emulator.param_names['omegamh2']
         if self.mf_slope:
             oo = oo + 2
-        planck_sigma = 0.001 # Planck
-        planck_mean = 0.1424 # https://arxiv.org/abs/1807.06209
+        planck_mean, planck_sigma = 0.1424, 0.001 # Planck arxiv: 1807.06209
         o_prior = -((params[oo]-planck_mean)/planck_sigma)**2
         return o_prior
 
-    def likelihood(self, params, include_emu=True, data_power=None, cosmo_priors=False):
+    def likelihood(self, params, include_emu=True, data_power=None, cosmo_priors=False, use_meant=None):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix.
         The covariance for the emulator points is assumed to be
@@ -263,10 +250,6 @@ class LikelihoodClass:
                 chi2 += self.data_correction_prior(params)
                 # Get and apply the DLA and SiIII corrections to the prediction
                 predicted[bb] = predicted[bb]*self.get_data_correction(okf[bb], params, self.zout[bb])
-            if cosmo_priors: #### THESE SHOULD ONLY BE ADDED ONCE, NOT FOR EVERY Z
-                # add a prior on little h and omega_m h^2
-                chi2 += self.hubble_prior(params, low_z=True)
-                chi2 += self.omega_prior(params)
             diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
             std_bin = std[bb]
             bindx = np.min(idp)
@@ -282,15 +265,18 @@ class LikelihoodClass:
             chi2 += dcd -0.5 * cdet
             assert 0 > chi2 > -2**31
             assert not np.isnan(chi2)
-        if self.t0lk:
+        if cosmo_priors:
+            # add a prior on little h and omega_m h^2
+            chi2 += self.hubble_prior(params, low_z=True)
+            chi2 += self.omega_prior(params)
+        if use_meant or (use_meant is None and self.use_meant):
             # omit mean flux and flux power data correction parameters
             indi = 0
-            if self.mf_slope:
-                indi = 2
-            chi2 += self.t0_like.likelihood(params[indi:self.ndim-len(self.data_params)], cosmo_priors=cosmo_priors)
+            if self.mf_slope: indi = 2
+            chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], cosmo_priors=cosmo_priors, include_emu=include_emu)
         return chi2
 
-    def make_cobaya_dict(self, *, data_power, burnin, nsamples, pscale=50, emu_error=True):
+    def make_cobaya_dict(self, *, data_power, burnin, nsamples, use_meant, pscale=50, emu_error=True):
         """Return a dictionary that can be used to run Cobaya MCMC sampling."""
         # Parameter names
         pnames = self.emulator.print_pnames()
@@ -304,23 +290,16 @@ class LikelihoodClass:
         prange = (self.param_limits[:, 1]-self.param_limits[:, 0])
         # Build the dictionary
         info = {}
-        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z,
-                                                                    "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value,
-                                                                    "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr,
-                                                                    "tau_thresh": self.tau_thresh, "include_emu": emu_error, "data_power": data_power}}
+        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z, "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value, "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr, "tau_thresh": self.tau_thresh, "use_meant": use_meant, "include_emu": emu_error, "data_power": data_power}}
         # Each of the parameters has a prior with limits and a proposal width (the proposal covariance matrix
         # is learned, so the value given needs to be small enough for the sampler to get started)
         info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale, 'latex': pnames[i][1]} for i in range(self.ndim)}
         # Set up the mcmc sampler options (to do seed runs, add the option 'seed': integer between 0 and 2**32 - 1)
-        # Default for computing Gelman-Rubin is to split chain into 4; to change, add option 'Rminus1_single_split': integer
-        info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True,
-                                    "learn_proposal_Rminus1_max": 20, "learn_proposal_Rminus1_max_early": 30}}
+        info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True, "learn_proposal_Rminus1_max": 20, "learn_proposal_Rminus1_max_early": 30}}
         return info
 
     def do_acceptance_check(self, info, steps=100):
-        """Run a short chain to check the initial acceptance rate.
-        Optional check in the do_sampling function, and can be run separately as well
-        (make_cobaya_dict -> do_acceptance_check)"""
+        """Run a short chain to check the initial acceptance rate."""
         print("-----------------------------------------------------")
         print("Test run to check acceptance rate")
         info_test = info.copy()
@@ -331,7 +310,7 @@ class LikelihoodClass:
         print("----------------------------------------------------- \n")
         assert sampler.get_acceptance_rate() > 0.01, "Acceptance rate very low. Consider decreasing the proposal width by increasing the pscale parameter"
 
-    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=50, include_emu_error=True, test_accept=True):
+    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=50, include_emu_error=True, test_accept=True, use_meant=None):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
@@ -341,7 +320,8 @@ class LikelihoodClass:
             data_power = load_data(datadir, kf=self.kf, t0=self.t0_training_value, max_z=self.max_z, min_z=self.min_z, tau_thresh=self.tau_thresh)
 
         # Construct the "info" dictionary used by Cobaya
-        info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples)
+        if use_meant is None: use_meant = self.use_meant
+        info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples, use_meant=use_meant)
 
         # Test run a fraction of the full chain to check acceptance rate before running full chain
         if test_accept is True:
@@ -425,6 +405,7 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     emulator_json_file: str = 'emulator_params.json'
     data_corr: bool = True
     tau_thresh: int = None
+    use_meant: bool = False
     data_power: float = None
     include_emu: bool = True
     # Required for Cobaya to correctly parse which parameters are for input
@@ -433,10 +414,7 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     def initialize(self):
         """Initialization of Cobaya likelihood using LikelihoodClass init.
         Gets the emulator by loading the flux power spectra from the simulations."""
-        LikelihoodClass.__init__(self, self.basedir, mean_flux=self.mean_flux, max_z=self.max_z, min_z=self.min_z,
-                         emulator_class=self.emulator_class, t0_training_value=self.t0_training_value,
-                         optimise_GP=self.optimise_GP, emulator_json_file=self.emulator_json_file,
-                         data_corr=self.data_corr, tau_thresh=self.tau_thresh)
+        LikelihoodClass.__init__(self, self.basedir, mean_flux=self.mean_flux, max_z=self.max_z, min_z=self.min_z, emulator_class=self.emulator_class, t0_training_value=self.t0_training_value, optimise_GP=self.optimise_GP, emulator_json_file=self.emulator_json_file, data_corr=self.data_corr, tau_thresh=self.tau_thresh, use_meant=self.use_meant)
 
     def logp(self, **params_values):
         """Cobaya-compatible call to the base class likelihood function.
@@ -444,4 +422,4 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
         # self.input_params is specially recognized by Cobaya (will be the "params" section
         # of the Cobaya dictionary passed to it)
         params = np.array([params_values[p] for p in self.input_params])
-        return self.likelihood(params, include_emu=self.include_emu, data_power=self.data_power)
+        return self.likelihood(params, include_emu=self.include_emu, data_power=self.data_power, use_meant=self.use_meant)

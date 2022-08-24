@@ -395,7 +395,9 @@ class Emulator:
         """Save the flux vectors and parameters to a file, which is the only thing read on reload."""
         if self.tau_thresh is not None:
             savefile = savefile[:-5]+'_tau'+str(int(self.tau_thresh))+savefile[-5:]
-        load = h5py.File(os.path.join(self.basedir, mfc+"_"+savefile), 'r')
+        finalpath = os.path.join(self.basedir, mfc+"_"+savefile)
+        print("Loading flux powers from: ",finalpath)
+        load = h5py.File(finalpath, 'r')
         inparams = np.array(load["params"])
         flux_vectors = np.array(load["flux_vectors"])
         kfkms = np.array(load["kfkms"])

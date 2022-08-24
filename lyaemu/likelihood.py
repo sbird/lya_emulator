@@ -138,14 +138,21 @@ class LikelihoodClass:
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
 
-        # Generate emulators
+        # Set up MPI protections (as suggested in Cobaya documentation)
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+
+        # Generate emulator
         if optimise_GP:
-            print('Beginning to generate emulator at', str(datetime.now()))
-            self.gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
-            print('Finished generating emulator at', str(datetime.now()))
+            gpemu = None
+            if rank == 0:
+                #Build the emulator only on rank 0 and broadcast
+                print('Beginning to generate emulator at', str(datetime.now()))
+                gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
+                print('Finished generating emulator at', str(datetime.now()))
+            self.gpemu = comm.bcast(gpemu, root = 0)
         if use_meant:
             self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=2.0, optimise_GP=True, tau_thresh=self.tau_thresh)
-
 
     def get_predicted(self, params):
         """Helper function to get the predicted flux power spectrum and error, rebinned to match the desired kbins."""

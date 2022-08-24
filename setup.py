@@ -10,7 +10,7 @@ setup(
     packages = ['lyaemu', 'lyaemu.tests', 'lyaemu.SimulationRunner.SimulationRunner'],
     requires=['numpy', 'fake_spectra','scipy', "GPy", "cobaya", "h5py"],
     package_data = {
-            'lyaemu': ['data/boss_dr9_data/*.dat','data/*'],
+            'lyaemu': ['data/boss_dr14_data/*.dat','data/*'],
            },
     classifiers = ["Development Status :: 4 - Beta",
                    "Intended Audience :: Developers",

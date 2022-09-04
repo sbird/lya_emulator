@@ -48,14 +48,21 @@ class T0LikelihoodClass:
         self.param_limits = self.emulator.get_param_limits()
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
+
         # Generate emulator
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
         if optimise_GP:
-            print('Beginning to generate emulator at', str(datetime.now()))
-            self.gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
-            self.gpemu.gps = list(np.array(self.gpemu.gps)[zinds])
-            self.gpemu.temps = self.gpemu.temps[:, zinds]
-            self.gpemu.nz = len(self.gpemu.gps)
-            print('Finished generating emulator at', str(datetime.now()))
+            gpemu = None
+            if rank == 0:
+                #Build the emulator only on rank 0 and broadcast
+                print('Beginning to generate emulator at', str(datetime.now()))
+                gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
+                gpemu.gps = list(np.array(gpemu.gps)[zinds])
+                gpemu.temps = gpemu.temps[:, zinds]
+                gpemu.nz = len(gpemu.gps)
+                print('Finished generating emulator at', str(datetime.now()))
+            self.gpemu = comm.bcast(gpemu, root = 0)
 
     def get_predicted(self, params):
         """Helper function to get the predicted mean temperature and error."""
@@ -131,7 +138,7 @@ class T0LikelihoodClass:
         print("----------------------------------------------------- \n")
         assert sampler.get_acceptance_rate() > 0.01, "Acceptance rate very low. Consider decreasing the proposal width by increasing the pscale parameter"
 
-    def do_sampling(self, savefile=None, datadir=None, index=None, burnin=3e4, nsamples=3e5, pscale=4, test_accept=True, hprior='none', oprior=False):
+    def do_sampling(self, savefile=None, datadir=None, index=None, burnin=3e4, nsamples=3e5, pscale=4, test_accept=False, hprior='none', oprior=False):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)

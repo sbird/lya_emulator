@@ -118,6 +118,7 @@ class T0Emulator:
         if np.all(inparams == aparams):
             return np.where(np.all(old_meanT == 0, axis=1))[0], old_meanT
         # otherwise, find new parameters and return indices for them
+        # note, if json and hdf5 parameter orders differ, this will sort by json params
         subset = np.isin(aparams, inparams).all(axis=1)
         new_inds = np.where(subset == False)[0] # indices of aparams that are not in inparams
         for pp in range(np.shape(inparams)[0]): # fill meanT with already computed values

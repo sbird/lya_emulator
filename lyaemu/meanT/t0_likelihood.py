@@ -23,23 +23,29 @@ def load_data(datafile, index, max_z=3.8, min_z=2.0, tau_thresh=None):
 
 class T0LikelihoodClass:
     """Class to contain likelihood and MCMC sampling computations."""
-    def __init__(self, basedir, max_z=3.8, min_z=2.0, optimise_GP=True, json_file='T0emulator_params.json', tau_thresh=None):
+    def __init__(self, basedir, max_z=3.8, min_z=2.0, optimise_GP=True, json_file='T0emulator_params.json', tau_thresh=None, dataset='fps'):
         # Needed for Cobaya dictionary construction
         self.basedir, self.json_file = basedir, json_file
         self.tau_thresh = tau_thresh
         self.max_z, self.min_z = max_z, min_z
         myspec = flux_power.MySpectra(max_z=max_z, min_z=min_z)
         self.zout = myspec.zout
-        # Load data vector (Wavelet:1,2 Curvature:3,4 BPDF:5,6 FPS:7,8 Combined:9,10)
+        # Load data vector (wavelet, curvature, bpdf, fps, or combined)
+        data_dict = {'wavelet': (0,1,2), 'curvature': (0,3,4), 'bpdf': (0,5,6), 'fps': (0,7,8), 'combined': (0,9,10)}
         meanT_file = os.path.join(os.path.dirname(__file__), '../data/Gaikwad/Gaikwad_2020b_T0_Evolution_All_Statistics.txt')
-        ## ADD OPTION TO USE OTHER DATA
-        self.obs_z, self.meanT, self.error = np.loadtxt(meanT_file, usecols=(0,7,8))[::-1].T
-        if max_z > 3.8:
+        self.obs_z, self.meanT, self.error = np.loadtxt(meanT_file, usecols=data_dict[dataset])[::-1].T
+        if max_z > 3.8 and dataset == 'fps':
+            # boera uses fps: https://arxiv.org/pdf/1809.06980.pdf
             boera = np.array([[5.0, 4.6, 4.2], [7.37e3, 7.31e3, 8.31e3], [1530., 1115., 1155.]])
+            self.obs_z = np.append(boera[0], self.obs_z)
+            self.meanT = np.append(boera[1], self.meanT)
+            self.error = np.append(boera[2], self.error)
+        if max_z > 5.0 and dataset == 'bpdf':
+            # gaikwad uses bpdf: https://arxiv.org/pdf/2001.10018.pdf
             high_z_gaikwad = np.array([[5.4], [11e3], [1.6e3]])
-            self.obs_z = np.append(high_z_gaikwad[0], np.append(boera[0], self.obs_z))
-            self.meanT = np.append(high_z_gaikwad[1], np.append(boera[1], self.meanT))
-            self.error = np.append(high_z_gaikwad[2], np.append(boera[2], self.error))
+            self.obs_z = np.append(high_z_gaikwad[0], self.obs_z)
+            self.meanT = np.append(high_z_gaikwad[1], self.meanT)
+            self.error = np.append(high_z_gaikwad[2], self.error)
         zinds = np.intersect1d(np.round(self.obs_z, 2), np.round(self.zout, 2), return_indices=True)[2][::-1]
 
         self.emulator = t0_coarse_grid.T0Emulator(basedir, tau_thresh=tau_thresh)
@@ -110,7 +116,7 @@ class T0LikelihoodClass:
         planck_mean, planck_sigma = 0.1424, 0.001 # Planck arxiv: 1807.06209
         return -((params[oo]-planck_mean)/planck_sigma)**2
 
-    def make_cobaya_dict(self, *, data_meanT, burnin, nsamples, hprior='none', oprior=False, pscale=50):
+    def make_cobaya_dict(self, *, data_meanT, burnin, nsamples, dataset, hprior='none', oprior=False, pscale=50):
         """Return a dictionary that can be used to run Cobaya MCMC sampling."""
         # Parameter names
         pnames = self.emulator.print_pnames()
@@ -118,7 +124,7 @@ class T0LikelihoodClass:
         prange = (self.param_limits[:, 1]-self.param_limits[:, 0])
         # Build the dictionary
         info = {}
-        info["likelihood"] = {__name__+".T0CobayaLikelihoodClass": {"basedir": self.basedir, "max_z": self.max_z, "min_z": self.min_z, "optimise_GP": True, "json_file": self.json_file, "tau_thresh": self.tau_thresh, "hprior": hprior, "oprior": oprior, "data_meanT": data_meanT}}
+        info["likelihood"] = {__name__+".T0CobayaLikelihoodClass": {"basedir": self.basedir, "max_z": self.max_z, "min_z": self.min_z, "optimise_GP": True, "json_file": self.json_file, "tau_thresh": self.tau_thresh, "hprior": hprior, "oprior": oprior, "data_meanT": data_meanT, "dataset": dataset}}
         # Each of the parameters has a prior with limits and a proposal width (the proposal covariance matrix
         # is learned, so the value given needs to be small enough for the sampler to get started)
         info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale, 'latex': pnames[i][1]} for i in range(self.ndim)}
@@ -138,7 +144,7 @@ class T0LikelihoodClass:
         print("----------------------------------------------------- \n")
         assert sampler.get_acceptance_rate() > 0.01, "Acceptance rate very low. Consider decreasing the proposal width by increasing the pscale parameter"
 
-    def do_sampling(self, savefile=None, datadir=None, index=None, burnin=3e4, nsamples=3e5, pscale=4, test_accept=False, hprior='none', oprior=False):
+    def do_sampling(self, savefile=None, datadir=None, index=None, burnin=3e4, nsamples=3e5, pscale=4, test_accept=False, hprior='none', oprior=False, dataset='fps'):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
@@ -148,7 +154,7 @@ class T0LikelihoodClass:
             data_meanT = load_data(datadir, index, max_z=self.max_z, min_z=self.min_z, tau_thresh=self.tau_thresh)
 
         # Construct the "info" dictionary used by Cobaya
-        info = self.make_cobaya_dict(data_meanT=data_meanT, pscale=pscale, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior)
+        info = self.make_cobaya_dict(data_meanT=data_meanT, pscale=pscale, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior, dataset=dataset)
         # Test run a fraction of the full chain to check acceptance rate before running full chain
         if test_accept is True:
             self.do_acceptance_check(info, steps=100)
@@ -181,6 +187,7 @@ class T0CobayaLikelihoodClass(Likelihood, T0LikelihoodClass):
     optimise_GP: bool = True
     json_file: str = 'T0emulator_params.json'
     tau_thresh: int = None
+    dataset: str = 'fps'
     data_meanT: float = None
     hprior: str = 'none'
     oprior: bool = False
@@ -192,7 +199,7 @@ class T0CobayaLikelihoodClass(Likelihood, T0LikelihoodClass):
         Gets the emulator by loading the flux power spectra from the simulations."""
         T0LikelihoodClass.__init__(self, self.basedir, max_z=self.max_z, min_z=self.min_z,
                          optimise_GP=self.optimise_GP, json_file=self.json_file,
-                         tau_thresh=self.tau_thresh)
+                         tau_thresh=self.tau_thresh, dataset=self.dataset)
 
     def logp(self, **params_values):
         """Cobaya-compatible call to the base class likelihood function.

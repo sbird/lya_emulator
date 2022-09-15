@@ -306,7 +306,7 @@ class Emulator:
         powerspectra = self.myspec.get_snapshot_list(base=di)
         return powerspectra
 
-    def get_emulator(self, max_z=4.2, min_z=2.0):
+    def get_emulator(self, max_z=4.2, min_z=2.0, traindir=None):
         """ Build an emulator for the desired k_F and our simulations.
             kf gives the desired k bins in s/km.
             Mean flux rescaling is handled (if mean_flux=True) as follows:
@@ -314,14 +314,15 @@ class Emulator:
             2. Each flux power spectrum in the set is rescaled to the same mean flux.
             3.
         """
-        gp = self._get_custom_emulator(emuobj=None, max_z=max_z, min_z=min_z)
+        gp = self._get_custom_emulator(emuobj=None, max_z=max_z, min_z=min_z, traindir=traindir)
         return gp
 
-    def _get_custom_emulator(self, *, emuobj, max_z=4.2, min_z=2.0):
+    def _get_custom_emulator(self, *, emuobj, max_z=4.2, min_z=2.0, traindir=None):
         """Helper to allow supporting different emulators."""
         aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
         plimits = self.get_param_limits(include_dense=True)
-        gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers = flux_vectors, param_limits = plimits, singleGP=emuobj)
+        nz = int(flux_vectors.shape[1]/kf.size)
+        gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers=flux_vectors, param_limits=plimits, singleGP=emuobj, zout=np.linspace(max_z, min_z, nz), traindir=traindir)
         return gp
 
     def get_flux_vectors(self, max_z=4.2, min_z=2.0, kfunits="kms"):

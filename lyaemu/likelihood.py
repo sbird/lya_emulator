@@ -63,10 +63,11 @@ def load_data(datadir, *, kf, max_z=4.6, min_z=2.2, t0=1., tau_thresh=None):
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None, use_meant=False):
+    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None, use_meant=False, traindir=None):
         """Initialise the emulator by loading the flux power spectra from the simulations."""
         # Needed for Cobaya dictionary construction
-        self.basedir, self.emulator_json_file = basedir, emulator_json_file
+        self.basedir = basedir
+        self.emulator_json_file, self.traindir = emulator_json_file, traindir
         self.mean_flux, self.data_corr, self.tau_thresh = mean_flux, data_corr, tau_thresh
         self.use_meant = use_meant
         self.max_z, self.min_z = max_z, min_z
@@ -91,7 +92,7 @@ class LikelihoodClass:
         # This parametrises the mean flux as an amplitude and slope.
         elif mean_flux == 's':
             # Add a slope to the parameter limits
-            t0_slope = np.array([-0.25, 0.25])
+            t0_slope = np.array([-0.4, 0.25])
             self.mf_slope = True
             # Get the min_z and max_z for the emulator, regardless of what is requested
             with open(basedir+"/"+emulator_json_file, "r") as emulator_json:
@@ -148,7 +149,7 @@ class LikelihoodClass:
             if rank == 0:
                 #Build the emulator only on rank 0 and broadcast
                 print('Beginning to generate emulator at', str(datetime.now()))
-                gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
+                gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z, traindir=traindir)
                 print('Finished generating emulator at', str(datetime.now()))
             self.gpemu = comm.bcast(gpemu, root = 0)
         if use_meant:
@@ -294,7 +295,7 @@ class LikelihoodClass:
         prange = (self.param_limits[:, 1]-self.param_limits[:, 0])
         # Build the dictionary
         info = {}
-        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z, "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value, "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr, "hprior": hprior, "oprior": oprior, "tau_thresh": self.tau_thresh, "use_meant": use_meant, "include_emu": emu_error, "data_power": data_power}}
+        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z, "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value, "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr, "traindir": self.traindir, "hprior": hprior, "oprior": oprior, "tau_thresh": self.tau_thresh, "use_meant": use_meant, "include_emu": emu_error, "data_power": data_power}}
         # Each of the parameters has a prior with limits and a proposal width (the proposal covariance matrix
         # is learned, so the value given needs to be small enough for the sampler to get started)
         info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale, 'latex': pnames[i][1]} for i in range(self.ndim)}
@@ -314,7 +315,7 @@ class LikelihoodClass:
         print("----------------------------------------------------- \n")
         assert sampler.get_acceptance_rate() > 0.01, "Acceptance rate very low. Consider decreasing the proposal width by increasing the pscale parameter"
 
-    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=50, include_emu_error=True, test_accept=True, use_meant=None, hprior='none', oprior=False):
+    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=50, include_emu_error=True, test_accept=False, use_meant=None, hprior='none', oprior=False):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
@@ -410,6 +411,7 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     data_corr: bool = True
     tau_thresh: int = None
     use_meant: bool = False
+    traindir: str = None
     data_power: float = None
     include_emu: bool = True
     hprior: str = 'none'
@@ -420,7 +422,7 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     def initialize(self):
         """Initialization of Cobaya likelihood using LikelihoodClass init.
         Gets the emulator by loading the flux power spectra from the simulations."""
-        LikelihoodClass.__init__(self, self.basedir, mean_flux=self.mean_flux, max_z=self.max_z, min_z=self.min_z, emulator_class=self.emulator_class, t0_training_value=self.t0_training_value, optimise_GP=self.optimise_GP, emulator_json_file=self.emulator_json_file, data_corr=self.data_corr, tau_thresh=self.tau_thresh, use_meant=self.use_meant)
+        LikelihoodClass.__init__(self, self.basedir, mean_flux=self.mean_flux, max_z=self.max_z, min_z=self.min_z, emulator_class=self.emulator_class, t0_training_value=self.t0_training_value, optimise_GP=self.optimise_GP, emulator_json_file=self.emulator_json_file, data_corr=self.data_corr, tau_thresh=self.tau_thresh, use_meant=self.use_meant, traindir=self.traindir)
 
     def logp(self, **params_values):
         """Cobaya-compatible call to the base class likelihood function.

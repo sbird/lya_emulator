@@ -40,14 +40,13 @@ class T0SingleBinGP:
         nparams = np.shape(self.params)[1]
         param_cube = map_to_unit_cube_list(self.params, self.param_limits)
         # Ensure that the GP prior (a zero-mean input) is close to true.
-        medind = np.argsort(mean_temps)[np.size(mean_temps)//2]
-        self.scalefactors = mean_temps[medind]
+        self.scalefactors = np.mean(mean_temps, axis=0)
         normtemps = mean_temps/self.scalefactors - 1.
         # Standard squared-exponential kernel with a different length scale for each
         # parameter, as they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)
         kernel += GPy.kern.RBF(nparams, ARD=True)
-        self.gp = GPy.models.GPRegression(param_cube, normtemps, kernel=kernel, noise_var=1e-10)
+        self.gp = GPy.models.GPRegression(param_cube, normtemps, kernel=kernel, noise_var=1e-2)
         status = self.gp.optimize(messages=False)
         if status.status != 'Converged':
             print("Restarting optimization")

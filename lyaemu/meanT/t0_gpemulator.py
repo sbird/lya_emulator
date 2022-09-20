@@ -4,9 +4,9 @@ from ..latin_hypercube import map_to_unit_cube, map_to_unit_cube_list
 import GPy
 
 class T0MultiBinGP:
-    """A wrapper around the emulator that constructs a separate emulator for each redshift.
+    """A wrapper around GPy that constructs an emulator for the mean temperature over all redshifts.
         Parameters: params is a list of parameter vectors.
-                    temps is a list of mean temperatures (shape nparams, nz).
+                    temps is a list of mean temperatures (shape nsims, nz).
                     param_limits is a list of parameter limits (shape params, 2)."""
     def __init__(self, *, params, temps, param_limits):
         self.temps = temps

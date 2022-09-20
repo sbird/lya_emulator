@@ -47,8 +47,9 @@ class T0LikelihoodClass:
             self.meanT = np.append(high_z_gaikwad[1], self.meanT)
             self.error = np.append(high_z_gaikwad[2], self.error)
         zinds = np.intersect1d(np.round(self.obs_z, 2), np.round(self.zout, 2), return_indices=True)[2][::-1]
+        self.zout = self.zout[zinds]
 
-        self.emulator = t0_coarse_grid.T0Emulator(basedir, tau_thresh=tau_thresh)
+        self.emulator = t0_coarse_grid.T0Emulator(basedir, tau_thresh=tau_thresh, max_z=max_z, min_z=min_z)
         # Load the parameters, etc. associated with this emulator (overwrite defaults)
         self.emulator.load(dumpfile=json_file)
         self.param_limits = self.emulator.get_param_limits()
@@ -63,10 +64,7 @@ class T0LikelihoodClass:
             if rank == 0:
                 #Build the emulator only on rank 0 and broadcast
                 print('Beginning to generate emulator at', str(datetime.now()))
-                gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z)
-                gpemu.gps = list(np.array(gpemu.gps)[zinds])
-                gpemu.temps = gpemu.temps[:, zinds]
-                gpemu.nz = len(gpemu.gps)
+                gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z, zinds=zinds)
                 print('Finished generating emulator at', str(datetime.now()))
             self.gpemu = comm.bcast(gpemu, root = 0)
 

@@ -31,15 +31,8 @@ class T0Emulator:
         else:
             self.param_names = param_names
         if param_limits is None:
-            self.param_limits = np.array([[0.8, 0.995], # ns: not ns at the CMB scale!
-                                          [1.2e-09, 2.6e-09], # Amplitude of power spectrum at 8/2pi Mpc scales (see 1812.04654)!
-                                          [3.5, 4.1], # Redshift at which helium reionization starts.
-                                          [2.6, 3.2], # Redshift at which helium reionization finishes.
-                                          [1.6, 2.5], # Quasar spectral index. Controls IGM temperature.
-                                          [0.65, 0.75], # Hubble constant
-                                          [0.14, 0.146],# Omega_m h^2
-                                          [6.5,8],   # Mid-point of HI reionization
-                                          [0.03, 0.07]])  # BH feedback parameter
+            # see parameter descriptions in coarse_grid.py
+            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [3.5, 4.1], [2.6, 3.2], [1.6, 2.5], [0.65, 0.75], [0.14, 0.146], [6.5,8], [0.03, 0.07]])
         else:
             self.param_limits = param_limits
         # Remove the BH parameter for not full physics.
@@ -55,15 +48,19 @@ class T0Emulator:
         self.tau_thresh = tau_thresh
 
     def load(self, dumpfile="T0emulator_params.json"):
-        """Load parameters from a textfile."""
+        """Load parameters from a json file."""
         tau_thresh = self.tau_thresh
         real_basedir = self.basedir
+        min_z = self.min_z
+        max_z = self.max_z
         with open(os.path.join(real_basedir, dumpfile), 'r') as jsin:
             indict = json.load(jsin)
         self.__dict__ = indict
         self._fromarray()
         self.tau_thresh = tau_thresh
         self.basedir = real_basedir
+        self.min_z = min_z
+        self.max_z = max_z
         self.myspec = flux_power.MySpectra(max_z=self.max_z, min_z=self.min_z)
 
     def _fromarray(self):
@@ -72,14 +69,16 @@ class T0Emulator:
             self.__dict__[arr] = np.array(self.__dict__[arr])
         self.really_arrays = []
 
-    def get_emulator(self, max_z=5.4, min_z=2.0):
+    def get_emulator(self, max_z=5.4, min_z=2.0, zinds=None):
         """ Build an emulator for T0 from simulations."""
-        aparams, meanT = self.get_meanT(max_z=max_z, min_z=min_z)
+        if zinds is not None: req_z = self.myspec.zout[zinds]
+        else: req_z = None
+        aparams, meanT = self.get_meanT(max_z=max_z, min_z=min_z, req_z=req_z)
         plimits = self.get_param_limits()
         gp = t0_gpemulator.T0MultiBinGP(params=aparams, temps=meanT, param_limits=plimits)
         return gp
 
-    def get_meanT(self, filename="emulator_meanT.hdf5", max_z=5.4, min_z=2.0):
+    def get_meanT(self, filename="emulator_meanT.hdf5", max_z=5.4, min_z=2.0, req_z=None):
         """Get and save T0 and parameters"""
         aparams = self.get_parameters()
         assert np.shape(aparams)[1] == len(self.param_names)
@@ -95,12 +94,16 @@ class T0Emulator:
                 meanT[ind] = new_meanT
                 self.save_meanT(aparams, meanT, savefile=filename)
         # get meanT for specified redshift range (z goes from high to low)
-        assert np.round(self.myspec.zout[-1], 1) <= min_z
-        maxbin = np.where(np.round(self.myspec.zout, 1) >= min_z)[0].max() + 1
-        assert np.round(self.myspec.zout[0], 1) >= max_z
-        minbin = np.where(np.round(self.myspec.zout, 1) <= max_z)[0].min()
-        meanT = meanT[:, minbin:maxbin]
-        self.myspec.zout = self.myspec.zout[minbin:maxbin]
+        if req_z is not None:
+            zinds = np.intersect1d(np.round(req_z, 2), np.round(self.myspec.zout, 2), return_indices=True)[2][::-1]
+            meanT = meanT[:, zinds]
+            self.myspec.zout = self.myspec.zout[zinds]
+        else:
+            assert np.round(self.myspec.zout[-1], 1) <= min_z
+            maxbin = np.where(np.round(self.myspec.zout, 1) >= min_z)[0].max() + 1
+            assert np.round(self.myspec.zout[0], 1) >= max_z
+            minbin = np.where(np.round(self.myspec.zout, 1) <= max_z)[0].min()
+            meanT = meanT[:, minbin:maxbin]
         return aparams, meanT
 
     def check_meanT(self, aparams, savefile="emulator_meanT.hdf5"):

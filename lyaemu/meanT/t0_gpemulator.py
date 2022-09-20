@@ -9,30 +9,11 @@ class T0MultiBinGP:
                     temps is a list of mean temperatures (shape nparams, nz).
                     param_limits is a list of parameter limits (shape params, 2)."""
     def __init__(self, *, params, temps, param_limits):
-        # Build an emulator for each redshift separately.
-        self.nz = np.shape(temps)[1]
-        gp = lambda i: T0SingleBinGP(params=params, temps=temps[:,i], param_limits=param_limits)
-        print('Number of redshifts for emulator generation=%d' % (self.nz))
-        self.gps = [gp(i) for i in range(self.nz)]
         self.temps = temps
         self.params = params
-
-    def predict(self, params):
-        """Get the predicted temperatures for a parameter set."""
-        std = np.zeros(self.nz)
-        means = np.zeros(self.nz)
-        for i, gp in enumerate(self.gps):
-            m, s = gp.predict(params)
-            means[i] = m
-            std[i] = s
-        return means, std
-
-class T0SingleBinGP:
-    """An emulator wrapping a GP code for a single redshift."""
-    def __init__(self, *, params, temps, param_limits):
-        self.params = params
         self.param_limits = param_limits
-        self._get_interp(mean_temps=temps.reshape(-1, 1))
+        print('Number of redshifts for emulator generation=%d' % (np.shape(temps)[1]))
+        self._get_interp(mean_temps=temps)
 
     def _get_interp(self, mean_temps):
         """Build the GP interpolator."""
@@ -46,7 +27,7 @@ class T0SingleBinGP:
         # parameter, as they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)
         kernel += GPy.kern.RBF(nparams, ARD=True)
-        self.gp = GPy.models.GPRegression(param_cube, normtemps, kernel=kernel, noise_var=1e-2)
+        self.gp = GPy.models.GPRegression(param_cube, normtemps, kernel=kernel, noise_var=1e-10)
         status = self.gp.optimize(messages=False)
         if status.status != 'Converged':
             print("Restarting optimization")

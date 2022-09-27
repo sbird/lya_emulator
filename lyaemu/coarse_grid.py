@@ -348,7 +348,7 @@ class Emulator:
         try:
             kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams, mfc=mfc)
         except (AssertionError, OSError) as err:
-            print(err)
+            print(f"Unexpected {err=}, {type(err)=}")
             print("Could not load flux vectors, regenerating from disc")
             powers = [self._get_fv(pp) for pp in pvals]
             mef = lambda pp: self.mf.get_mean_flux(self.myspec.zout, params=pp)[0]

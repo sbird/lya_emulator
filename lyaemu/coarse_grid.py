@@ -486,5 +486,5 @@ def get_simulation_parameters_s8(base, dt0=0, t0=1, pivot=0.05):
     pp = json.load(jsin)
     #Change the pivot value
     Ap = pp['scalar_amp'] / (pivot/(2*math.pi/8))**(pp['ns']-1.)
-    parvec = [dt0, t0, pp['ns'], Ap, pp['herei'], pp['heref'],pp['alphaq'], pp["hubble"]]
+    parvec = [dt0, t0, pp['ns'], Ap, pp['here_i'], pp['here_f'],pp['alpha_q'], pp["hubble"], pp["omega0"]*pp["hubble"]**2,pp["hireionz"], pp["bhfeedback"]]
     return parvec

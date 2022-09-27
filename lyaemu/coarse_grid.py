@@ -137,7 +137,7 @@ class Emulator:
 
     def _recon_one(self, pdir):
         """Get the parameters of a simulation from the SimulationICs.json file"""
-        with open(os.path.join(pdir, "SimulationICs.json"), 'r') as jsin:
+        with open(os.path.join(pdir, "SimulationICs.json"), 'r', encoding='UTF-8') as jsin:
             sics = json.load(jsin)
         ev = np.zeros_like(self.param_limits[:,0])
         pn = self.param_names
@@ -188,7 +188,7 @@ class Emulator:
             if isinstance(val, np.ndarray):
                 self.__dict__[nn] = val.tolist()
                 self.really_arrays.append(nn)
-        with open(fdump, 'w') as jsout:
+        with open(fdump, 'w', encoding='UTF-8') as jsout:
             json.dump(self.__dict__, jsout)
         self._fromarray()
         self.mf = mf
@@ -203,7 +203,7 @@ class Emulator:
         mf = self.mf
         tau_thresh = self.tau_thresh
         real_basedir = self.basedir
-        with open(os.path.join(real_basedir, dumpfile), 'r') as jsin:
+        with open(os.path.join(real_basedir, dumpfile), 'r', encoding='UTF-8') as jsin:
             indict = json.load(jsin)
         self.__dict__ = indict
         self._fromarray()
@@ -347,7 +347,8 @@ class Emulator:
             mfc = "mf"
         try:
             kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams, mfc=mfc)
-        except (AssertionError, OSError):
+        except (AssertionError, OSError) as err:
+            print(err)
             print("Could not load flux vectors, regenerating from disc")
             powers = [self._get_fv(pp) for pp in pvals]
             mef = lambda pp: self.mf.get_mean_flux(self.myspec.zout, params=pp)[0]
@@ -406,7 +407,7 @@ class Emulator:
         self.myspec.zout = zout
         name = str(load.attrs["classname"])
         load.close()
-        assert name.split(".")[-1] == str(self.__class__).split(".")[-1]
+        assert name.rsplit(".", maxsplit=1)[-1] == str(self.__class__).rsplit(".", maxsplit=1)[-1]
         assert np.shape(inparams) == np.shape(aparams)
         assert np.all(inparams - aparams < 1e-3)
         return kfmpc, kfkms, flux_vectors
@@ -473,8 +474,8 @@ class KnotEmulator(Emulator):
 
 def get_simulation_parameters_knots(base):
     """Get the parameters of a knot-based simulation from the SimulationICs JSON file."""
-    jsin = open(os.path.join(base, "SimulationICs.json"), 'r')
-    pp = json.load(jsin)
+    with open(os.path.join(base, "SimulationICs.json"), 'r', encoding='UTF-8') as jsin:
+        pp = json.load(jsin)
     knv = pp["knot_val"]
     #This will fail!
     parvec = [0., 1., *knv, pp['herei'], pp['heref'],pp['alphaq'], pp["hubble"]]
@@ -482,8 +483,8 @@ def get_simulation_parameters_knots(base):
 
 def get_simulation_parameters_s8(base, dt0=0, t0=1, pivot=0.05):
     """Get the parameters of a sigma8-ns-based simulation from the SimulationICs JSON file."""
-    jsin = open(os.path.join(base, "SimulationICs.json"), 'r')
-    pp = json.load(jsin)
+    with open(os.path.join(base, "SimulationICs.json"), 'r', encoding='UTF-8') as jsin:
+        pp = json.load(jsin)
     #Change the pivot value
     Ap = pp['scalar_amp'] / (pivot/(2*math.pi/8))**(pp['ns']-1.)
     parvec = [dt0, t0, pp['ns'], Ap, pp['here_i'], pp['here_f'],pp['alpha_q'], pp["hubble"], pp["omega0"]*pp["hubble"]**2,pp["hireionz"], pp["bhfeedback"]]

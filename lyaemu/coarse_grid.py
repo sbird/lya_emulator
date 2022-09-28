@@ -20,7 +20,7 @@ from .mean_flux import ConstMeanFlux
 def get_latex(key):
     """Get a latex name if it exists, otherwise return the key."""
     #Names for pretty-printing some parameters in Latex
-    print_names = { 'ns': r'n_\mathrm{s}', 'Ap': r'A_\mathrm{P}', 'herei': r'z_\mathrm{He i}', 'heref': r'z_\mathrm{He f}', 'hub':'h', 'tau0':r'\tau_0', 'dtau0':r'd\tau_0'}
+    print_names = { 'ns': r'n_\mathrm{s}', 'Ap': r'A_\mathrm{P}', 'herei': r'z_\mathrm{He i}', 'heref': r'z_\mathrm{He f}', 'hub':'h', 'tau0':r'\tau_0', 'dtau0':r'd\tau_0', 'alphaq':r'\alpha_q', 'omegamh2':r'\Omega_M h^2', 'hireionz':'z_{Hi}', 'bhfeedback':'\epsilon_{AGN}'}
     try:
         return print_names[key]
     except KeyError:

@@ -99,8 +99,8 @@ class LikelihoodClass:
                 loaded = json.load(emulator_json)
                 nz = int(np.round((loaded["max_z"]-loaded["min_z"])/0.2, 1)) + 1
                 z_mflux = np.linspace(loaded["min_z"], loaded["max_z"], nz)
-            slopehigh = np.max(mflux.mean_flux_slope_to_factor(z_mflux, 0.25))
-            slopelow = np.min(mflux.mean_flux_slope_to_factor(z_mflux, -0.25))
+            slopehigh = np.max(mflux.mean_flux_slope_to_factor(z_mflux, t0_slope[1]))
+            slopelow = np.min(mflux.mean_flux_slope_to_factor(z_mflux, t0_slope[0]))
             dense_limits = np.array([np.array(t0_factor) * np.array([slopelow, slopehigh])])
             mf = mflux.MeanFluxFactor(dense_limits=dense_limits)
         else:
@@ -215,10 +215,10 @@ class LikelihoodClass:
         if self.mf_slope:
             hh = hh + 2
         if source == 'shoes':
-            shoes_mean, shoes_sigma = 0.7304, 0.0104 # SH0ES arxiv: 2112.04510
+            shoes_mean, shoes_sigma = 0.7253, 0.0099 # SH0ES arxiv: 2112.04510
             return -((params[hh]-shoes_mean)/shoes_sigma)**2
         if source == 'planck':
-            planck_mean, planck_sigma = 0.6741, 0.005 # Planck arxiv: 1807.06209
+            planck_mean, planck_sigma = 0.674, 0.005 # Planck arxiv: 1807.06209
             return -((params[hh]-planck_mean)/planck_sigma)**2
         else: return 0
 

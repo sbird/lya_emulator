@@ -222,15 +222,24 @@ class LikelihoodClass:
             return -((params[hh]-planck_mean)/planck_sigma)**2
         else: return 0
 
-    def omega_prior(self, params):
-        """Return a prior on Omega_m h^2 (Planck 2018)"""
+    def omega_prior(self, params, sample_on='omegamh2'):
+        """Return a prior on Omega_m h^2 or Omega_m (Planck 2018)"""
+        # values from Planck: arxiv 1807.06209
         oo = self.emulator.param_names['omegamh2']
         if self.mf_slope:
             oo = oo + 2
-        planck_mean, planck_sigma = 0.1424, 0.001 # Planck arxiv: 1807.06209
-        return -((params[oo]-planck_mean)/planck_sigma)**2
+        if sample_on == 'omegamh2':
+            planck_mean, planck_sigma = 0.1424, 0.001
+            # planck_mean, planck_sigma = 0.315*0.674**2, 0.0035
+            return -((params[oo]-planck_mean)/planck_sigma)**2
+        elif sample_on == 'omegam':
+            omega_m = params[oo]/params[oo-1]**2
+            planck_mean, planck_sigma = 0.315, 0.007
+            return -((omega_m-planck_mean)/planck_sigma)**2
+        else:
+            return 0
 
-    def likelihood(self, params, include_emu=True, data_power=None, hprior='none', oprior=False, use_meant=None, meant_fac=7.5):
+    def likelihood(self, params, include_emu=True, data_power=None, hprior='none', oprior=False, sample_on='omegamh2', use_meant=None, meant_fac=7.5):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix.
         The covariance for the emulator points is assumed to be
@@ -278,10 +287,10 @@ class LikelihoodClass:
             if self.mf_slope: indi = 2
             chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu)*meant_fac
         chi2 += self.hubble_prior(params, source=hprior)
-        if oprior: chi2 += self.omega_prior(params)
+        if oprior: chi2 += self.omega_prior(params, sample_on=sample_on)
         return chi2
 
-    def make_cobaya_dict(self, *, data_power, burnin, nsamples, hprior='none', oprior=False, use_meant, pscale=50, emu_error=True):
+    def make_cobaya_dict(self, *, data_power, burnin, nsamples, hprior='none', oprior=False, use_meant, pscale=50, emu_error=True, sample_on='omegamh2'):
         """Return a dictionary that can be used to run Cobaya MCMC sampling."""
         # Parameter names
         pnames = self.emulator.print_pnames()
@@ -295,10 +304,14 @@ class LikelihoodClass:
         prange = (self.param_limits[:, 1]-self.param_limits[:, 0])
         # Build the dictionary
         info = {}
-        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z, "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value, "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr, "traindir": self.traindir, "hprior": hprior, "oprior": oprior, "tau_thresh": self.tau_thresh, "use_meant": use_meant, "include_emu": emu_error, "data_power": data_power}}
+        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z, "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value, "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr, "traindir": self.traindir, "hprior": hprior, "oprior": oprior, "sample_on": sample_on, "tau_thresh": self.tau_thresh, "use_meant": use_meant, "include_emu": emu_error, "data_power": data_power}}
         # Each of the parameters has a prior with limits and a proposal width (the proposal covariance matrix
         # is learned, so the value given needs to be small enough for the sampler to get started)
         info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale, 'latex': pnames[i][1]} for i in range(self.ndim)}
+        if sample_on == 'omegam':
+            omegam_lims = [0.14/0.75**2, 0.146/0.65**2]
+            info["params"]["omegam"] = {"prior": {"min": omegam_lims[0], "max": omegam_lims[1]}, "proposal":(omegam_lims[1]-omegam_lims[0])/pscale, "latex": "\\Omega_M", "drop": True}
+            info["params"]["omegamh2"] = {"value": lambda omegam,hub: omegam*hub**2, "min": 0.14, "max": 0.146}
         # Set up the mcmc sampler options (to do seed runs, add the option 'seed': integer between 0 and 2**32 - 1)
         info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True, "learn_proposal_Rminus1_max": 20, "learn_proposal_Rminus1_max_early": 30}}
         return info
@@ -315,7 +328,7 @@ class LikelihoodClass:
         print("----------------------------------------------------- \n")
         assert sampler.get_acceptance_rate() > 0.01, "Acceptance rate very low. Consider decreasing the proposal width by increasing the pscale parameter"
 
-    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=50, include_emu_error=True, test_accept=False, use_meant=None, hprior='none', oprior=False):
+    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=50, include_emu_error=True, test_accept=False, use_meant=None, hprior='none', oprior=False, sample_on='omegamh2'):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
@@ -326,7 +339,7 @@ class LikelihoodClass:
 
         # Construct the "info" dictionary used by Cobaya
         if use_meant is None: use_meant = self.use_meant
-        info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples, use_meant=use_meant, hprior=hprior, oprior=oprior)
+        info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples, use_meant=use_meant, hprior=hprior, oprior=oprior, sample_on=sample_on)
 
         # Test run a fraction of the full chain to check acceptance rate before running full chain
         if test_accept is True:
@@ -416,6 +429,7 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     include_emu: bool = True
     hprior: str = 'none'
     oprior: bool = False
+    sample_on: str = 'omegamh2'
     # Required for Cobaya to correctly parse which parameters are for input
     input_params_prefix: str = ""
 
@@ -430,4 +444,4 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
         # self.input_params is specially recognized by Cobaya (will be the "params" section
         # of the Cobaya dictionary passed to it)
         params = np.array([params_values[p] for p in self.input_params])
-        return self.likelihood(params, include_emu=self.include_emu, data_power=self.data_power, use_meant=self.use_meant, hprior=self.hprior, oprior=self.oprior)
+        return self.likelihood(params, include_emu=self.include_emu, data_power=self.data_power, use_meant=self.use_meant, hprior=self.hprior, oprior=self.oprior, sample_on=self.sample_on)

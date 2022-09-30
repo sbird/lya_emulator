@@ -230,7 +230,7 @@ class LikelihoodClass:
         planck_mean, planck_sigma = 0.1424, 0.001 # Planck arxiv: 1807.06209
         return -((params[oo]-planck_mean)/planck_sigma)**2
 
-    def likelihood(self, params, include_emu=True, data_power=None, hprior='none', oprior=False, use_meant=None):
+    def likelihood(self, params, include_emu=True, data_power=None, hprior='none', oprior=False, use_meant=None, meant_fac=7.5):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix.
         The covariance for the emulator points is assumed to be
@@ -276,7 +276,7 @@ class LikelihoodClass:
             # omit mean flux and flux power data correction parameters
             indi = 0
             if self.mf_slope: indi = 2
-            chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu)
+            chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu)*meant_fac
         chi2 += self.hubble_prior(params, source=hprior)
         if oprior: chi2 += self.omega_prior(params)
         return chi2

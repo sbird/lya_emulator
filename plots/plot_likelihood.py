@@ -12,8 +12,10 @@ from lyaemu.coarse_grid import get_simulation_parameters_s8
 import matplotlib
 matplotlib.use('PDF')
 import matplotlib.pyplot as plt
+from cobaya.yaml import yaml_load_file
 import getdist as gd
 import getdist.plots as gdp
+from getdist.mcsamples import loadMCSamples
 
 def get_k_z(likelihood_instance):
     """Get k and z bins"""
@@ -189,6 +191,68 @@ def single_likelihood_plot(sdir, like, savedir, plot=True, t0=1.):
     if plot is True:
         savefile = os.path.join(savedir, 'corner_'+sname + ".pdf")
         make_plot(chainfile, savefile, true_parameter_values=true_parameter_values, ranges=like.param_limits)
+
+def make_getdist_plot_cobaya(yaml_input, savefile, true_parameter_values=None, pnames=None, ranges=None):
+    """Make a getdist plot"""
+    ticks = {}
+    if pnames is None:
+        #Default emulator parameters
+        pnames = [r"d\tau_0", r"\tau_0", r"n_s", r"A_\mathrm{P} \times 10^9", r"H_S", r"H_A", r"\alpha_q", r"h", r"\omega_M h^2", r"z_{Hi}", "BH"]
+        #Ticks we want to show for each parameter
+        ticks = {pnames[3]: [1.5e-9, 2.0e-9, 2.5e-9], pnames[4]: [-0.6,-0.3, 0.], pnames[5]: [0.5,0.7,1.0,1.3], pnames[6]: [0.66, 0.70, 0.74]}
+    prange = None
+    if ranges is not None:
+        prange = {pnames[i] : ranges[i] for i in range(len(pnames))}
+    true_parameter_values = np.array([0, 1, 0.909120272, 1.85e-09, 4.0, 3.0, 2.1, 7.6])
+    infos = [yaml_load_file(yy) for yy in yaml_input]
+    for ii in infos:
+        ii["params"]["alphaq"]["latex"] = r"\alpha_q"
+        ii["params"]["hireionz"]["latex"] = r"z_{Hi}"
+    chains = [os.path.join(os.path.dirname(yy), ii["output"]) for (yy,ii) in zip(yaml_input, infos)]
+    posterior_MCsamples = [loadMCSamples(os.path.abspath(cc)) for cc in chains]
+    #Adjust the A_P values
+    true_parameter_values[3] *= 1e9
+    for mc in posterior_MCsamples:
+        mc.samples[:,3] *= 1e9
+        mc.setRanges({"Ap": [1e9*mc.getLower("Ap"), 1e9*mc.getUpper("Ap")]})
+
+    print("Sim=",savefile)
+    #Get and print the confidence limits
+    for i in range(len(pnames)):
+        strr = pnames[i]+" 1-sigma, 2-sigma: "
+        for mc in posterior_MCsamples:
+            for j in (0.16, 1-0.16, 0.025, 1-0.025):
+                strr += str(round(mc.confidence(i, j),5)) + " "
+            print(strr)
+    subplot_instance = gdp.getSubplotPlotter()
+#    parameters = ['dtau0', 'tau0', 'ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'bhfeedback']
+#    pnames = [r"d\tau_0", r"\tau_0", r"n_s", r"A_\mathrm{P} \times 10^9", r"H_S", r"H_A", r"\alpha_q", r"h", r"\omega_M h^2", r"z_{Hi}", "BH"]
+    parameters = ['dtau0', 'tau0', 'ns', 'Ap', 'herei', 'heref', 'alphaq'] #, 'hireionz']
+    pnames = [r"d\tau_0", r"\tau_0", r"n_s", r"A_\mathrm{P} \times 10^9", r"H_S", r"H_A", r"\alpha_q"] #, r"z_{Hi}"]
+
+    subplot_instance.triangle_plot(posterior_MCsamples, parameters, filled=True)
+#     colour_array = np.array(['black', 'red', 'magenta', 'green', 'green', 'purple', 'turquoise', 'gray', 'red', 'blue'])
+
+    for pi in range(len(parameters)):
+        for pi2 in range(pi + 1):
+            #Place horizontal and vertical lines for the true point
+            ax = subplot_instance.subplots[pi, pi2]
+            ax.yaxis.label.set_size(16)
+            ax.xaxis.label.set_size(16)
+            #if pi == len(parameters)-1 and pnames[pi2] in ticks:
+                #ax.set_xticks(ticks[pnames[pi2]])
+            #if pi2 == 0 and pnames[pi] in ticks:
+                #ax.set_yticks(ticks[pnames[pi]])
+            ax.axvline(true_parameter_values[pi2], color='gray', ls='--', lw=2)
+            if pi2 < pi:
+                ax.axhline(true_parameter_values[pi], color='gray', ls='--', lw=2)
+                #Plot the emulator points
+#                 if parameter_index > 1:
+#                     ax.scatter(simulation_parameters_latin[:, parameter_index2 - 2], simulation_parameters_latin[:, parameter_index - 2], s=54, color=colour_array[-1], marker='+')
+
+#     legend_labels = ['+ Initial Latin hypercube']
+#     subplot_instance.add_legend(legend_labels, legend_loc='upper right', colored_text=True, figure=True)
+    plt.savefig(savefile)
 
 if __name__ == "__main__":
     sim_rootdir = "simulations2"

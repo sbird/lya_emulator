@@ -290,9 +290,8 @@ class LikelihoodClass:
         if oprior: chi2 += self.omega_prior(params, sample_on=sample_on)
         return chi2
 
-    def make_cobaya_dict(self, *, data_power, burnin, nsamples, hprior='none', oprior=False, use_meant, pscale=50, emu_error=True, sample_on='omegamh2'):
-        """Return a dictionary that can be used to run Cobaya MCMC sampling."""
-        # Parameter names
+    def get_pnames(self):
+        """Get a list of the parameter names"""
         pnames = self.emulator.print_pnames()
         # Add mean flux parameters
         if self.mf_slope:
@@ -300,6 +299,12 @@ class LikelihoodClass:
         # Add DLA, SiIII correction parameters
         if len(self.data_params) != 0:
             pnames = pnames + self.dnames
+        return pnames
+
+    def make_cobaya_dict(self, *, data_power, burnin, nsamples, hprior='none', oprior=False, use_meant, pscale=50, emu_error=True, sample_on='omegamh2'):
+        """Return a dictionary that can be used to run Cobaya MCMC sampling."""
+        # Parameter names
+        pnames = self.get_pnames()
         # Get parameter ranges for use as a rough estimate of proposal pdf width
         prange = (self.param_limits[:, 1]-self.param_limits[:, 0])
         # Build the dictionary

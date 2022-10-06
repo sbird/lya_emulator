@@ -2,6 +2,8 @@
 # from datetime import datetime
 import copy as cp
 import numpy as np
+import os
+import json
 from .latin_hypercube import map_to_unit_cube,map_to_unit_cube_list
 #Make sure that we don't accidentally
 #get another backend when we import GPy.
@@ -10,25 +12,24 @@ matplotlib.use('PDF')
 import GPy
 
 class MultiBinGP:
-    """A wrapper around the emulator that constructs a separate emulator for each bin.
+    """A wrapper around the emulator that constructs a separate emulator for each redshift bin.
     Each one has a separate mean flux parameter.
     The t0 parameter fed to the emulator should be constant factors."""
-    def __init__(self, *, params, kf, powers, param_limits, singleGP=None):
+    def __init__(self, *, params, kf, powers, param_limits, zout, singleGP=None, traindir=None):
         #Build an emulator for each redshift separately. This means that the
         #mean flux for each bin can be separated.
         if singleGP is None:
             singleGP = SkLearnGP
-        self.kf = kf
-        self.nk = np.size(kf)
+        self.kf, self.nk = kf, np.size(kf)
         assert np.shape(powers)[1] % self.nk == 0
-        self.nz = int(np.shape(powers)[1]/self.nk)
-        gp = lambda i: singleGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits = param_limits)
+        self.nz = zout.size
+        gp = lambda i: singleGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits=param_limits, traindir=traindir, zbin=zout[i])
         print('Number of redshifts for emulator generation=%d nk= %d' % (self.nz, self.nk))
         self.gps = [gp(i) for i in range(self.nz)]
         self.powers = powers
         self.params = params
 
-    def predict(self,params, tau0_factors = None):
+    def predict(self, params, tau0_factors=None):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         std = np.zeros([1,self.nk*self.nz])
         means = np.zeros([1,self.nk*self.nz])
@@ -56,10 +57,12 @@ class SkLearnGP:
        Parameters: params is a list of parameter vectors.
                    powers is a list of flux power spectra (same shape as params).
                    param_limits is a list of parameter limits (shape 2,params)."""
-    def __init__(self, *, params, powers,param_limits):
+    def __init__(self, *, params, powers, param_limits, zbin, traindir=None):
         self.params = params
         self.param_limits = param_limits
         self.intol = 1e-4
+        self.traindir = traindir
+        self.zbin = np.round(zbin, 1)
         #Should we test the built emulator?
         #Turn this off because our emulator is now so large
         #that it always fails because of Gaussianity!
@@ -80,7 +83,6 @@ class SkLearnGP:
         for i in range(nparams):
             assert np.max(params_cube[:,i]) > 0.8
             assert np.min(params_cube[:,i]) < 0.2
-        #print('Normalised parameter values =', params_cube)
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
@@ -93,21 +95,26 @@ class SkLearnGP:
         #they may have very different physical properties.
         kernel = GPy.kern.Linear(nparams)
         kernel += GPy.kern.RBF(nparams)
-
-        #Try rational quadratic kernel
-        #kernel += GPy.kern.RatQuad(nparams)
-
-        #noutput = np.shape(normspectra)[1]
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
-
-        status = self.gp.optimize(messages=False) #True
-        #print('Gradients of model hyperparameters [after optimisation] =', self.gp.gradient)
-        #Let's check that hyperparameter optimisation is converged
-        if status.status != 'Converged':
-            print("Restarting optimization")
-            self.gp.optimize_restarts(num_restarts=10)
-        #print(self.gp)
-        #print('Gradients of model hyperparameters [after second optimisation (x 10)] =', self.gp.gradient)
+        try:
+            zbin_file = os.path.join(os.path.abspath(self.traindir), 'zbin'+str(self.zbin))
+            load_gp = json.load(open(zbin_file+'.json', 'r'))
+            self.gp.from_dict(load_gp)
+            print('Loading pre-trained GP for z:'+str(self.zbin))
+        except:
+            print('Optimizing GP for z:'+str(self.zbin))
+            status = self.gp.optimize(messages=False) #True
+            #print('Gradients of model hyperparameters [after optimisation] =', self.gp.gradient)
+            #Let's check that hyperparameter optimisation is converged
+            if status.status != 'Converged':
+                print("Restarting optimization")
+                self.gp.optimize_restarts(num_restarts=10)
+            #print('Gradients of model hyperparameters [after second optimisation (x 10)] =', self.gp.gradient)
+            if self.traindir != None: # if a traindir was requested, but not populated
+                print('Saving GP to', zbin_file)
+                if not os.path.exists(self.traindir): os.makedirs(self.traindir)
+                with open(zbin_file+'.json', 'w') as jfile:
+                    json.dump(self.gp.to_dict(), jfile)
 
     def _check_interp(self, flux_vectors):
         """Check we reproduce the input"""

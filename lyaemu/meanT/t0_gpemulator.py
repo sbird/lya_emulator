@@ -4,35 +4,16 @@ from ..latin_hypercube import map_to_unit_cube, map_to_unit_cube_list
 import GPy
 
 class T0MultiBinGP:
-    """A wrapper around the emulator that constructs a separate emulator for each redshift.
+    """A wrapper around GPy that constructs an emulator for the mean temperature over all redshifts.
         Parameters: params is a list of parameter vectors.
-                    temps is a list of mean temperatures (shape nparams, nz).
+                    temps is a list of mean temperatures (shape nsims, nz).
                     param_limits is a list of parameter limits (shape params, 2)."""
     def __init__(self, *, params, temps, param_limits):
-        # Build an emulator for each redshift separately.
-        self.nz = np.shape(temps)[1]
-        gp = lambda i: T0SingleBinGP(params=params, temps=temps[:,i], param_limits=param_limits)
-        print('Number of redshifts for emulator generation=%d' % (self.nz))
-        self.gps = [gp(i) for i in range(self.nz)]
         self.temps = temps
         self.params = params
-
-    def predict(self, params):
-        """Get the predicted temperatures for a parameter set."""
-        std = np.zeros(self.nz)
-        means = np.zeros(self.nz)
-        for i, gp in enumerate(self.gps):
-            m, s = gp.predict(params)
-            means[i] = m
-            std[i] = s
-        return means, std
-
-class T0SingleBinGP:
-    """An emulator wrapping a GP code for a single redshift."""
-    def __init__(self, *, params, temps, param_limits):
-        self.params = params
         self.param_limits = param_limits
-        self._get_interp(mean_temps=temps.reshape(-1, 1))
+        print('Number of redshifts for emulator generation=%d' % (np.shape(temps)[1]))
+        self._get_interp(mean_temps=temps)
 
     def _get_interp(self, mean_temps):
         """Build the GP interpolator."""
@@ -40,8 +21,7 @@ class T0SingleBinGP:
         nparams = np.shape(self.params)[1]
         param_cube = map_to_unit_cube_list(self.params, self.param_limits)
         # Ensure that the GP prior (a zero-mean input) is close to true.
-        medind = np.argsort(mean_temps)[np.size(mean_temps)//2]
-        self.scalefactors = mean_temps[medind]
+        self.scalefactors = np.mean(mean_temps, axis=0)
         normtemps = mean_temps/self.scalefactors - 1.
         # Standard squared-exponential kernel with a different length scale for each
         # parameter, as they may have very different physical properties.

@@ -18,7 +18,7 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         #super generates the helium reionization table
         super().__init__(**kwargs)
         #self.metalcool = "cooling_metal_UVB"
-        self.metalcool = ""
+        self.metalcool = None
         self.bhfeedback = bhfeedback
         self.windsigma = windsigma
 
@@ -28,7 +28,8 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         config['StarformationCriterion'] = 'density' #Note no h2 star formation! Different from ASTERIX.
         config['WindModel'] = 'ofjt10'
         config['WindOn'] = 1
-        config['MetalCoolFile'] = self.metalcool
+        if self.metalcool:
+            config['MetalCoolFile'] = self.metalcool
         #Wind speed normalisation
         config['WindSigma0'] = 353.0 #km/s
         #Wind speed: controls the strength of the supernova feedback. Default is 3.7
@@ -43,11 +44,16 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         config['DensityKernelType'] = 'cubic'
         config['DensityIndependentSphOn'] = 1
         config['OutputPotential'] = 0
+        #Use Gadget-4 gravity. Default now.
+        config['SplitGravityTimestepsOn'] = 1
         #Dynamic friction models for BH
         config['BlackHoleOn'] = 1
+        #Disable BH kinetic feedback for now.
+        config['BlackHoleKineticOn'] = 0
         config['BlackHoleRepositionEnabled'] = 0
         config['BH_DRAG'] = 0
-        config['BH_DynFrictionMethod'] = 2
+        #DF from stars only
+        config['BH_DynFrictionMethod'] = 1
         #Black hole feedback model
         config['BlackHoleFeedbackFactor'] = self.bhfeedback
         config['BlackHoleFeedbackMethod'] = "spline | mass"
@@ -63,7 +69,6 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         DMmass = (self.omega0 - self.omegab) * omegatomass / self.npart**3
         barmass = self.omegab * omegatomass / self.npart**3
         starmass = barmass/ config['Generations']
-        config['SeedBHDynMass'] = 0.0114678
         #This is set by the smallest observed SMBH so leave it alone.
         config['MinFoFMassForNewSeed'] = 5
         #This is basically "any stars" so leave it alone
@@ -76,8 +81,6 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         #Accretion scaling. Also affects feedback strength.
         config['BlackHoleAccretionFactor'] = 100.0
         config['BlackHoleEddingtonFactor'] = 2.1
-        #This may help convergence a little.
-        config['BlackHoleFeedbackRadius'] = 3.
         return self._heii_model_params(config)
 
     def generate_times(self):
@@ -89,6 +92,7 @@ class GalaxySim(lyasimulation.LymanAlphaSim):
         """Overload the genic file to also generate an HI table."""
         (genic_output, genic_param) = super().genicfile(camb_output)
         #Copy the metal cooling data
-        metalcoolfile = os.path.join(self.outdir, self.metalcool)
-        shutil.copytree(os.path.join(os.path.join(self.gadget_dir, "examples"), self.metalcool), metalcoolfile)
+        if self.metalcool:
+            metalcoolfile = os.path.join(self.outdir, self.metalcool)
+            shutil.copytree(os.path.join(os.path.join(self.gadget_dir, "examples"), self.metalcool), metalcoolfile)
         return (genic_output, genic_param)

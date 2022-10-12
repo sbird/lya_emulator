@@ -157,44 +157,38 @@ class BIOClass(ClusterClass):
     This has 32 cores per node, shared memory of 128GB per node.
     Ask for complete nodes.
     Uses SLURM."""
-    def __init__(self, *args, nproc=256,timelimit=2,**kwargs):
+    def __init__(self, *args, nproc=4,timelimit=2,**kwargs):
         #Complete nodes!
-        assert nproc % 32 == 0
         super().__init__(*args, nproc=nproc,timelimit=timelimit, **kwargs)
-        self.memory = 4
+        self.memory = 230
 
-    def _queue_directive(self, name, timelimit, nproc=256, prefix="#SBATCH"):
+    def _queue_directive(self, name, timelimit, nproc=4, prefix="#SBATCH"):
         """Generate mpi_submit with coma specific parts"""
         _ = timelimit
         qstring = prefix+" --partition=short\n"
         qstring += prefix+" --job-name="+name+"\n"
         qstring += prefix+" --time="+self.timestring(timelimit)+"\n"
-        qstring += prefix+" --nodes="+str(int(nproc/32))+"\n"
+        qstring += prefix+" --nodes="+str(int(nproc))+"\n"
         #Number of tasks (processes) per node
-        qstring += prefix+" --ntasks-per-node=32\n"
+        qstring += prefix+" --ntasks-per-node=2\n"
         #Number of cpus (threads) per task (process)
-        qstring += prefix+" --cpus-per-task=1\n"
-        #Max 128 GB per node (24 cores)
-        qstring += prefix+" --mem-per-cpu=4G\n"
+        qstring += prefix+" --cpus-per-task=32\n"
+        #Max memory is 0.6 * 512 per node, but there is a job maximum of 1TB and 4 nodes.
+        #So per node this value should be a little less than 250 GB.
+        qstring += prefix+" --mem="+str(self.memory)+"G\n"
         qstring += prefix+" --mail-type=end\n"
         qstring += prefix+" --mail-user="+self.email+"\n"
         return qstring
 
     def _mpi_program(self, command):
-        """String for MPI program to execute.
-        Note that this assumes you aren't using threads!"""
-        #Change to current directory
-        qstring = "export OMP_NUM_THREADS=1\n"
-        #This is for threads
-        #qstring += "export OMP_NUM_THREADS = $SLURM_CPUS_PER_TASK\n"
-        #Adjust for thread/proc balance per socket.
-        #qstring += "mpirun --map-by ppr:3:socket:PE=4 "+self.gadgetexe+" "+self.gadgetparam+"\n"
-        qstring += "mpirun --map-by core "+command+"\n"
+        """String for MPI program to execute."""
+        qstring = "export OMP_NUM_THREADS=32\n"
+        qstring += "mpirun"+command+"\n"
         return qstring
 
     def cluster_runtime(self):
         """Runtime options for cluster. Here memory."""
-        return {'MaxMemSizePerNode': 4 * 32 * 950}
+        return {'MaxMemSizePerNode': self.memory * 1024}
 
     def cluster_optimize(self):
         """Compiler optimisation options for a specific cluster.
@@ -208,10 +202,10 @@ class BIOClass(ClusterClass):
         name = os.path.basename(os.path.normpath(outdir))
         with open(os.path.join(outdir, "spectra_submit"),'w') as mpis:
             mpis.write("#!/bin/bash\n")
-            mpis.write("""#SBATCH --partition=short\n#SBATCH --job-name="""+pdir+"\n")
+            mpis.write("""#SBATCH --partition=short\n#SBATCH --job-name="""+name+"\n")
             mpis.write("""#SBATCH --time=1:55:00\n#SBATCH --nodes=1\n#SBATCH --ntasks-per-node=1\n#SBATCH --cpus-per-task=32\n#SBATCH --mem-per-cpu=4G\n""")
             mpis.write( """#SBATCH --mail-type=end\n#SBATCH --mail-user=sbird@ucr.edu\nexport OMP_NUM_THREADS=32\n""")
-            mpis.write("python flux_power.py "+pdir+"/output\n")
+            mpis.write("python flux_power.py "+outdir+"/output\n")
 
 class StampedeClass(ClusterClass):
     """Subclassed for Stampede2's Skylake nodes.
@@ -220,7 +214,7 @@ class StampedeClass(ClusterClass):
     def __init__(self, *args, nproc=8,timelimit=3,**kwargs):
         super().__init__(*args, nproc=nproc,timelimit=timelimit, **kwargs)
 
-    def _queue_directive(self, name, timelimit, nproc=8, prefix="#SBATCH",ntasks=2):
+    def _queue_directive(self, name, timelimit, nproc=8, prefix="#SBATCH", ntasks=2):
         """Generate mpi_submit with stampede specific parts"""
         _ = timelimit
         qstring = prefix+" --partition=skx-normal\n"

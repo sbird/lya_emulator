@@ -211,6 +211,7 @@ class LikelihoodClass:
 
     def hubble_prior(self, params, source='none'):
         """Return a prior on little h (either Planck or SH0ES)"""
+        if source == 'none': return 0
         hh = self.emulator.param_names['hub']
         if self.mf_slope:
             hh = hh + 2
@@ -236,8 +237,7 @@ class LikelihoodClass:
             omega_m = params[oo]/params[oo-1]**2
             planck_mean, planck_sigma = 0.315, 0.007
             return -((omega_m-planck_mean)/planck_sigma)**2
-        else:
-            return 0
+        else: return 0
 
     def likelihood(self, params, include_emu=True, data_power=None, hprior='none', oprior=False, sample_on='omegamh2', use_meant=None, meant_fac=7.5):
         """A simple likelihood function for the Lyman-alpha forest.

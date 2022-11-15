@@ -85,7 +85,7 @@ def search_next(fps_file, t0_file, json_file, prev_ind, max_z=5.4, min_z=2.0):
     for j, selind in enumerate(all_combinations):
         # get the two emulators (trained using the selind simulations
         # to predict the ~selind simulations)
-        fps_emu = gpemu.MultiBinGP(params=params[selind, :], kf=kfmpc, powers=flux_power[selind, :], param_limits=param_limits)
+        fps_emu = gpemu.MultiBinGP(params=params[selind, :], kf=kfmpc, powers=flux_power[selind, :], param_limits=param_limits, zout=zout[z_rng])
         t0_emu = t0gpemu.T0MultiBinGP(params=params[selind, :], temps=meant[selind, :], param_limits=param_limits)
 
         # make predictions for the rest of the simulations

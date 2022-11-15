@@ -48,6 +48,7 @@ class T0LikelihoodClass:
             self.error = np.append(high_z_gaikwad[2], self.error)
         zinds = np.intersect1d(np.round(self.obs_z, 2), np.round(self.zout, 2), return_indices=True)[2][::-1]
         self.zout = self.zout[zinds]
+        self.obs_z, self.meanT, self.error = self.obs_z[zinds], self.meanT[zinds], self.error[zinds]
 
         self.emulator = t0_coarse_grid.T0Emulator(basedir, tau_thresh=tau_thresh, max_z=max_z, min_z=min_z)
         # Load the parameters, etc. associated with this emulator (overwrite defaults)
@@ -99,6 +100,7 @@ class T0LikelihoodClass:
 
     def hubble_prior(self, params, source='none'):
         """Return a prior on little h (either Planck or SH0ES)"""
+        if source == 'none': return 0
         hh = self.emulator.param_names['hub']
         if source == 'shoes':
             shoes_mean, shoes_sigma = 0.7304, 0.0104 # SH0ES arxiv: 2112.04510

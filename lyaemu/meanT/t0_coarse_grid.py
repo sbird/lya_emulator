@@ -10,7 +10,7 @@ from .. import tempdens
 def get_latex(key):
     """Get a latex name if it exists, otherwise return the key."""
     #Names for pretty-printing some parameters in Latex
-    print_names = { 'ns': r'n_\mathrm{s}', 'Ap': r'A_\mathrm{P}', 'herei': r'z_\mathrm{He i}', 'heref': r'z_\mathrm{He f}', 'hub':'h', 'tau0':r'\tau_0', 'dtau0':r'd\tau_0'}
+    print_names = { 'ns': r'n_\mathrm{s}', 'Ap': r'A_\mathrm{P}', 'herei': r'z_\mathrm{He i}', 'heref': r'z_\mathrm{He f}', 'hub':'h', 'tau0':r'\tau_0', 'dtau0':r'd\tau_0', 'alphaq':r'\alpha_q', 'omegamh2':r'\Omega_M h^2', 'hireionz':'z_{Hi}', 'bhfeedback':'\epsilon_{AGN}'}
     try:
         return print_names[key]
     except KeyError:
@@ -76,6 +76,23 @@ class T0Emulator:
         aparams, meanT = self.get_meanT(max_z=max_z, min_z=min_z, req_z=req_z)
         plimits = self.get_param_limits()
         gp = t0_gpemulator.T0MultiBinGP(params=aparams, temps=meanT, param_limits=plimits)
+        return gp
+
+    def get_MFemulator(self, HRbasedir, max_z=5.4, min_z=2.2, zinds=None):
+        """ Build a multi-fidelity emulator for T0 from simulations."""
+        if zinds is not None: req_z = self.myspec.zout[zinds]
+        else: req_z = None
+        # get lower resolution parameters & temperatures
+        self.load()
+        LRaparams, LRmeanT = self.get_meanT(max_z=max_z, min_z=min_z, req_z=req_z)
+        # get higher resolution parameters & temperatures
+        HRemu = T0Emulator(HRbasedir, max_z=max_z, min_z=min_z, tau_thresh=self.tau_thresh)
+        HRemu.load()
+        HRaparams, HRmeanT = HRemu.get_meanT(max_z=max_z, min_z=min_z, req_z=req_z)
+        # check parameter limits and get/train the multi-fidelity GP
+        assert np.all(self.get_param_limits() == HRemu.get_param_limits())
+        plimits = self.get_param_limits()
+        gp = t0_gpemulator.T0MultiBinAR1(LRparams=LRaparams, HRparams=HRaparams, LRtemps=LRmeanT, HRtemps=HRmeanT, param_limits=plimits)
         return gp
 
     def get_meanT(self, filename="emulator_meanT.hdf5", max_z=5.4, min_z=2.0, req_z=None):

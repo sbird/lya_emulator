@@ -23,10 +23,10 @@ def load_data(datafile, index, max_z=3.8, min_z=2.0, tau_thresh=None):
 
 class T0LikelihoodClass:
     """Class to contain likelihood and MCMC sampling computations."""
-    def __init__(self, basedir, max_z=3.8, min_z=2.0, optimise_GP=True, json_file='T0emulator_params.json', tau_thresh=None, dataset='fps'):
+    def __init__(self, basedir, max_z=3.8, min_z=2.2, optimise_GP=True, json_file='T0emulator_params.json', tau_thresh=None, dataset='fps', HRbasedir=None):
         # Needed for Cobaya dictionary construction
         self.basedir, self.json_file = basedir, json_file
-        self.tau_thresh = tau_thresh
+        self.tau_thresh, self.HRbasedir = tau_thresh, HRbasedir
         self.max_z, self.min_z = max_z, min_z
         myspec = flux_power.MySpectra(max_z=max_z, min_z=min_z)
         self.zout = myspec.zout
@@ -65,7 +65,10 @@ class T0LikelihoodClass:
             if rank == 0:
                 #Build the emulator only on rank 0 and broadcast
                 print('Beginning to generate emulator at', str(datetime.now()))
-                gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z, zinds=zinds)
+                if HRbasedir is not None:
+                    gpemu = self.emulator.get_MFemulator(HRbasedir=HRbasedir, max_z=max_z, min_z=min_z, zinds=zinds)
+                else:
+                    gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z, zinds=zinds)
                 print('Finished generating emulator at', str(datetime.now()))
             self.gpemu = comm.bcast(gpemu, root = 0)
 
@@ -124,7 +127,7 @@ class T0LikelihoodClass:
         prange = (self.param_limits[:, 1]-self.param_limits[:, 0])
         # Build the dictionary
         info = {}
-        info["likelihood"] = {__name__+".T0CobayaLikelihoodClass": {"basedir": self.basedir, "max_z": self.max_z, "min_z": self.min_z, "optimise_GP": True, "json_file": self.json_file, "tau_thresh": self.tau_thresh, "hprior": hprior, "oprior": oprior, "data_meanT": data_meanT, "dataset": dataset}}
+        info["likelihood"] = {__name__+".T0CobayaLikelihoodClass": {"basedir": self.basedir, "max_z": self.max_z, "min_z": self.min_z, "optimise_GP": True, "json_file": self.json_file, "tau_thresh": self.tau_thresh, "HRbasedir":self.HRbasedir, "hprior": hprior, "oprior": oprior, "data_meanT": data_meanT, "dataset": dataset}}
         # Each of the parameters has a prior with limits and a proposal width (the proposal covariance matrix
         # is learned, so the value given needs to be small enough for the sampler to get started)
         info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale, 'latex': pnames[i][1]} for i in range(self.ndim)}
@@ -188,6 +191,7 @@ class T0CobayaLikelihoodClass(Likelihood, T0LikelihoodClass):
     json_file: str = 'T0emulator_params.json'
     tau_thresh: int = None
     dataset: str = 'fps'
+    HRbasedir: bool = False
     data_meanT: float = None
     hprior: str = 'none'
     oprior: bool = False
@@ -199,7 +203,7 @@ class T0CobayaLikelihoodClass(Likelihood, T0LikelihoodClass):
         Gets the emulator by loading the flux power spectra from the simulations."""
         T0LikelihoodClass.__init__(self, self.basedir, max_z=self.max_z, min_z=self.min_z,
                          optimise_GP=self.optimise_GP, json_file=self.json_file,
-                         tau_thresh=self.tau_thresh, dataset=self.dataset)
+                         tau_thresh=self.tau_thresh, dataset=self.dataset, HRbasedir=self.HRbasedir)
 
     def logp(self, **params_values):
         """Cobaya-compatible call to the base class likelihood function.

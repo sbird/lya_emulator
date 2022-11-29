@@ -84,15 +84,14 @@ class T0Emulator:
         else: req_z = None
         # get lower resolution parameters & temperatures
         self.load()
-        LRaparams, LRmeanT = self.get_meanT(max_z=max_z, min_z=min_z, req_z=req_z)
+        LRparams, LRmeanT = self.get_meanT(max_z=max_z, min_z=min_z, req_z=req_z)
         # get higher resolution parameters & temperatures
         HRemu = T0Emulator(HRbasedir, max_z=max_z, min_z=min_z, tau_thresh=self.tau_thresh)
         HRemu.load()
-        HRaparams, HRmeanT = HRemu.get_meanT(max_z=max_z, min_z=min_z, req_z=req_z)
+        HRparams, HRmeanT = HRemu.get_meanT(max_z=max_z, min_z=min_z, req_z=req_z)
         # check parameter limits and get/train the multi-fidelity GP
         assert np.all(self.get_param_limits() == HRemu.get_param_limits())
-        plimits = self.get_param_limits()
-        gp = t0_gpemulator.T0MultiBinAR1(LRparams=LRaparams, HRparams=HRaparams, LRtemps=LRmeanT, HRtemps=HRmeanT, param_limits=plimits)
+        gp = t0_gpemulator.T0MultiBinAR1(LRparams=LRparams, HRparams=HRparams, LRtemps=LRmeanT, HRtemps=HRmeanT, param_limits=self.get_param_limits())
         return gp
 
     def get_meanT(self, filename="emulator_meanT.hdf5", max_z=5.4, min_z=2.0, req_z=None):

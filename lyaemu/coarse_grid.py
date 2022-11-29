@@ -314,15 +314,27 @@ class Emulator:
             2. Each flux power spectrum in the set is rescaled to the same mean flux.
             3.
         """
-        gp = self._get_custom_emulator(emuobj=None, max_z=max_z, min_z=min_z, traindir=traindir)
-        return gp
-
-    def _get_custom_emulator(self, *, emuobj, max_z=4.2, min_z=2.0, traindir=None):
-        """Helper to allow supporting different emulators."""
         aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
         plimits = self.get_param_limits(include_dense=True)
         nz = int(flux_vectors.shape[1]/kf.size)
-        gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers=flux_vectors, param_limits=plimits, singleGP=emuobj, zout=np.linspace(max_z, min_z, nz), traindir=traindir)
+        gp = gpemulator.MultiBinGP(params=aparams, kf=kf, powers=flux_vectors, param_limits=plimits, zout=np.linspace(max_z, min_z, nz), traindir=traindir)
+        return gp
+
+    def get_MFemulator(self, HRbasedir, max_z=4.6, min_z=2.2, traindir=None):
+        """Build a multi-fidelity emulator for the flux power spectrum."""
+        # get lower resolution parameters & temperatures
+        self.load()
+        LRparams, kf, LRfps = self.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
+        nz = int(LRfps.shape[1]/kf.size)
+        # get higher resolution parameters & temperatures
+        HRemu = Emulator(HRbasedir, mf=self.mf, kf=self.kf, tau_thresh=self.tau_thresh)
+        HRemu.load()
+        HRparams, HRkf, HRfps = HRemu.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
+        # check parameter limits, k-bins, number of redshifts, and get/train the multi-fidelity GP
+        assert np.all(self.get_param_limits(include_dense=True) == HRemu.get_param_limits(include_dense=True))
+        assert np.all(kf - HRkf < 1e-3)
+        assert nz == int(HRfps.shape[1]/HRkf.size)
+        gp = gpemulator.MultiBinGP(params=LRparams, HRdat=[HRparams, HRfps], powers=LRfps, param_limits=self.get_param_limits(include_dense=True), kf=kf, zout=np.linspace(max_z, min_z, nz), traindir=traindir)
         return gp
 
     def get_flux_vectors(self, max_z=4.2, min_z=2.0, kfunits="kms"):
@@ -334,12 +346,15 @@ class Emulator:
         aparams = pvals
         #Note this gets tau_0 as a linear scale factor from the observed power law
         dpvals = self.mf.get_params()
-        nuggets = np.zeros_like(pvals[:,0])
         #Savefile prefix
         mfc = "cc"
         if dpvals is not None:
             #Add a small offset to the mean flux in each simulation to improve support
-            nuggets = np.arange(nsims)/nsims * (dpvals[-1] - dpvals[0])/(np.size(dpvals)+1)
+            if nsims > 2:
+                nuggets = np.arange(nsims)/nsims * (dpvals[-1] - dpvals[0])/(np.size(dpvals)+1)
+            else:
+                nuggets = np.array([0.03735206, 0.05433026])
+            # nuggets = (pvals[:,0]-self.param_limits[0,0])/(self.param_limits[0,1]-self.param_limits[0,0])
             newdp = dpvals[0] + (dpvals-dpvals[0]) / (np.size(dpvals)+1) * np.size(dpvals)
             #Make sure we don't overflow the parameter limits
             assert (newdp[-1] + nuggets[-1] < dpvals[-1]) and (newdp[0] + nuggets[0] >= dpvals[0])

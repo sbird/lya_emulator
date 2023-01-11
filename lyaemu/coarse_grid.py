@@ -50,7 +50,7 @@ class Emulator:
                                                       # 4.0 is default, we use a linear history with 3.5-4.5
                                           [2.6, 3.2], # heref: redshift at which helium reionization finishes. 2.8 is default.
                                                       # Thermal history suggests late, HeII Lyman alpha suggests earlier.
-                                          [1.6, 2.5], # alphaq: quasar spectral index. 1 - 2.5 Controls IGM temperature.
+                                          [1.3, 2.5], # alphaq: quasar spectral index. 1 - 2.5 Controls IGM temperature.
                                           [0.65, 0.75], # hub: hubble constant (also changes omega_M)
                                           [0.14, 0.146],# omegam h^2: We fix omega_m h^2 = 0.143+-0.001 (Planck 2018 best-fit) and vary omega_m and h^2 to match it.
                                                         # h^2 itself has little effect on the forest.
@@ -326,10 +326,14 @@ class Emulator:
         self.load()
         LRparams, kf, LRfps = self.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
         nz = int(LRfps.shape[1]/kf.size)
+        # kf = kf[:51]
+        # LRfps = LRfps.reshape(440,13,102)[:,:,:51].reshape(440,663)
         # get higher resolution parameters & temperatures
         HRemu = Emulator(HRbasedir, mf=self.mf, kf=self.kf, tau_thresh=self.tau_thresh)
         HRemu.load()
         HRparams, HRkf, HRfps = HRemu.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
+        # HRkf = HRkf[:51]
+        # HRfps = HRfps.reshape(20,13,102)[:,:,:51].reshape(20,663)
         # check parameter limits, k-bins, number of redshifts, and get/train the multi-fidelity GP
         assert np.all(self.get_param_limits(include_dense=True) == HRemu.get_param_limits(include_dense=True))
         assert np.all(kf - HRkf < 1e-3)
@@ -349,17 +353,10 @@ class Emulator:
         #Savefile prefix
         mfc = "cc"
         if dpvals is not None:
-            #Add a small offset to the mean flux in each simulation to improve support
-            if nsims > 2:
-                nuggets = np.arange(nsims)/nsims * (dpvals[-1] - dpvals[0])/(np.size(dpvals)+1)
-            else:
-                nuggets = np.array([0.03735206, 0.05433026])
-            # nuggets = (pvals[:,0]-self.param_limits[0,0])/(self.param_limits[0,1]-self.param_limits[0,0])
             newdp = dpvals[0] + (dpvals-dpvals[0]) / (np.size(dpvals)+1) * np.size(dpvals)
             #Make sure we don't overflow the parameter limits
-            assert (newdp[-1] + nuggets[-1] < dpvals[-1]) and (newdp[0] + nuggets[0] >= dpvals[0])
             dpvals = newdp
-            aparams = np.array([np.concatenate([dp+nuggets[i],pvals[i]]) for dp in dpvals for i in range(nsims)])
+            aparams = np.array([np.concatenate([dp, pvals[i]]) for dp in dpvals for i in range(nsims)])
             mfc = "mf"
         try:
             kfmpc, kfkms, flux_vectors = self.load_flux_vectors(aparams, mfc=mfc)
@@ -369,11 +366,11 @@ class Emulator:
             powers = [self._get_fv(pp) for pp in pvals]
             mef = lambda pp: self.mf.get_mean_flux(self.myspec.zout, params=pp)[0]
             if dpvals is not None:
-                flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes = mef(dp+nuggets[i]), tau_thresh=self.tau_thresh) for dp in dpvals for i in range(nsims)])
+                flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes=mef(dp), tau_thresh=self.tau_thresh) for dp in dpvals for i in range(nsims)])
                 #'natively' binned k values in km/s units as a function of redshift
                 kfkms = [ps.get_kf_kms() for _ in dpvals for ps in powers]
             else:
-                flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes = mef(dpvals), tau_thresh=self.tau_thresh) for i in range(nsims)])
+                flux_vectors = np.array([powers[i].get_power_native_binning(mean_fluxes=mef(dpvals), tau_thresh=self.tau_thresh) for i in range(nsims)])
                 #'natively' binned k values in km/s units as a function of redshift
                 kfkms = [ps.get_kf_kms() for ps in powers]
             #Same in all boxes

@@ -77,7 +77,7 @@ class T0LikelihoodClass:
         predicted, std = self.gpemu.predict(np.array(params).reshape(1, -1))
         return predicted, std
 
-    def likelihood(self, params, data_meanT=None, include_emu=True, hprior='none', oprior=False):
+    def likelihood(self, params, data_meanT=None, include_emu=True, hprior='none', oprior=False, sample_on='omegamh2'):
         """A simple likelihood function for the mean temperature."""
         # Default to use is Gaikwad data
         if data_meanT is None:
@@ -96,7 +96,7 @@ class T0LikelihoodClass:
             error = data_error**2 + std**2
         chi2 = -np.sum(diff**2/(2*error) + 0.5*np.log(error))
         chi2 += self.hubble_prior(params, source=hprior)
-        if oprior: chi2 += self.omega_prior(params)
+        if oprior: chi2 += self.omega_prior(params, sample_on=sample_on)
         assert 0 > chi2 > -2**31
         assert not np.isnan(chi2)
         return chi2
@@ -113,13 +113,21 @@ class T0LikelihoodClass:
             return -((params[hh]-planck_mean)/planck_sigma)**2
         else: return 0
 
-    def omega_prior(self, params):
-        """Return a prior on Omega_m h^2 (Planck 2018)"""
+    def omega_prior(self, params, sample_on='omegamh2'):
+        """Return a prior on Omega_m h^2 or Omega_m (Planck 2018)"""
+        # values from Planck: arxiv 1807.06209
         oo = self.emulator.param_names['omegamh2']
-        planck_mean, planck_sigma = 0.1424, 0.001 # Planck arxiv: 1807.06209
-        return -((params[oo]-planck_mean)/planck_sigma)**2
+        if sample_on == 'omegamh2':
+            planck_mean, planck_sigma = 0.1424, 0.001
+            # planck_mean, planck_sigma = 0.315*0.674**2, 0.0035
+            return -((params[oo]-planck_mean)/planck_sigma)**2
+        elif sample_on == 'omegam':
+            omega_m = params[oo]/params[oo-1]**2
+            planck_mean, planck_sigma = 0.315, 0.007
+            return -((omega_m-planck_mean)/planck_sigma)**2
+        else: return 0
 
-    def make_cobaya_dict(self, *, data_meanT, burnin, nsamples, dataset, hprior='none', oprior=False, pscale=50):
+    def make_cobaya_dict(self, *, data_meanT, burnin, nsamples, dataset, hprior='none', oprior=False, sample_on='omegamh2', pscale=50):
         """Return a dictionary that can be used to run Cobaya MCMC sampling."""
         # Parameter names
         pnames = self.emulator.print_pnames()
@@ -127,10 +135,14 @@ class T0LikelihoodClass:
         prange = (self.param_limits[:, 1]-self.param_limits[:, 0])
         # Build the dictionary
         info = {}
-        info["likelihood"] = {__name__+".T0CobayaLikelihoodClass": {"basedir": self.basedir, "max_z": self.max_z, "min_z": self.min_z, "optimise_GP": True, "json_file": self.json_file, "tau_thresh": self.tau_thresh, "HRbasedir":self.HRbasedir, "hprior": hprior, "oprior": oprior, "data_meanT": data_meanT, "dataset": dataset}}
+        info["likelihood"] = {__name__+".T0CobayaLikelihoodClass": {"basedir": self.basedir, "max_z": self.max_z, "min_z": self.min_z, "optimise_GP": True, "json_file": self.json_file, "tau_thresh": self.tau_thresh, "HRbasedir":self.HRbasedir, "hprior": hprior, "oprior": oprior, "sample_on": sample_on, "data_meanT": data_meanT, "dataset": dataset}}
         # Each of the parameters has a prior with limits and a proposal width (the proposal covariance matrix
         # is learned, so the value given needs to be small enough for the sampler to get started)
         info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale, 'latex': pnames[i][1]} for i in range(self.ndim)}
+        if sample_on == 'omegam':
+            omegam_lims = [0.14/0.75**2, 0.146/0.65**2]
+            info["params"]["omegam"] = {"prior": {"min": omegam_lims[0], "max": omegam_lims[1]}, "proposal":(omegam_lims[1]-omegam_lims[0])/pscale, "latex": "\\Omega_M", "drop": True}
+            info["params"]["omegamh2"] = {"value": lambda omegam,hub: omegam*hub**2, "min": 0.14, "max": 0.146}
         # Set up the mcmc sampler options (to do seed runs, add the option 'seed': integer between 0 and 2**32 - 1)
         info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True, "learn_proposal_Rminus1_max": 20, "learn_proposal_Rminus1_max_early": 30}}
         return info
@@ -147,7 +159,7 @@ class T0LikelihoodClass:
         print("----------------------------------------------------- \n")
         assert sampler.get_acceptance_rate() > 0.01, "Acceptance rate very low. Consider decreasing the proposal width by increasing the pscale parameter"
 
-    def do_sampling(self, savefile=None, datadir=None, index=None, burnin=3e4, nsamples=3e5, pscale=4, test_accept=False, hprior='none', oprior=False, dataset='fps'):
+    def do_sampling(self, savefile=None, datadir=None, index=None, burnin=3e4, nsamples=3e5, pscale=4, test_accept=False, hprior='none', oprior=False, sample_on='omegamh2', dataset='fps'):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
@@ -157,7 +169,7 @@ class T0LikelihoodClass:
             data_meanT = load_data(datadir, index, max_z=self.max_z, min_z=self.min_z, tau_thresh=self.tau_thresh)
 
         # Construct the "info" dictionary used by Cobaya
-        info = self.make_cobaya_dict(data_meanT=data_meanT, pscale=pscale, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior, dataset=dataset)
+        info = self.make_cobaya_dict(data_meanT=data_meanT, pscale=pscale, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior, sample_on=sample_on, dataset=dataset)
         # Test run a fraction of the full chain to check acceptance rate before running full chain
         if test_accept is True:
             self.do_acceptance_check(info, steps=100)
@@ -195,6 +207,7 @@ class T0CobayaLikelihoodClass(Likelihood, T0LikelihoodClass):
     data_meanT: float = None
     hprior: str = 'none'
     oprior: bool = False
+    sample_on: str = 'omegamh2'
     # Required for Cobaya to correctly parse which parameters are for input
     input_params_prefix: str = ""
 
@@ -211,4 +224,4 @@ class T0CobayaLikelihoodClass(Likelihood, T0LikelihoodClass):
         # self.input_params is specially recognized by Cobaya (will be the "params" section
         # of the Cobaya dictionary passed to it)
         params = np.array([params_values[p] for p in self.input_params])
-        return self.likelihood(params, data_meanT=self.data_meanT, hprior=self.hprior, oprior=self.oprior)
+        return self.likelihood(params, data_meanT=self.data_meanT, hprior=self.hprior, oprior=self.oprior, sample_on=self.sample_on)

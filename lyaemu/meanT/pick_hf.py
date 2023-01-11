@@ -66,11 +66,17 @@ def search_next(fps_file, t0_file, json_file, prev_ind, max_z=5.4, min_z=2.0):
 
     load = h5py.File(t0_file, 'r')
     meant = load['meanT'][:]
+    t0params = load['params'][:]
     load.close()
 
+    subset = np.isin(params, t0params).all(axis=1)
+    new_inds = np.where(subset == True)[0]
+    flux_power = flux_power[new_inds]
+    params = t0params
+
     # remove unwanted redshifts for flux_power and meant
-    z_rng = (zout <= max_z)*(zout >= min_z)
-    nz = np.sum(z_rng)
+    z_rng = np.where((zout <= max_z)*(zout >= min_z))[0]
+    nz = zout[z_rng].size
     meant = meant[:, z_rng]
     flux_power = flux_power[:, z_rng].reshape(-1, nz*kfmpc.size)
 
@@ -83,6 +89,7 @@ def search_next(fps_file, t0_file, json_file, prev_ind, max_z=5.4, min_z=2.0):
     all_fps_loss = []
     all_t0_loss = []
     for j, selind in enumerate(all_combinations):
+        print(selind)
         # get the two emulators (trained using the selind simulations
         # to predict the ~selind simulations)
         fps_emu = gpemu.MultiBinGP(params=params[selind, :], kf=kfmpc, powers=flux_power[selind, :], param_limits=param_limits, zout=zout[z_rng])

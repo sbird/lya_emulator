@@ -156,7 +156,7 @@ class LikelihoodClass:
                 print('Finished generating emulator at', str(datetime.now()))
             self.gpemu = comm.bcast(gpemu, root = 0)
         if use_meant:
-            self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=2.0, optimise_GP=True, tau_thresh=self.tau_thresh)
+            self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=2.2, optimise_GP=True, tau_thresh=self.tau_thresh, HRbasedir=self.HRbasedir)
 
     def get_predicted(self, params):
         """Helper function to get the predicted flux power spectrum and error, rebinned to match the desired kbins."""
@@ -288,7 +288,7 @@ class LikelihoodClass:
             # omit mean flux and flux power data correction parameters
             indi = 0
             if self.mf_slope: indi = 2
-            chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu)*meant_fac
+            chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu, sample_on=sample_on)*meant_fac
         chi2 += self.hubble_prior(params, source=hprior)
         if oprior: chi2 += self.omega_prior(params, sample_on=sample_on)
         return chi2

@@ -32,7 +32,7 @@ class T0Emulator:
             self.param_names = param_names
         if param_limits is None:
             # see parameter descriptions in coarse_grid.py
-            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [3.5, 4.1], [2.6, 3.2], [1.6, 2.5], [0.65, 0.75], [0.14, 0.146], [6.5,8], [0.03, 0.07]])
+            self.param_limits = np.array([[0.8, 0.995], [1.2e-09, 2.6e-09], [3.5, 4.1], [2.6, 3.2], [1.3, 2.5], [0.65, 0.75], [0.14, 0.146], [6.5,8], [0.03, 0.07]])
         else:
             self.param_limits = param_limits
         # Remove the BH parameter for not full physics.

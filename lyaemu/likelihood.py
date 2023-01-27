@@ -303,7 +303,7 @@ class LikelihoodClass:
         bh_mean, bh_sigma = 0.05, 0.01
         return -((params[bh]-bh_mean)/bh_sigma)**2
 
-    def likelihood(self, params, include_emu=True, data_power=None, hprior='none', oprior=False, bhprior=False, sample_on='omegamh2', use_meant=None, meant_fac=7.5):
+    def likelihood(self, params, include_emu=True, data_power=None, hprior='none', oprior=False, bhprior=False, sample_on='omegamh2', use_meant=None, meant_fac=9.1):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix.
         The covariance for the emulator points is assumed to be
@@ -372,7 +372,7 @@ class LikelihoodClass:
             pnames = pnames + self.dnames
         return pnames
 
-    def make_cobaya_dict(self, *, data_power=None, burnin=1e4, nsamples=3e4, use_meant=None, meant_fac=7.5, pscale=80, emu_error=True, hprior='none', oprior=False, bhprior=False, sample_on='omegamh2'):
+    def make_cobaya_dict(self, *, data_power=None, burnin=1e4, nsamples=3e4, use_meant=None, meant_fac=9.1, pscale=80, emu_error=True, hprior='none', oprior=False, bhprior=False, sample_on='omegamh2'):
         """Return a dictionary that can be used to run Cobaya MCMC sampling."""
         # Parameter names
         pnames = self.get_pnames()
@@ -392,7 +392,7 @@ class LikelihoodClass:
         info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True, "learn_proposal_Rminus1_max": 20, "learn_proposal_Rminus1_max_early": 30}}
         return info
 
-    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=80, include_emu_error=True, use_meant=None, meant_fac=7.5, hprior='none', oprior=False, bhprior=False, sample_on='omegamh2'):
+    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=80, include_emu_error=True, use_meant=None, meant_fac=9.1, hprior='none', oprior=False, bhprior=False, sample_on='omegamh2'):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
@@ -486,7 +486,7 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     data_corr: bool = True
     tau_thresh: int = None
     use_meant: bool = False
-    meant_fac: float = 7.5
+    meant_fac: float = 9.1
     traindir: str = None
     data_power: float = None
     include_emu: bool = True

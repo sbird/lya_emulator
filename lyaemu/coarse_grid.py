@@ -326,14 +326,10 @@ class Emulator:
         self.load()
         LRparams, kf, LRfps = self.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
         nz = int(LRfps.shape[1]/kf.size)
-        # kf = kf[:51]
-        # LRfps = LRfps.reshape(440,13,102)[:,:,:51].reshape(440,663)
         # get higher resolution parameters & temperatures
         HRemu = Emulator(HRbasedir, mf=self.mf, kf=self.kf, tau_thresh=self.tau_thresh)
         HRemu.load()
         HRparams, HRkf, HRfps = HRemu.get_flux_vectors(max_z=max_z, min_z=min_z, kfunits="mpc")
-        # HRkf = HRkf[:51]
-        # HRfps = HRfps.reshape(20,13,102)[:,:,:51].reshape(20,663)
         # check parameter limits, k-bins, number of redshifts, and get/train the multi-fidelity GP
         assert np.all(self.get_param_limits(include_dense=True) == HRemu.get_param_limits(include_dense=True))
         assert np.all(kf - HRkf < 1e-3)
@@ -425,28 +421,78 @@ class Emulator:
         assert np.all(inparams - aparams < 1e-3)
         return kfmpc, kfkms, flux_vectors
 
-    def do_loo_cross_validation(self, *, remove=None, max_z=4.2, subsample=None):
-        """Do cross-validation by constructing an emulator missing
-           a single simulation and checking accuracy.
-           The remove parameter chooses which simulation to leave out. If None this is random."""
-        aparams, kf, flux_vectors = self.get_flux_vectors(max_z=max_z, kfunits="mpc")
-        rng = np.random.default_rng()
-        if remove is None:
-            nsims = np.shape(aparams)[0]
-            rng = np.random.default_rng()
-            remove = rng.integers(0,nsims)
-        aparams_rem = np.delete(aparams, remove, axis=0)
-        flux_vectors_rem = np.delete(flux_vectors, remove, axis=0)
-        if subsample is not None:
-            nsims = np.shape(aparams_rem)[0]
-            reorder = rng.permutation(nsims)
-            aparams_rem = aparams_rem[reorder[:subsample]]
-            flux_vectors_rem = flux_vectors_rem[reorder[:subsample]]
+    def generate_loo_errors(self, HRemu=None, min_z=2.2, max_z=4.6):
+        """Calculate leave-one-out errors for all training simulations.
+        HRemu should be a separate instance of the emulator class."""
+        self.load()
+        aparams, _, _ = self.get_flux_vectors(min_z=min_z, max_z=max_z, kfunits="mpc")
+        nsims, nparams = np.shape(aparams)
+        nz = flux_power.MySpectra(max_z=max_z, min_z=min_z).zout.size
+        if HRemu is not None:
+            HRemu.load()
+            aparams, _, _ = HRemu.get_flux_vectors(min_z=min_z, max_z=max_z, kfunits="mpc")
+            nsims, nparams = np.shape(aparams)
+        predict, std, true = np.zeros([nsims, nz, self.kf.size]), np.zeros([nsims, nz, self.kf.size]), np.zeros([nsims, nz, self.kf.size])
+        params = np.zeros([nsims, nparams])
+        if len(self.mf.dense_param_names) != 0:
+            for i in range(nsims//10):
+                print('Iteration Number', str(i+1)+'/'+str(nsims//10))
+                predict[i*10:(i+1)*10], std[i*10:(i+1)*10], true[i*10:(i+1)*10], params[i*10:(i+1)*10] = self.single_loo(i, HRemu=HRemu, min_z=min_z, max_z=max_z)
+        else:
+            for i in range(nsims):
+                print('Iteration Number', str(i+1)+'/'+str(nsims))
+                predict[i], std[i], true[i], params[i] = self.single_loo(i, HRemu=HRemu, min_z=min_z, max_z=max_z)
+        return predict, std, true, params
+
+    def single_loo(self, remove, HRemu=None, min_z=2.2, max_z=4.6):
+        """Calculate the leave-one-out errors for the training sample at index 'remove'
+        HRemu should be a separate instance of the emulator class."""
+        # get the full set of parameters and flux power spectra (LF & HF if using multi-fidelity)
+        aparams, kf, flux_vectors = self.get_flux_vectors(min_z=min_z, max_z=max_z, kfunits="mpc")
+        zout = np.linspace(max_z, min_z, int(flux_vectors.shape[1]/kf.size))
         plimits = self.get_param_limits(include_dense=True)
-        gp = gpemulator.MultiBinGP(params=aparams_rem, kf=kf, powers = flux_vectors_rem, param_limits = plimits)
-        flux_predict, std_predict = gp.predict(aparams[remove, :].reshape(1, -1))
-        err = (flux_vectors[remove,:] - flux_predict[0])/std_predict[0]
-        return kf, flux_vectors[remove,:] / flux_predict[0] - 1, err
+        ndense = len(self.mf.dense_param_names)
+        hindex = ndense + self.param_names["hub"]
+        omegamh2_index = ndense + self.param_names["omegamh2"]
+        if HRemu is not None:
+            HRparams, HRkf, HRflux = HRemu.get_flux_vectors(min_z=min_z, max_z=max_z, kfunits="mpc")
+            # if mean flux rescaling, remove all training samples associated with the simulation
+            if ndense != 0:
+                remove = np.arange(remove, np.shape(HRparams)[0], np.shape(HRparams)[0]//10)
+            # remove indicated index from training set, then train and predict removed output
+            aparams_train = np.delete(HRparams, remove, axis=0)
+            flux_train = np.delete(HRflux, remove, axis=0)
+            gp = gpemulator.MultiBinGP(params=aparams, HRdat=[aparams_train, flux_train], powers=flux_vectors, param_limits=plimits, kf=kf, zout=zout)
+            predict = np.zeros([remove.size, zout.size, self.kf.size])
+            std = np.zeros([remove.size, zout.size, self.kf.size])
+            true = np.zeros([remove.size, zout.size, self.kf.size])
+            for i in range(remove.size):
+                fp, sp = gp.predict(HRparams[remove[i]].reshape(1, -1))
+                omega_m = HRparams[remove[i], omegamh2_index]/HRparams[remove[i], hindex]**2
+                _, predict[i] = flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=HRkf, flux_powers=fp[0], zbins=zout, omega_m=omega_m)
+                _, std[i] = flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=HRkf, flux_powers=sp[0], zbins=zout, omega_m=omega_m)
+                _, true[i] = flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=HRkf, flux_powers=HRflux[remove[i]], zbins=zout, omega_m=omega_m)
+            # return predicted output, true output, prediction error, and parameters for predicted
+            return predict, std, true, HRparams[remove]
+        else:
+            # or do the same, but for the LF only
+            if ndense != 0:
+                remove = np.arange(remove, np.shape(aparams)[0], np.shape(aparams)[0]//10)
+            aparams_train = np.delete(aparams, remove, axis=0)
+            flux_train = np.delete(flux_vectors, remove, axis=0)
+            gp = gpemulator.MultiBinGP(params=aparams_train, kf=kf, powers=flux_train, param_limits=plimits, zout=zout)
+            predict = np.zeros([remove.size, zout.size, self.kf.size])
+            std = np.zeros([remove.size, zout.size, self.kf.size])
+            true = np.zeros([remove.size, zout.size, self.kf.size])
+            for i in range(remove.size):
+                fp, sp = gp.predict(aparams[remove[i]].reshape(1, -1))
+                omega_m = aparams[remove[i], omegamh2_index]/aparams[remove[i], hindex]**2
+                _, predict[i] = flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=kf, flux_powers=fp[0], zbins=zout, omega_m=omega_m)
+                _, std[i] = flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=kf, flux_powers=sp[0], zbins=zout, omega_m=omega_m)
+                _, true[i] = flux_power.rebin_power_to_kms(kfkms=self.kf, kfmpc=kf, flux_powers=flux_vectors[remove[i]], zbins=zout, omega_m=omega_m)
+            return predict, std, true, aparams[remove]
+
+
 
 class KnotEmulator(Emulator):
     """Specialise parameter class for an emulator using knots.

@@ -12,6 +12,8 @@ from cobaya.run import run as cobaya_run
 from cobaya.log import LoggedError
 from mpi4py import MPI
 import json
+import h5py
+import os
 from .meanT import t0_likelihood
 
 def _siIIIcorr(kf):
@@ -63,13 +65,27 @@ def load_data(datadir, *, kf, max_z=4.6, min_z=2.2, t0=1., tau_thresh=None):
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None, use_meant=False, traindir=None, HRbasedir=None):
-        """Initialise the emulator by loading the flux power spectra from the simulations."""
+    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None, use_meant=False, traindir=None, HRbasedir=None, loo_errors=False):
+        """Initialise the emulator by loading the flux power spectra from the simulations.
+        Parameters:
+        - basedir: directory to load emulator
+        - mean_flux: whether to use (redshift dependent) mean flux rescaling. 's' uses rescaling, 'c' does not. Must match flux power file.
+        - min_z, max_z: minimum and maximum redshift to include in the likelihood
+        - emulator_class: type of emulator to use: quadratic, knot, or (default) GP
+        - optimise_GP: whether to train the GPs (if sampling, set initial call to false to avoid training twice)
+        - emulator_json_file: json file containing various emulator settings and parameters
+        - data_corr: whether to include corrections for DLAs and SiIII
+        - tau_thresh: optical depth threshold for computing flux power. Must match previously calculated flux power file, or will generate a new one.
+        - use_meant: whether to include the mean temperature emulator.
+        - traindir: directory where trained GPs reside. If no trained GP in that directory, train then save at that location.
+        - HRbasedir: directory to load high resolution emulator, turns this into a multi-fidelity emulator, with predictions for the HR outputs.
+        - loo_errors: whether to use leave-one-out errors in place of emulator errors. File with errors must be in same directory as emulator files, and be called 'loo_fps.hdf5'
+        """
         # Needed for Cobaya dictionary construction
         self.basedir, self.HRbasedir = basedir, HRbasedir
         self.emulator_json_file, self.traindir = emulator_json_file, traindir
         self.mean_flux, self.data_corr, self.tau_thresh = mean_flux, data_corr, tau_thresh
-        self.use_meant = use_meant
+        self.use_meant, self.loo_errors = use_meant, loo_errors
         self.max_z, self.min_z = max_z, min_z
         self.t0_training_value, self.emulator_class = t0_training_value, emulator_class
         myspec = flux_power.MySpectra(max_z=max_z, min_z=min_z)
@@ -81,7 +97,6 @@ class LikelihoodClass:
         # Load BOSS data vector
         self.BOSS_flux_power = self.sdss.pf.reshape(-1, self.kf.shape[0])[:self.zout.shape[0]][::-1]
         # Units: km / s; Size: n_z * n_k
-
         self.mf_slope = False
         # Param limits on t0
         t0_factor = np.array([0.75, 1.25])
@@ -105,7 +120,6 @@ class LikelihoodClass:
             mf = mflux.MeanFluxFactor(dense_limits=dense_limits)
         else:
             mf = mflux.MeanFluxFactor()
-
         # Select emulator type
         if emulator_class == "standard":
             self.emulator = coarse_grid.Emulator(basedir, kf=self.kf, mf=mf, tau_thresh=tau_thresh)
@@ -116,6 +130,7 @@ class LikelihoodClass:
         else:
             raise ValueError("Emulator class not recognised")
 
+        if loo_errors: self.get_loo_errors(nz)
         # Load the parameters, etc. associated with this emulator (overwrite defaults)
         self.emulator.load(dumpfile=emulator_json_file)
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
@@ -156,7 +171,44 @@ class LikelihoodClass:
                 print('Finished generating emulator at', str(datetime.now()))
             self.gpemu = comm.bcast(gpemu, root = 0)
         if use_meant:
-            self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=2.2, optimise_GP=True, tau_thresh=self.tau_thresh, HRbasedir=self.HRbasedir)
+            self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=2.2, optimise_GP=True, HRbasedir=self.HRbasedir, loo_errors=loo_errors)
+
+    def get_loo_errors(self, nz):
+        if self.HRbasedir is None:
+            filepath = os.path.join(self.basedir, "loo_fps.hdf5")
+        else:
+            filepath = os.path.join(self.HRbasedir, "loo_fps.hdf5")
+        ff = h5py.File(filepath, 'r')
+        fpp, fpt = ff['flux_predict'][:], ff['flux_true'][:]
+        ff.close()
+        # after loading the absolute difference, calculate errors including BOSS data
+        loo_errors = np.mean(np.abs(fpp - fpt), axis=0)
+        self.icov_bin = []
+        self.cdet = []
+        for bb in range(nz):
+            covar_bin = self.get_BOSS_error(bb)
+            covar_bin += np.outer(loo_errors[bb], loo_errors[bb])
+            self.icov_bin.append(np.linalg.inv(covar_bin))
+            self.cdet.append(np.linalg.slogdet(covar_bin)[1])
+
+    def calculate_loo_errors(self, savefile='loo_fps-test.hdf5'):
+        """Calculate leave-one-out errors: saves predicted flux power, true flux power,
+        predicted error, and parameters for each simulation in the training set."""
+        # call to loo function in coarse_grid with appropriate settings
+        if self.HRbasedir is not None:
+            HRemu = coarse_grid.Emulator(self.HRbasedir, kf=self.kf, mf=self.emulator.mf, tau_thresh=self.tau_thresh)
+            predict, std, true, params = self.emulator.generate_loo_errors(HRemu=HRemu, min_z=self.min_z, max_z=self.max_z)
+            savepath = self.HRbasedir
+        else:
+            predict, std, true, params = self.emulator.generate_loo_errors(min_z=self.min_z, max_z=self.max_z)
+            savepath = self.basedir
+        # save into hdf5 file
+        savefile = h5py.File(os.path.join(savepath, savefile), 'w')
+        savefile['flux_predict'] = predict
+        savefile['std_predict'] = std
+        savefile['flux_true'] = true
+        savefile['params'] = params
+        savefile.close()
 
     def get_predicted(self, params):
         """Helper function to get the predicted flux power spectrum and error, rebinned to match the desired kbins."""
@@ -242,17 +294,16 @@ class LikelihoodClass:
             return -((omega_m-planck_mean)/planck_sigma)**2
         else: return 0
 
-    def hireionz_prior(self, params):
-        """Return a prior on midpoint of reionization (Planck 2018)"""
-        # value from Planck: arxiv 1807.06209
-        hi = self.emulator.param_names['hireionz']
+    def bhfeedback_prior(self, params):
+        """Return a prior on black hole feedback (marginalize out)"""
+        # value range is [0.03, 0.07]
+        bh = self.emulator.param_names['bhfeedback']
         if self.mf_slope:
-            hi = hi + 2
-        # planck_mean, planck_sigma = 7.7, 0.7
-        planck_mean, planck_sigma = 7.15, 0.15
-        return -((params[hi]-planck_mean)/planck_sigma)**2
+            bh = bh + 2
+        bh_mean, bh_sigma = 0.05, 0.01
+        return -((params[bh]-bh_mean)/bh_sigma)**2
 
-    def likelihood(self, params, include_emu=True, data_power=None, hprior='none', oprior=False, zhiprior=False, sample_on='omegamh2', use_meant=None, meant_fac=7.5):
+    def likelihood(self, params, include_emu=True, data_power=None, hprior='none', oprior=False, bhprior=False, sample_on='omegamh2', use_meant=None, meant_fac=7.5):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix.
         The covariance for the emulator points is assumed to be
@@ -269,7 +320,6 @@ class LikelihoodClass:
         nkf = int(np.size(self.kf))
         nz = np.shape(predicted)[0]
         assert nz == int(np.size(data_power)/nkf)
-
         # Likelihood using full covariance matrix
         chi2 = 0
         for bb in range(nz):
@@ -285,11 +335,18 @@ class LikelihoodClass:
             covar_bin = self.get_BOSS_error(bb)[bindx:, bindx:]
             assert np.shape(np.outer(std_bin, std_bin)) == np.shape(covar_bin)
             if include_emu:
-                # Assume completely correlated emulator errors within this bin
-                covar_emu = np.outer(std_bin, std_bin)
-                covar_bin += covar_emu
-            icov_bin = np.linalg.inv(covar_bin)
-            (_, cdet) = np.linalg.slogdet(covar_bin)
+                if self.loo_errors:
+                    icov_bin = self.icov_bin[bb]
+                    cdet = self.cdet[bb]
+                else:
+                    # Assume completely correlated emulator errors within this bin
+                    covar_emu = np.outer(std_bin, std_bin)
+                    covar_bin += covar_emu
+                    icov_bin = np.linalg.inv(covar_bin)
+                    cdet = np.linalg.slogdet(covar_bin)[1]
+            else:
+                icov_bin = np.linalg.inv(covar_bin)
+                cdet = np.linalg.slogdet(covar_bin)[1]
             dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
             chi2 += dcd -0.5 * cdet
             assert 0 > chi2 > -2**31
@@ -301,7 +358,7 @@ class LikelihoodClass:
             chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu, sample_on=sample_on)*meant_fac
         chi2 += self.hubble_prior(params, source=hprior)
         if oprior: chi2 += self.omega_prior(params, sample_on=sample_on)
-        if zhiprior: chi2 += self.hireionz_prior(params)
+        if bhprior: chi2 += self.bhfeedback_prior(params)
         return chi2
 
     def get_pnames(self):
@@ -315,7 +372,7 @@ class LikelihoodClass:
             pnames = pnames + self.dnames
         return pnames
 
-    def make_cobaya_dict(self, *, data_power, burnin, nsamples, hprior='none', oprior=False, zhiprior=False, use_meant, pscale=50, emu_error=True, sample_on='omegamh2'):
+    def make_cobaya_dict(self, *, data_power=None, burnin=1e4, nsamples=3e4, use_meant=None, meant_fac=7.5, pscale=80, emu_error=True, hprior='none', oprior=False, bhprior=False, sample_on='omegamh2'):
         """Return a dictionary that can be used to run Cobaya MCMC sampling."""
         # Parameter names
         pnames = self.get_pnames()
@@ -323,7 +380,7 @@ class LikelihoodClass:
         prange = (self.param_limits[:, 1]-self.param_limits[:, 0])
         # Build the dictionary
         info = {}
-        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "HRbasedir": self.HRbasedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z, "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value, "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr, "traindir": self.traindir, "hprior": hprior, "oprior": oprior, "zhiprior": zhiprior, "sample_on": sample_on, "tau_thresh": self.tau_thresh, "use_meant": use_meant, "include_emu": emu_error, "data_power": data_power}}
+        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "HRbasedir": self.HRbasedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z, "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value, "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr, "traindir": self.traindir, "loo_errors": self.loo_errors, "hprior": hprior, "oprior": oprior, "bhprior": bhprior, "sample_on": sample_on, "tau_thresh": self.tau_thresh, "use_meant": use_meant, "meant_fac": meant_fac, "include_emu": emu_error, "data_power": data_power}}
         # Each of the parameters has a prior with limits and a proposal width (the proposal covariance matrix
         # is learned, so the value given needs to be small enough for the sampler to get started)
         info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale, 'latex': pnames[i][1]} for i in range(self.ndim)}
@@ -335,19 +392,7 @@ class LikelihoodClass:
         info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True, "learn_proposal_Rminus1_max": 20, "learn_proposal_Rminus1_max_early": 30}}
         return info
 
-    def do_acceptance_check(self, info, steps=100):
-        """Run a short chain to check the initial acceptance rate."""
-        print("-----------------------------------------------------")
-        print("Test run to check acceptance rate")
-        info_test = info.copy()
-        # Don't do a burn-in, limit the sample to steps, and increase the max_tries to ensure it succeeds
-        info_test.update({"sampler": {"mcmc": {"burn_in": 0, "max_samples": steps, "max_tries": '1000d'}}})
-        updated_info, sampler = cobaya_run(info_test)
-        print('Acceptance rate:', sampler.get_acceptance_rate())
-        print("----------------------------------------------------- \n")
-        assert sampler.get_acceptance_rate() > 0.01, "Acceptance rate very low. Consider decreasing the proposal width by increasing the pscale parameter"
-
-    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=50, include_emu_error=True, test_accept=False, use_meant=None, hprior='none', oprior=False, zhiprior=False, sample_on='omegamh2'):
+    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=80, include_emu_error=True, use_meant=None, meant_fac=7.5, hprior='none', oprior=False, bhprior=False, sample_on='omegamh2'):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
@@ -356,13 +401,10 @@ class LikelihoodClass:
             # Load the data directory (i.e. use a simulation flux power as data)
             data_power = load_data(datadir, kf=self.kf, t0=self.t0_training_value, max_z=self.max_z, min_z=self.min_z, tau_thresh=self.tau_thresh)
 
-        # Construct the "info" dictionary used by Cobaya
+        # if use_meant not specificed, default to setting from initialization
         if use_meant is None: use_meant = self.use_meant
-        info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples, use_meant=use_meant, hprior=hprior, oprior=oprior, zhiprior=zhiprior, sample_on=sample_on)
-
-        # Test run a fraction of the full chain to check acceptance rate before running full chain
-        if test_accept is True:
-            self.do_acceptance_check(info, steps=100)
+        # Construct the "info" dictionary used by Cobaya
+        info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples, use_meant=use_meant, meant_fac=meant_fac, hprior=hprior, oprior=oprior, bhprior=bhprior, sample_on=sample_on)
 
         if savefile is not None:
             info["output"] = savefile
@@ -444,12 +486,14 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     data_corr: bool = True
     tau_thresh: int = None
     use_meant: bool = False
+    meant_fac: float = 7.5
     traindir: str = None
     data_power: float = None
     include_emu: bool = True
+    loo_errors: bool = False
     hprior: str = 'none'
     oprior: bool = False
-    zhiprior: bool = False
+    bhprior: bool = False
     sample_on: str = 'omegamh2'
     # Required for Cobaya to correctly parse which parameters are for input
     input_params_prefix: str = ""
@@ -457,7 +501,7 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     def initialize(self):
         """Initialization of Cobaya likelihood using LikelihoodClass init.
         Gets the emulator by loading the flux power spectra from the simulations."""
-        LikelihoodClass.__init__(self, self.basedir, HRbasedir=self.HRbasedir, mean_flux=self.mean_flux, max_z=self.max_z, min_z=self.min_z, emulator_class=self.emulator_class, t0_training_value=self.t0_training_value, optimise_GP=self.optimise_GP, emulator_json_file=self.emulator_json_file, data_corr=self.data_corr, tau_thresh=self.tau_thresh, use_meant=self.use_meant, traindir=self.traindir)
+        LikelihoodClass.__init__(self, self.basedir, HRbasedir=self.HRbasedir, mean_flux=self.mean_flux, max_z=self.max_z, min_z=self.min_z, emulator_class=self.emulator_class, t0_training_value=self.t0_training_value, optimise_GP=self.optimise_GP, emulator_json_file=self.emulator_json_file, data_corr=self.data_corr, tau_thresh=self.tau_thresh, use_meant=self.use_meant, traindir=self.traindir, loo_errors=self.loo_errors)
 
     def logp(self, **params_values):
         """Cobaya-compatible call to the base class likelihood function.
@@ -465,4 +509,4 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
         # self.input_params is specially recognized by Cobaya (will be the "params" section
         # of the Cobaya dictionary passed to it)
         params = np.array([params_values[p] for p in self.input_params])
-        return self.likelihood(params, include_emu=self.include_emu, data_power=self.data_power, use_meant=self.use_meant, hprior=self.hprior, oprior=self.oprior, zhiprior=self.zhiprior, sample_on=self.sample_on)
+        return self.likelihood(params, include_emu=self.include_emu, data_power=self.data_power, use_meant=self.use_meant, meant_fac=self.meant_fac, hprior=self.hprior, oprior=self.oprior, bhprior=self.bhprior, sample_on=self.sample_on)

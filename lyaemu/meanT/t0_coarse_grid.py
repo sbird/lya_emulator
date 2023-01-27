@@ -22,10 +22,9 @@ class T0Emulator:
         - basedir: directory to load or create emulator
         - param_names: dictionary containing names of the parameters as well as a unique integer list of positions
         - param_limits: Nx2 array containing upper and lower limits of each parameter, in the order given by the integer stored in param_names
-        - tau_thresh: threshold optical depth for spectra. Kept here only for consistency with json parameter file.
         - npart, box: particle number and box size of emulator simulations.
     """
-    def __init__(self, basedir, param_names=None, param_limits=None, tau_thresh=None, npart=512, box=60, fullphysics=True, max_z=5.4, min_z=2.0):
+    def __init__(self, basedir, param_names=None, param_limits=None, npart=512, box=60, fullphysics=True, max_z=5.4, min_z=2.0):
         if param_names is None:
             self.param_names = {'ns':0, 'Ap':1, 'herei':2, 'heref':3, 'alphaq':4, 'hub':5, 'omegamh2':6, 'hireionz':7, 'bhfeedback':8}
         else:
@@ -45,11 +44,9 @@ class T0Emulator:
         self.max_z, self.min_z = max_z, min_z
         self.sample_params = []
         self.basedir = os.path.expanduser(basedir)
-        self.tau_thresh = tau_thresh
 
     def load(self, dumpfile="T0emulator_params.json"):
         """Load parameters from a json file."""
-        tau_thresh = self.tau_thresh
         real_basedir = self.basedir
         min_z = self.min_z
         max_z = self.max_z
@@ -57,7 +54,6 @@ class T0Emulator:
             indict = json.load(jsin)
         self.__dict__ = indict
         self._fromarray()
-        self.tau_thresh = tau_thresh
         self.basedir = real_basedir
         self.min_z = min_z
         self.max_z = max_z
@@ -86,7 +82,7 @@ class T0Emulator:
         self.load()
         LRparams, LRmeanT = self.get_meanT(max_z=max_z, min_z=min_z, req_z=req_z)
         # get higher resolution parameters & temperatures
-        HRemu = T0Emulator(HRbasedir, max_z=max_z, min_z=min_z, tau_thresh=self.tau_thresh)
+        HRemu = T0Emulator(HRbasedir, max_z=max_z, min_z=min_z)
         HRemu.load()
         HRparams, HRmeanT = HRemu.get_meanT(max_z=max_z, min_z=min_z, req_z=req_z)
         # check parameter limits and get/train the multi-fidelity GP
@@ -205,3 +201,41 @@ class T0Emulator:
         for key, _ in sort_names:
             n_latex.append((key, get_latex(key)))
         return n_latex
+
+    def generate_loo_errors(self, HRemu=None, min_z=2.2, max_z=3.8):
+        """Calculate leave-one-out errors for all training simulations.
+        HRemu should be a separate instance of the emulator class."""
+        self.load()
+        nsims, nparams = np.shape(self.sample_params)
+        nz = flux_power.MySpectra(max_z=max_z, min_z=min_z).zout.size
+        if HRemu is not None:
+            HRemu.load()
+            nsims, nparams = np.shape(HRemu.sample_params)
+        predict, std, true = np.zeros([nsims, nz]), np.zeros([nsims, nz]), np.zeros([nsims, nz])
+        params = np.zeros([nsims, nparams])
+        for i in range(nsims):
+            predict[i], std[i], true[i], params[i] = self.single_loo(i, HRemu=HRemu, min_z=min_z, max_z=max_z)
+        return predict, std, true, params
+
+    def single_loo(self, remove, HRemu=None, min_z=2.2, max_z=3.8):
+        """Calculate the leave-one-out errors for the training sample at index 'remove'
+        HRemu should be a separate instance of the emulator class."""
+        # get the full set of parameters and temperatures (LF & HF if using multi-fidelity)
+        aparams, meanT = self.get_meanT(min_z=min_z, max_z=max_z)
+        plimits = self.get_param_limits()
+        if HRemu is not None:
+            HRparams, HRmeanT = HRemu.get_meanT(max_z=max_z, min_z=min_z)
+            # remove indicated index from training set, then train and predict removed output
+            aparams_train = np.delete(HRparams, remove, axis=0)
+            meanT_train = np.delete(HRmeanT, remove, axis=0)
+            gp = t0_gpemulator.T0MultiBinAR1(LRparams=aparams, HRparams=aparams_train, LRtemps=meanT, HRtemps=meanT_train, param_limits=plimits)
+            meant_predict, std_predict = gp.predict(HRparams[remove].reshape(1, -1))
+            # return predicted output, true output, prediction error, and parameters for predicted
+            return meant_predict, std_predict, HRmeanT[remove], HRparams[remove]
+        else:
+            # or do the same, but for the LF only
+            aparams_train = np.delete(aparams, remove, axis=0)
+            meanT_train = np.delete(meanT, remove, axis=0)
+            gp = t0_gpemulator.T0MultiBinGP(params=aparams_train, temps=meanT_train, param_limits=plimits)
+            meant_predict, std_predict = gp.predict(aparams[remove].reshape(1, -1))
+            return meant_predict, std_predict, meanT[remove], aparams[remove]

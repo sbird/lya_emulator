@@ -88,9 +88,9 @@ class SkLearnGP:
         nparams = np.shape(self.params)[1]
         params_cube = map_to_unit_cube_list(self.params, self.param_limits)
         #Check that we span the parameter space
-        # for i in range(nparams):
-        #     assert np.max(params_cube[:,i]) > 0.8
-        #     assert np.min(params_cube[:,i]) < 0.2
+        for i in range(nparams):
+            assert np.max(params_cube[:,i]) > 0.8
+            assert np.min(params_cube[:,i]) < 0.2
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
@@ -163,7 +163,7 @@ class SkLearnGP:
         test_exact = test_exact.reshape(np.shape(test_params)[0],-1)
         predict, sigma = self.predict(test_params)
         return (test_exact - predict)/sigma
-        
+
 
 class SingleBinAR1:
     """

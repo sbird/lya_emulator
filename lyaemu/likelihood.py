@@ -49,8 +49,9 @@ def DLAcorr(kf, z, alpha):
     a_z = a_0 * ((1+z)/(1+z_0))**a_1
     b_z = b_0 * ((1+z)/(1+z_0))**b_1
     factor = np.ones(kf.size) # alpha_0 degenerate with mean flux, set to 1
-    for i in range(4):
-        factor += alpha[i] * ((1+z)/(1+z_0))**-3.55 * (a_z[i]*np.exp(b_z[i]*kf) - 1)**-2
+    # a_lls and a_sub degenerate with each other (as are a_sdla, a_ldla), so only use two values
+    factor += alpha[0] * ((1+z)/(1+z_0))**-3.55 * ((a_z[0]*np.exp(b_z[0]*kf) - 1)**-2 + (a_z[1]*np.exp(b_z[1]*kf) - 1)**-2)
+    factor += alpha[1] * ((1+z)/(1+z_0))**-3.55 * ((a_z[2]*np.exp(b_z[2]*kf) - 1)**-2 + (a_z[3]*np.exp(b_z[3]*kf) - 1)**-2)
     return factor
 
 def load_data(datadir, *, kf, max_z=4.6, min_z=2.2, t0=1., tau_thresh=None):
@@ -98,6 +99,8 @@ class LikelihoodClass:
         self.BOSS_flux_power = self.sdss.pf.reshape(-1, self.kf.shape[0])[:self.zout.shape[0]][::-1]
         # Units: km / s; Size: n_z * n_k
         self.mf_slope = False
+        # get leave_one_out errors
+        if loo_errors: self.get_loo_errors(self.zout.size)
         # Param limits on t0
         t0_factor = np.array([0.75, 1.25])
         if mean_flux == 'c':
@@ -130,7 +133,6 @@ class LikelihoodClass:
         else:
             raise ValueError("Emulator class not recognised")
 
-        if loo_errors: self.get_loo_errors(nz)
         # Load the parameters, etc. associated with this emulator (overwrite defaults)
         self.emulator.load(dumpfile=emulator_json_file)
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
@@ -145,10 +147,10 @@ class LikelihoodClass:
         if data_corr:
             self.ndim = np.shape(self.param_limits)[0]
             # Create some useful objects for implementing the DLA and SiIII corrections
-            self.dnames = [('a_lls', r'\alpha_{lls}'), ('a_sub', r'\alpha_{sub}'), ('a_sdla', r'\alpha_{sdla}'), ('a_ldla', r'\alpha_{ldla}'), ('fSiIII', 'fSiIII')]
+            self.dnames = [('a_lls', r'\alpha_{lls}'), ('a_dla', r'\alpha_{dla}'), ('fSiIII', 'fSiIII')]
             self.data_params = {self.dnames[i][0]:np.arange(self.ndim, self.ndim+np.shape(self.dnames)[0])[i] for i in range(np.shape(self.dnames)[0])}
             # Limits for the data correction parameters
-            alpha_limits = np.repeat(np.array([[-0.3, 0.3]]), 4, axis=0)
+            alpha_limits = np.array([[-1.0, 1.0], [-0.3, 0.3]])
             fSiIII_limits = np.array([-0.03, 0.03])
             self.param_limits = np.vstack([self.param_limits, alpha_limits, fSiIII_limits])
         self.ndim = np.shape(self.param_limits)[0]
@@ -157,7 +159,6 @@ class LikelihoodClass:
         # Set up MPI protections (as suggested in Cobaya documentation)
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
-
         # Generate emulator
         if optimise_GP:
             gpemu = None
@@ -171,9 +172,11 @@ class LikelihoodClass:
                 print('Finished generating emulator at', str(datetime.now()))
             self.gpemu = comm.bcast(gpemu, root = 0)
         if use_meant:
-            self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=2.2, optimise_GP=True, HRbasedir=self.HRbasedir, loo_errors=loo_errors)
+            self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=self.min_z, optimise_GP=True, HRbasedir=self.HRbasedir, loo_errors=loo_errors)
 
     def get_loo_errors(self, nz):
+        sdssz = self.sdss.get_redshifts()
+        zinds = np.where([(sdssz <= self.max_z)*(sdssz >= self.min_z)])[1]
         if self.HRbasedir is None:
             filepath = os.path.join(self.basedir, "loo_fps.hdf5")
         else:
@@ -183,11 +186,12 @@ class LikelihoodClass:
         ff.close()
         # after loading the absolute difference, calculate errors including BOSS data
         loo_errors = np.mean(np.abs(fpp - fpt), axis=0)
+        # loo_errors = np.mean(np.abs(fpp - fpt)[:,:,7:], axis=0)
         self.icov_bin = []
         self.cdet = []
         for bb in range(nz):
-            covar_bin = self.get_BOSS_error(bb)
-            covar_bin += np.outer(loo_errors[bb], loo_errors[bb])
+            covar_bin = self.get_BOSS_error(bb)#[7:,7:]
+            covar_bin += np.outer(loo_errors[zinds[bb]], loo_errors[zinds[bb]])
             self.icov_bin.append(np.linalg.inv(covar_bin))
             self.cdet.append(np.linalg.slogdet(covar_bin)[1])
 
@@ -250,19 +254,11 @@ class LikelihoodClass:
     def get_data_correction(self, okf, params, redshift):
         """Get the DLA and SiIII flux power corrections."""
         # First, get the DLA correction
-        dla_corr = DLAcorr(okf, redshift, params[self.data_params['a_lls']:self.data_params['a_ldla']+1])
+        dla_corr = DLAcorr(okf, redshift, params[self.data_params['a_lls']:self.data_params['a_dla']+1])
         # Then the SiIII correction
         tau_eff = 0.0046*(1+redshift)**3.3 # model from Palanque-Delabrouille 2013, arXiv:1306.5896
         siIII_corr = SiIIIcorr(params[self.data_params['fSiIII']], tau_eff, okf)
         return dla_corr*siIII_corr
-
-    def data_correction_prior(self, params):
-        """Return a prior on the DLA and SiIII correction parameters."""
-        sigma_dla = 0.2 # somewhat arbitrary values for the prior widths
-        dla = -np.sum((params[self.data_params['a_lls']:self.data_params['a_ldla']+1]/sigma_dla)**2)
-        sigma_siIII = 1e-2
-        siIII = -(params[self.data_params['fSiIII']]/sigma_siIII)**2
-        return dla + siIII
 
     def hubble_prior(self, params, source='none'):
         """Return a prior on little h (either Planck or SH0ES)"""
@@ -295,7 +291,7 @@ class LikelihoodClass:
         else: return 0
 
     def bhfeedback_prior(self, params):
-        """Return a prior on black hole feedback (marginalize out)"""
+        """Return a prior on black hole feedback (prior away)"""
         # value range is [0.03, 0.07]
         bh = self.emulator.param_names['bhfeedback']
         if self.mf_slope:
@@ -325,14 +321,13 @@ class LikelihoodClass:
         for bb in range(nz):
             idp = np.where(self.kf >= okf[bb][0])
             if len(self.data_params) != 0:
-                # Add a prior for the DLA and SiIII correction parameters (zero-centered normal)
-                chi2 += self.data_correction_prior(params)
                 # Get and apply the DLA and SiIII corrections to the prediction
                 predicted[bb] = predicted[bb]*self.get_data_correction(okf[bb], params, self.zout[bb])
             diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
-            std_bin = std[bb]
+            diff_bin = diff_bin#[7:]
+            std_bin = std[bb]#[7:]
             bindx = np.min(idp)
-            covar_bin = self.get_BOSS_error(bb)[bindx:, bindx:]
+            covar_bin = self.get_BOSS_error(bb)[bindx:, bindx:]#[7:,7:]
             assert np.shape(np.outer(std_bin, std_bin)) == np.shape(covar_bin)
             if include_emu:
                 if self.loo_errors:

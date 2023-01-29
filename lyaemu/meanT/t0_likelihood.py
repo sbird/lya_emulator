@@ -36,7 +36,6 @@ class T0LikelihoodClass:
         # Needed for Cobaya dictionary construction
         self.basedir, self.json_file = basedir, json_file
         self.HRbasedir, self.loo_errors = HRbasedir, loo_errors
-        if loo_errors: self.get_loo_errors()
         self.max_z, self.min_z = max_z, min_z
         myspec = flux_power.MySpectra(max_z=max_z, min_z=min_z)
         self.zout = myspec.zout
@@ -48,6 +47,7 @@ class T0LikelihoodClass:
         self.zout = self.zout[zinds]
         self.obs_z, self.meanT, self.error = self.obs_z[zinds], self.meanT[zinds], self.error[zinds]
 
+        if loo_errors: self.get_loo_errors()
         self.emulator = t0_coarse_grid.T0Emulator(basedir, max_z=max_z, min_z=min_z)
         # Load the parameters, etc. associated with this emulator (overwrite defaults)
         self.emulator.load(dumpfile=json_file)
@@ -70,18 +70,20 @@ class T0LikelihoodClass:
                 print('Finished generating emulator at', str(datetime.now()))
             self.gpemu = comm.bcast(gpemu, root = 0)
 
-    def get_loo_errors(self):
+    def get_loo_errors(self, savefile="loo_t0.hdf5"):
         if self.HRbasedir is not None:
-            filepath = os.path.join(self.HRbasedir, "loo_t0.hdf5")
+            filepath = os.path.join(self.HRbasedir, savefile)
         else:
-            filepath = os.path.join(self.basedir, "loo_t0.hdf5")
+            filepath = os.path.join(self.basedir, savefile)
         ff = h5py.File(filepath, 'r')
-        tpp, tpt = ff['meanT_predict'][:], ff['meanT_true'][:]
+        tpp, tpt, looz = ff['meanT_predict'][:], ff['meanT_true'][:], ff['zout'][:]
         ff.close()
+        zinds = np.where([(looz <= self.max_z)*(looz >= self.min_z)])[1]
         # after loading the absolute difference, calculate errors including BOSS data
-        self.loo = np.mean(np.abs(tpp - tpt), axis=0)
+        self.loo = np.mean(np.abs(tpp - tpt)[:, zinds], axis=0)
+        return self.loo
 
-    def calculate_loo_errors(self, savefile='loo_t0-test.hdf5'):
+    def calculate_loo_errors(self, savefile='loo_t0.hdf5'):
         """Calculate leave-one-out errors: saves predicted temperature, true temperature,
         predicted error, and parameters for each simulation in the training set."""
         # call to loo function in coarse_grid with appropriate settings
@@ -98,6 +100,7 @@ class T0LikelihoodClass:
         savefile['std_predict'] = std
         savefile['meanT_true'] = true
         savefile['params'] = params
+        savefile['zout'] = self.zout
         savefile.close()
 
     def get_predicted(self, params):
@@ -230,7 +233,7 @@ class T0CobayaLikelihoodClass(Likelihood, T0LikelihoodClass):
     optimise_GP: bool = True
     json_file: str = 'T0emulator_params.json'
     dataset: str = 'fps'
-    HRbasedir: bool = False
+    HRbasedir: str = None
     data_meanT: float = None
     loo_errors: bool = False
     hprior: str = 'none'

@@ -100,7 +100,7 @@ class LikelihoodClass:
         # Units: km / s; Size: n_z * n_k
         self.mf_slope = False
         # get leave_one_out errors
-        if loo_errors: self.get_loo_errors(self.zout.size)
+        if loo_errors: self.get_loo_errors()
         # Param limits on t0
         t0_factor = np.array([0.75, 1.25])
         if mean_flux == 'c':
@@ -174,28 +174,28 @@ class LikelihoodClass:
         if use_meant:
             self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=self.min_z, optimise_GP=True, HRbasedir=self.HRbasedir, loo_errors=loo_errors)
 
-    def get_loo_errors(self, nz):
-        sdssz = self.sdss.get_redshifts()
-        zinds = np.where([(sdssz <= self.max_z)*(sdssz >= self.min_z)])[1]
+    def get_loo_errors(self, savefile="loo_fps.hdf5"):
         if self.HRbasedir is None:
-            filepath = os.path.join(self.basedir, "loo_fps.hdf5")
+            filepath = os.path.join(self.basedir, savefile)
         else:
-            filepath = os.path.join(self.HRbasedir, "loo_fps.hdf5")
+            filepath = os.path.join(self.HRbasedir, savefile)
         ff = h5py.File(filepath, 'r')
-        fpp, fpt = ff['flux_predict'][:], ff['flux_true'][:]
+        fpp, fpt, looz = ff['flux_predict'][:], ff['flux_true'][:], ff['zout'][:]
         ff.close()
+        zinds = np.where([(looz <= self.max_z)*(looz >= self.min_z)])[1]
         # after loading the absolute difference, calculate errors including BOSS data
-        loo_errors = np.mean(np.abs(fpp - fpt), axis=0)
-        # loo_errors = np.mean(np.abs(fpp - fpt)[:,:,7:], axis=0)
+        loo_errors = np.mean(np.abs(fpp - fpt)[:, zinds], axis=0)
+        nz = np.shape(loo_errors)[0]
         self.icov_bin = []
         self.cdet = []
         for bb in range(nz):
-            covar_bin = self.get_BOSS_error(bb)#[7:,7:]
-            covar_bin += np.outer(loo_errors[zinds[bb]], loo_errors[zinds[bb]])
+            covar_bin = self.get_BOSS_error(bb)
+            covar_bin += np.outer(loo_errors[bb], loo_errors[bb])
             self.icov_bin.append(np.linalg.inv(covar_bin))
             self.cdet.append(np.linalg.slogdet(covar_bin)[1])
+        return loo_errors
 
-    def calculate_loo_errors(self, savefile='loo_fps-test.hdf5'):
+    def calculate_loo_errors(self, savefile='loo_fps.hdf5'):
         """Calculate leave-one-out errors: saves predicted flux power, true flux power,
         predicted error, and parameters for each simulation in the training set."""
         # call to loo function in coarse_grid with appropriate settings
@@ -212,6 +212,7 @@ class LikelihoodClass:
         savefile['std_predict'] = std
         savefile['flux_true'] = true
         savefile['params'] = params
+        savefile['zout'] = self.zout
         savefile.close()
 
     def get_predicted(self, params):
@@ -282,7 +283,6 @@ class LikelihoodClass:
             oo = oo + 2
         if sample_on == 'omegamh2':
             planck_mean, planck_sigma = 0.1424, 0.001
-            # planck_mean, planck_sigma = 0.315*0.674**2, 0.0035
             return -((params[oo]-planck_mean)/planck_sigma)**2
         elif sample_on == 'omegam':
             omega_m = params[oo]/params[oo-1]**2
@@ -324,10 +324,10 @@ class LikelihoodClass:
                 # Get and apply the DLA and SiIII corrections to the prediction
                 predicted[bb] = predicted[bb]*self.get_data_correction(okf[bb], params, self.zout[bb])
             diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
-            diff_bin = diff_bin#[7:]
-            std_bin = std[bb]#[7:]
+            diff_bin = diff_bin
+            std_bin = std[bb]
             bindx = np.min(idp)
-            covar_bin = self.get_BOSS_error(bb)[bindx:, bindx:]#[7:,7:]
+            covar_bin = self.get_BOSS_error(bb)[bindx:, bindx:]
             assert np.shape(np.outer(std_bin, std_bin)) == np.shape(covar_bin)
             if include_emu:
                 if self.loo_errors:

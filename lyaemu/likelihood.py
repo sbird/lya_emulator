@@ -54,15 +54,24 @@ def DLAcorr(kf, z, alpha):
     factor += alpha[1] * ((1+z)/(1+z_0))**-3.55 * ((a_z[2]*np.exp(b_z[2]*kf) - 1)**-2 + (a_z[3]*np.exp(b_z[3]*kf) - 1)**-2)
     return factor
 
-def load_data(datadir, *, kf, max_z=4.6, min_z=2.2, t0=1., tau_thresh=None):
+def load_data(datadir, *, kfkms, kfmpc, zout, max_z=4.6, min_z=2.2, t0=1., tau_thresh=None, data_index=21):
     """Load and initialise a "fake data" flux power spectrum"""
-    #Load the data directory
-    myspec = flux_power.MySpectra(max_z=max_z, min_z=min_z)
-    pps = myspec.get_snapshot_list(datadir)
-    #self.data_fluxpower is used in likelihood.
-    data_fluxpower = pps.get_power(kf=kf, mean_fluxes=np.exp(-t0*mflux.obs_mean_tau(myspec.zout, amp=0)), tau_thresh=tau_thresh)
-    assert np.size(data_fluxpower) % np.size(kf) == 0
-    return data_fluxpower
+    try: # first, try loading an existing file for the flux power
+        zinds = np.where((min_z <= zout)*(max_z >= zout))[0]
+        data_hdf5 = h5py.File(datadir+'/mf_emulator_flux_vectors_tau1000000.hdf5', 'r')
+        dfp = data_hdf5['flux_vectors'][data_index].reshape(zout.size, -1)[zinds].flatten()
+        params = data_hdf5['params'][data_index]
+        data_hdf5.close()
+        omega_m = params[7]/params[6]**2
+        _, data_fluxpower = flux_power.rebin_power_to_kms(kfkms=kfkms, kfmpc=kfmpc, flux_powers=dfp, zbins=zout[zinds], omega_m=omega_m)
+    except:
+        #Load the data directory
+        myspec = flux_power.MySpectra(max_z=max_z, min_z=min_z)
+        pps = myspec.get_snapshot_list(datadir)
+        #self.data_fluxpower is used in likelihood.
+        data_fluxpower = pps.get_power(kf=kfkms, mean_fluxes=np.exp(-t0*mflux.obs_mean_tau(myspec.zout, amp=0)), tau_thresh=tau_thresh)
+        assert np.size(data_fluxpower) % np.size(kfkms) == 0
+    return data_fluxpower.flatten()
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
@@ -172,7 +181,7 @@ class LikelihoodClass:
                 print('Finished generating emulator at', str(datetime.now()))
             self.gpemu = comm.bcast(gpemu, root = 0)
         if use_meant:
-            self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=self.min_z, optimise_GP=True, HRbasedir=self.HRbasedir, loo_errors=loo_errors)
+            self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=self.min_z, optimise_GP=optimise_GP, HRbasedir=self.HRbasedir, loo_errors=loo_errors)
 
     def get_loo_errors(self, savefile="loo_fps.hdf5"):
         if self.HRbasedir is None:
@@ -350,7 +359,7 @@ class LikelihoodClass:
             # omit mean flux and flux power data correction parameters
             indi = 0
             if self.mf_slope: indi = 2
-            chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu, sample_on=sample_on)*meant_fac
+            chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu, sample_on=sample_on, data_meanT=self.sim_meant)*meant_fac
         chi2 += self.hubble_prior(params, source=hprior)
         if oprior: chi2 += self.omega_prior(params, sample_on=sample_on)
         if bhprior: chi2 += self.bhfeedback_prior(params)
@@ -375,7 +384,7 @@ class LikelihoodClass:
         prange = (self.param_limits[:, 1]-self.param_limits[:, 0])
         # Build the dictionary
         info = {}
-        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "HRbasedir": self.HRbasedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z, "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value, "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr, "traindir": self.traindir, "loo_errors": self.loo_errors, "hprior": hprior, "oprior": oprior, "bhprior": bhprior, "sample_on": sample_on, "tau_thresh": self.tau_thresh, "use_meant": use_meant, "meant_fac": meant_fac, "include_emu": emu_error, "data_power": data_power}}
+        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "HRbasedir": self.HRbasedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z, "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value, "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr, "traindir": self.traindir, "loo_errors": self.loo_errors, "hprior": hprior, "oprior": oprior, "bhprior": bhprior, "sample_on": sample_on, "tau_thresh": self.tau_thresh, "sim_meant": self.sim_meant, "use_meant": use_meant, "meant_fac": meant_fac, "include_emu": emu_error, "data_power": data_power}}
         # Each of the parameters has a prior with limits and a proposal width (the proposal covariance matrix
         # is learned, so the value given needs to be small enough for the sampler to get started)
         info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale, 'latex': pnames[i][1]} for i in range(self.ndim)}
@@ -390,14 +399,20 @@ class LikelihoodClass:
     def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=80, include_emu_error=True, use_meant=None, meant_fac=9.1, hprior='none', oprior=False, bhprior=False, sample_on='omegamh2'):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
-        # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
-        data_power = None
-        if datadir is not None:
-            # Load the data directory (i.e. use a simulation flux power as data)
-            data_power = load_data(datadir, kf=self.kf, t0=self.t0_training_value, max_z=self.max_z, min_z=self.min_z, tau_thresh=self.tau_thresh)
-
         # if use_meant not specificed, default to setting from initialization
         if use_meant is None: use_meant = self.use_meant
+
+        # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
+        data_power = None
+        self.sim_meant = None
+        if datadir is not None:
+            _, kfmpc, _ = self.emulator.get_flux_vectors(max_z=self.max_z, min_z=self.min_z, kfunits="mpc")
+            # Load the data directory (i.e. use a simulation flux power as data)
+            data_power = load_data(datadir, kfkms=self.kf, kfmpc=kfmpc, t0=self.t0_training_value, zout=self.zout, max_z=self.max_z, min_z=self.min_z, tau_thresh=self.tau_thresh)
+            # get the appropriate simulation data for temperature as well
+            if use_meant:
+                self.sim_meant = t0_likelihood.load_data(datadir+'/emulator_meanT.hdf5', 0, max_z=3.8, min_z=2.2)
+
         # Construct the "info" dictionary used by Cobaya
         info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples, use_meant=use_meant, meant_fac=meant_fac, hprior=hprior, oprior=oprior, bhprior=bhprior, sample_on=sample_on)
 
@@ -481,6 +496,7 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     data_corr: bool = True
     tau_thresh: int = None
     use_meant: bool = False
+    sim_meant: float = None
     meant_fac: float = 9.1
     traindir: str = None
     data_power: float = None

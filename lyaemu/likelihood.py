@@ -105,7 +105,8 @@ class LikelihoodClass:
         self.sdss = lyman_data.BOSSData()
         self.kf = self.sdss.get_kf()
         # Load BOSS data vector
-        self.BOSS_flux_power = self.sdss.pf.reshape(-1, self.kf.shape[0])[:self.zout.shape[0]][::-1]
+        zbins = np.where((self.sdss.get_redshifts() <= self.max_z)*(self.sdss.get_redshifts() >= self.min_z))
+        self.BOSS_flux_power = self.sdss.pf.reshape(-1, self.kf.shape[0])[::-1][zbins]
         # Units: km / s; Size: n_z * n_k
         self.mf_slope = False
         # get leave_one_out errors
@@ -181,7 +182,8 @@ class LikelihoodClass:
                 print('Finished generating emulator at', str(datetime.now()))
             self.gpemu = comm.bcast(gpemu, root = 0)
         if use_meant:
-            self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=3.8, min_z=self.min_z, optimise_GP=optimise_GP, HRbasedir=self.HRbasedir, loo_errors=loo_errors)
+            assert self.min_z <= 3.8, "Observations do not support temperatures outside 2.0 < z < 3.8"
+            self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=np.min([3.8, self.max_z]), min_z=self.min_z, optimise_GP=optimise_GP, HRbasedir=self.HRbasedir, loo_errors=loo_errors)
 
     def get_loo_errors(self, savefile="loo_fps.hdf5"):
         if self.HRbasedir is None:
@@ -316,7 +318,7 @@ class LikelihoodClass:
         parameters are estimated once per z bin."""
         # Default data to use is BOSS data
         if data_power is None:
-            data_power = np.copy(self.BOSS_flux_power.flatten())
+            data_power = np.copy(self.BOSS_flux_power)
         # Set parameter limits as the hull of the original emulator.
         if np.any(params >= self.param_limits[:, 1]) or np.any(params <= self.param_limits[:, 0]):
             return -np.inf
@@ -332,7 +334,7 @@ class LikelihoodClass:
             if len(self.data_params) != 0:
                 # Get and apply the DLA and SiIII corrections to the prediction
                 predicted[bb] = predicted[bb]*self.get_data_correction(okf[bb], params, self.zout[bb])
-            diff_bin = predicted[bb] - data_power[nkf*bb:nkf*(bb+1)][idp]
+            diff_bin = predicted[bb] - data_power[bb][idp]
             diff_bin = diff_bin
             std_bin = std[bb]
             bindx = np.min(idp)

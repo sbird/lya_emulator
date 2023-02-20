@@ -21,14 +21,9 @@ def rebin_power_to_kms(kfkms, kfmpc, flux_powers, zbins, omega_m, omega_l=None):
     flux_powers = flux_powers.reshape(okmsbins.shape)
     # interpolate simulation output for averaging
     rebinned = [scipy.interpolate.interpolate.interp1d(okmsbins[i], flux_powers[i]) for i in range(nz)]
-    boss_edges = np.linspace(kfkms[0]-np.diff(kfkms)[0]/2, kfkms[-1]+np.diff(kfkms)[0]/2, kfkms.size+1)
-    interp_kfkms = np.linspace(boss_edges[0], boss_edges[-1], kfkms.size**2)
-    interp_flux_powers = [rebinned[i](interp_kfkms) for i in range(nz)]
+    new_flux_powers = np.array([rebinned[i](kfkms) for i in range(nz)])
     # final flux power array
-    new_flux_powers = np.zeros([nz, kfkms.size])
-    for k in range(kfkms.size):
-        simbins = ((interp_kfkms >= boss_edges[k])*(interp_kfkms < boss_edges[k+1]))
-        new_flux_powers[:,k] = np.mean(interp_flux_powers, axis=1, where=simbins)
+    assert np.min(new_flux_powers) > 0
     return np.repeat([kfkms], nz, axis=0), new_flux_powers
 
 class FluxPower:

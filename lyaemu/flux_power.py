@@ -4,7 +4,9 @@ import argparse
 import os.path
 import scipy.interpolate
 import numpy as np
+from mpi4py import MPI
 from fake_spectra import spectra
+from fake_spectra import griddedspectra
 from fake_spectra import abstractsnapshot as absn
 
 def rebin_power_to_kms(kfkms, kfmpc, flux_powers, zbins, omega_m, omega_l=None):
@@ -107,8 +109,7 @@ class MySpectra:
     """This class stores the randomly positioned sightlines once,
        so that they are the same for each emulator point.
        max_k is in comoving h/Mpc."""
-    def __init__(self, numlos=32000, max_z=5.4, min_z=2.0, max_k=5.):
-        self.NumLos = numlos
+    def __init__(self, ngrid=480, max_z=5.4, min_z=2.0, max_k=5.):
         #For SDSS or BOSS the spectral resolution is
         #60 km/s at 5000 A and 80 km/s at 4300 A.
         #In principle we could generate smoothed spectra
@@ -122,27 +123,12 @@ class MySpectra:
         #We use a much smaller pixel resolution so that the window functions
         #are small for mean flux rescaling, and also so that HCDs are confined.
         self.pix_res = 10.
-        self.NumLos = numlos
         #Want output every 0.2 from z=max to z=2.0, matching SDSS.
         nz = int(np.round((max_z-min_z)/0.2, 1)) + 1
         self.zout = np.linspace(max_z, min_z, nz)
         self.max_k = max_k
-        self.savefile = "lya_forest_spectra.hdf5"
-
-    def _get_cofm(self, num, base):
-        """Get an array of sightlines."""
-        try:
-            #Use saved sightlines if we have them.
-            return (self.cofm, self.axis)
-        except AttributeError:
-            #Otherwise get sightlines at random positions
-            #Re-seed for repeatability
-            np.random.seed(23)
-            box = _get_header_attr_from_snap("BoxSize", num, base)
-            #All through y axis
-            axis = np.ones(self.NumLos)
-            cofm = box*np.random.random_sample((self.NumLos,3))
-            return cofm, axis
+        self.ngrid = ngrid
+        self.savefile = "lya_forest_spectra_grid_%d.hdf5" % ngrid
 
     def _check_redshift(self, red):
         """Check the redshift of a snapshot set is what we want."""
@@ -152,13 +138,9 @@ class MySpectra:
 
     def _get_spectra_snap(self, snap, base):
         """Get a snapshot with generated HI spectra"""
-        #If savefile exists, reload. Otherwise do not.
-        def mkspec(snap, base, cofm, axis, rf):
-            """Helper function"""
-            return spectra.Spectra(snap, base, cofm, axis, res=self.pix_res, savefile=self.savefile,spec_res = self.spec_res, reload_file=rf,sf_neutral=False,quiet=True, load_snapshot=rf)
         #First try to get data from the savefile, and if we can't, try the snapshot.
         try:
-            ss = mkspec(snap, base, None, None, rf=False)
+            ss = spectra.Spectra(snap, base, None, None, res=self.pix_res, savefile=self.savefile,spec_res = self.spec_res, reload_file=False,sf_neutral=False,quiet=True, load_snapshot=False, MPI=MPI)
             if not self._check_redshift(ss.red):
                 return None
         except OSError:
@@ -167,17 +149,10 @@ class MySpectra:
             if not self._check_redshift(red):
                 return None
             #Make sure we have sightlines
-            (cofm, axis) = self._get_cofm(snap, base)
-            ss = mkspec(snap, base, cofm, axis, rf=True)
+            ss = griddedspectra.GriddedSpectra(snap, base, nspec = self.ngrid, res=self.pix_res, axis=-1, savefile=self.savefile, spec_res = self.spec_res, reload_file=True,sf_neutral=False,quiet=False, MPI=MPI)
             #Get optical depths and save
             _ = ss.get_tau("H",1,1215)
             ss.save_file()
-        #Check we have the same spectra
-        try:
-            assert np.all(ss.cofm == self.cofm)
-        except AttributeError:
-            #If this is the first load, we just want to use the snapshot values.
-            (self.cofm, self.axis) = (ss.cofm, ss.axis)
         return ss
 
     def get_snapshot_list(self, base, snappref="SPECTRA_"):
@@ -225,6 +200,7 @@ def _get_header_attr_from_snap(attr, num, base):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('base', type=str, help='Snapshot directory')
+    parser.add_argument('--ngrid', type=int, help='Number of sightlines per side', default=480, required=False)
     args = parser.parse_args()
-    myspec = MySpectra()
+    myspec = MySpectra(ngrid=args.ngrid)
     myspec.get_snapshot_list(args.base)

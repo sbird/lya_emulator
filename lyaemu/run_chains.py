@@ -3,7 +3,7 @@
 Inputs include:
     - savefile = str, path and filename to save the chain outputs
     - basedir = str, path to the emulator files (json, hdf5), which should include both FPS and T0
-    - HRbasedir = str, path to the HF emulator files
+    - HRbasedir = str, path to the HF emulator files (if None, use single-fidelity emulator)
     - traindir = str, path to the directory containing the saved GP (***fps only)
     - min_z, max_z = float, range of redshifts (inclusive)
     - loo_errors = bool, whether to use leave-one-out errors
@@ -48,5 +48,3 @@ def run_fpschain(savefile, basedir, HRbasedir=None, traindir=None, min_z=2.2, ma
     # then run the chain -- note that savefile = None means it will not save
     chain = like.do_sampling(savefile=savefile, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior, bhprior=hbprior, pscale=pscale)
     return chain
-
-

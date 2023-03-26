@@ -21,10 +21,10 @@ class T0MultiBinGP:
 
     def _get_interp(self, mean_temps):
         """Build the GP interpolator."""
-        # Map the parameters onto a unit cube (so all variations have similar magnitude)
+        # map the parameters onto a unit cube (so all variations have similar magnitude)
         nparams = np.shape(self.params)[1]
         param_cube = map_to_unit_cube_list(self.params, self.param_limits)
-        # Ensure that the GP prior (a zero-mean input) is close to true.
+        # ensure that the GP prior (a zero-mean input) is close to true.
         self.scalefactors = np.mean(mean_temps, axis=0)
         normtemps = mean_temps/self.scalefactors - 1.
         # Standard squared-exponential kernel with a different length scale for each
@@ -67,7 +67,7 @@ class T0MultiBinAR1:
 
         # get parameters into correct format
         param_cube = [map_to_unit_cube_list(LRparams, param_limits), map_to_unit_cube_list(HRparams, param_limits)]
-        # Ensure that the GP prior (a zero-mean input) is close to true.
+        # ensure that the GP prior (a zero-mean input) is close to true.
         self.scalefactors = np.mean(LRtemps, axis=0)
         LRnormtemps = LRtemps/self.scalefactors - 1.
         HRnormtemps = HRtemps/self.scalefactors - 1.
@@ -97,6 +97,7 @@ class T0MultiBinAR1:
 
 
     def optimize(self, n_optimization_restarts):
+        # no saving mechanism included here (yet) -- this trains so fast, it isn't really needed
         # fix noise
         getattr(self.gpy_models.mixed_noise, "Gaussian_noise").fix(1e-6)
         for j in range(1, self.n_fidelities):

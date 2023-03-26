@@ -1,3 +1,9 @@
+"""Pick the optimal simulations to run at high-fidelity, for multi-fidelity emulator construction.
+
+direct_search takes in the low-fidelity flux power, mean temperature, and json file and returns the initial samples to run (num_selected samples)
+
+search_next should be used when adding more samples to the HF set -- it takes the same three arguments, plus the indices (within those files) of the samples that were already run at HF.
+"""
 import json
 from itertools import combinations
 from typing import List, Optional
@@ -10,13 +16,14 @@ from . import t0_gpemulator as t0gpemu
 np.random.seed(0)
 
 def direct_search(fps_file, t0_file, json_file, num_selected=2, max_z=5.4, min_z=2.0):
+    # get the flux power outputs for the low-fidelity samples
     load = h5py.File(fps_file, 'r')
     zout = np.round(load['zout'][:], 1)
     params = load['params'][:]
     kfmpc = load['kfmpc'][:]
     flux_power = load['flux_vectors'][:].reshape(-1, zout.size, kfmpc.size)
     load.close()
-
+    # get the mean temperature outputs for the low-fidelity samples
     load = h5py.File(t0_file, 'r')
     meant = load['meanT'][:]
     load.close()
@@ -57,18 +64,19 @@ def direct_search(fps_file, t0_file, json_file, num_selected=2, max_z=5.4, min_z
 
 
 def search_next(fps_file, t0_file, json_file, prev_ind, max_z=5.4, min_z=2.0):
+    # get the flux power outputs for the low-fidelity samples
     load = h5py.File(fps_file, 'r')
     zout = np.round(load['zout'][:], 1)
     params = load['params'][:]
     kfmpc = load['kfmpc'][:]
     flux_power = load['flux_vectors'][:].reshape(-1, zout.size, kfmpc.size)
     load.close()
-
+    # get the mean temperature outputs for the low-fidelity samples
     load = h5py.File(t0_file, 'r')
     meant = load['meanT'][:]
     t0params = load['params'][:]
     load.close()
-
+    # ensure that the samples agree between the flux power and temperature
     subset = np.isin(params, t0params).all(axis=1)
     new_inds = np.where(subset == True)[0]
     flux_power = flux_power[new_inds]
@@ -83,7 +91,7 @@ def search_next(fps_file, t0_file, json_file, prev_ind, max_z=5.4, min_z=2.0):
     with open(json_file, 'r') as jsin:
         param_limits = np.array(json.load(jsin)['param_limits'])
 
-    # loop over all combinations
+    # loop over all combinations which all include the prev_ind samples
     ind_rng = np.setdiff1d(np.arange(params.shape[0]), prev_ind)
     all_combinations = list((*prev_ind, ind_rng[i]) for i in range(ind_rng.size))
     all_fps_loss = []

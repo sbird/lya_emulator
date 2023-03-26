@@ -3,11 +3,11 @@ The main routine is BayesianOpt.find_new_trials
 
 To perform Bayesian optimisation, do:
 
-bayes.BayesianOpt(emulatordir, datadir, tau_thresh)
-new_sims = bayes.find_new_trials(1-3)
+bayes = BayesianOpt(emulatordir, datadir, tau_thresh)
+new_sims = bayes.find_new_trials(#), where # is the number of new samples
 bayes.gen_new_simulations(new_sims)
 
-Then run the simulations
+This will generate ICs for the new_sims. Then run the simulations using MP-Gadget.
 
 To regenerate the emulator once the new simulations have run you can do:
         emulator.reconstruct()

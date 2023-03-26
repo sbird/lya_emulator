@@ -104,21 +104,23 @@ class SkLearnGP:
         kernel = GPy.kern.Linear(nparams, ARD=True)
         kernel += GPy.kern.RBF(nparams, ARD=True)
         self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
+        # try to load previously saved trained GPs
         try:
             zbin_file = os.path.join(os.path.abspath(self.traindir), 'zbin'+str(self.zbin))
             load_gp = json.load(open(zbin_file+'.json', 'r'))
             self.gp.from_dict(load_gp)
             print('Loading pre-trained GP for z:'+str(self.zbin))
+        # need to train from scratch
         except:
             print('Optimizing GP for z:'+str(self.zbin))
-            status = self.gp.optimize(messages=False) #True
+            status = self.gp.optimize(messages=False)
             #print('Gradients of model hyperparameters [after optimisation] =', self.gp.gradient)
             #Let's check that hyperparameter optimisation is converged
             if status.status != 'Converged':
                 print("Restarting optimization")
                 self.gp.optimize_restarts(num_restarts=10)
             #print('Gradients of model hyperparameters [after second optimisation (x 10)] =', self.gp.gradient)
-            if self.traindir != None: # if a traindir was requested, but not populated
+            if self.traindir != None: # if a traindir was requested, but not populated, save it
                 print('Saving GP to', zbin_file)
                 if not os.path.exists(self.traindir): os.makedirs(self.traindir)
                 with open(zbin_file+'.json', 'w') as jfile:
@@ -190,7 +192,7 @@ class SingleBinAR1:
 
         # get parameters into correct format
         param_cube = [map_to_unit_cube_list(LRparams, param_limits), map_to_unit_cube_list(HRparams, param_limits)]
-        # Ensure that the GP prior (a zero-mean input) is close to true.
+        # ensure that the GP prior (a zero-mean input) is close to true.
         medind = np.argsort(np.mean(LRfps, axis=1))[np.shape(LRfps)[0]//2]
         self.scalefactors = LRfps[medind,:]
         LRnormfps = LRfps/self.scalefactors - 1.

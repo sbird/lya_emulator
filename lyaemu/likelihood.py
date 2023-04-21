@@ -75,7 +75,7 @@ def load_data(datadir, *, kfkms, kfmpc, zout, max_z=4.6, min_z=2.2, t0=1., tau_t
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', data_corr=True, tau_thresh=None, use_meant=False, traindir=None, HRbasedir=None, loo_errors=False):
+    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', emulator_flux_vectors = "emulator_flux_vectors.hdf5", data_corr=True, tau_thresh=None, use_meant=False, traindir=None, HRbasedir=None, loo_errors=False):
         """Initialise the emulator by loading the flux power spectra from the simulations.
         Parameters:
         - basedir: directory to load emulator

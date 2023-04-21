@@ -174,12 +174,12 @@ class LikelihoodClass:
             gpemu = None
             if rank == 0:
                 #Build the emulator only on rank 0 and broadcast
-                print('Beginning to generate emulator at', str(datetime.now()))
+                print('Beginning to generate emulator at '+ str(datetime.now()), flush=True)
                 if HRbasedir is None:
-                    gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z, traindir=traindir)
+                    gpemu = self.emulator.get_emulator(max_z=max_z, min_z=min_z, traindir=traindir, savefile=emulator_flux_vectors)
                 else:
                     gpemu = self.emulator.get_MFemulator(HRbasedir, max_z=max_z, min_z=min_z, traindir=traindir)
-                print('Finished generating emulator at', str(datetime.now()))
+                print('Finished generating emulator at', str(datetime.now()), flush=True)
             self.gpemu = comm.bcast(gpemu, root = 0)
         if use_meant:
             assert self.min_z <= 3.8, "Emulator does not support temperatures outside 2.2 < z < 3.8"

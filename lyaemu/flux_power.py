@@ -185,7 +185,7 @@ class MySpectra:
             reds = [ss.red for ss in powerspectra.spectrae]
             nz = int(np.round((np.max(reds)-np.min(reds))/0.2, 1)) + 1
             self.zout = np.linspace(np.max(reds), np.min(reds), nz)
-            print("Redshift now from z=%g to %g" % (self.zout[0], self.zout[-1]))
+            print("Redshift now from z=%g to %g" % (self.zout[0], self.zout[-1]), flush=True)
         if powerspectra.len() != np.size(self.zout):
             raise ValueError("Found only",powerspectra.len(),"of",np.size(self.zout),"z=",self.zout[0], self.zout[-1],"from snaps:",powerspectra.snaps)
         return powerspectra

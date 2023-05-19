@@ -3,10 +3,12 @@ from distutils.core import setup
 setup(
     name="lyaemu",
     version='1.0.0',
-    author="Simeon Bird and Keir Rogers",
-    author_email="spb@ias.edu",
+    author="Simeon Bird, Martin Fernandez and Keir Rogers",
+    author_email="spb@ucr.edu",
     url="http://github.com/sbird/lya_emulator",
     description="Module for easily generating emulators for the lyman alpha forest from simulations",
+    long_description="Module for easily generating emulators for the lyman alpha forest from simulations",
+    long_description_content_type = "text/plain",
     packages = ['lyaemu', 'lyaemu.tests', 'lyaemu.SimulationRunner.SimulationRunner', 'lyaemu.meanT'],
     requires=['numpy', 'fake_spectra','scipy', "GPy", "cobaya", "h5py"],
     package_data = {

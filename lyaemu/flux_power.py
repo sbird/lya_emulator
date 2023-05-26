@@ -178,7 +178,7 @@ class MySpectra:
                 if ss is not None:
                     powerspectra.add_snapshot(snap,ss)
             except IOError:
-                print("IOError: Didn't find any spectra %s %d" % (base, snap))
+                print("Didn't find spectra in %s snap %d because of IOError: " % (base, snap), flush=True)
                 continue
         #Make sure we have enough outputs, ignoring missing values at the start and the end
         if powerspectra.len() != np.size(self.zout):

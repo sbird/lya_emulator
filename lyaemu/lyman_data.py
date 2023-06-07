@@ -111,6 +111,8 @@ class BOSSData(SDSSData):
                 dfile = os.path.join(covardir, "cct4b"+str(bb+1)+".dat")
                 dd = np.loadtxt(dfile) #k-bin correlation matrix (35 x 35) for single redshift
                 self.covar[35*bb:35*(bb+1), 35*bb:35*(bb+1)] = dd #Filling in block matrices along diagonal
+        else:
+            raise NotImplementedError("SDSS Data %s not found!" % datafile)
 
     def get_covar(self, zbin=None):
         """Get the covariance matrix"""

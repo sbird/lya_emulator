@@ -75,7 +75,7 @@ def load_data(datadir, *, kfkms, kfmpc, zout, max_z=4.6, min_z=2.2, t0=1., tau_t
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
-    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', emulator_flux_vectors = "emulator_flux_vectors.hdf5", data_corr=True, tau_thresh=None, use_meant=False, traindir=None, HRbasedir=None, loo_errors=False):
+    def __init__(self, basedir, mean_flux='s', max_z=4.6, min_z=2.2, emulator_class="standard", t0_training_value=1., optimise_GP=True, emulator_json_file='emulator_params.json', emulator_flux_vectors = "emulator_flux_vectors.hdf5", data_corr=True, tau_thresh=None, use_meant=False, traindir=None, HRbasedir=None, loo_errors=False, sdss="dr14"):
         """Initialise the emulator by loading the flux power spectra from the simulations.
         Parameters:
         - basedir: directory to load emulator
@@ -102,7 +102,7 @@ class LikelihoodClass:
         self.zout = myspec.zout
         # Default data is flux power from Chabanier 2019 (BOSS DR14),
         # pass datafile='dr9' to use data from Palanque-Delabrouille 2013
-        self.sdss = lyman_data.BOSSData()
+        self.sdss = lyman_data.BOSSData(datafile=sdss)
         self.kf = self.sdss.get_kf()
         # Load BOSS data vector
         zbins = np.where((self.sdss.get_redshifts() <= self.max_z)*(self.sdss.get_redshifts() >= self.min_z))

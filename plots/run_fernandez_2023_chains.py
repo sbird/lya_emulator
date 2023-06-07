@@ -59,11 +59,11 @@ like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.6-4.6-emuerr', burnin=1e4,
 
 
 # DR9 checks --- REQUIRES MANUALLY CHANGING THE DATA SET TO DR9 IN LIKELIHOOD.PY CALL TO lyman_data.BOSSData()
-# like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=False, min_z=2.6, max_z=4.4)
-# like.do_sampling(savefile=chaindir+'fps-only/mf-48-dr9-z2.6-4.4', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=False, hprior='none', oprior=False, bhprior=False)
-#
-# like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=False, min_z=2.2, max_z=4.4)
-# like.do_sampling(savefile=chaindir+'fps-only/mf-48-dr9-z2.2-4.4', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=False, hprior='none', oprior=False, bhprior=False)
+like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=False, min_z=2.6, max_z=4.4, sdss="dr9")
+like.do_sampling(savefile=chaindir+'fps-only/mf-48-dr9-z2.6-4.4', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=False, hprior='none', oprior=False, bhprior=False)
+
+like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=False, min_z=2.2, max_z=4.4, sdss="dr9")
+like.do_sampling(savefile=chaindir+'fps-only/mf-48-dr9-z2.2-4.4', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=False, hprior='none', oprior=False, bhprior=False)
 
 
 

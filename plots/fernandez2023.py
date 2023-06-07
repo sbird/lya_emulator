@@ -59,14 +59,14 @@ def cosmo_corner(chain_dirs, savefile=None, labels=None):
         gd_samples.append(loadMCSamples(chain_dir, settings={'ignore_rows':nn[np.where(gr < 1)[0][0]]/nn[-1]}))
     for gd_sample in gd_samples:
         print('Using', gd_sample.numrows, 'samples')
-        
+
     gd_samples[0].paramNames.parWithName('Ap').label = 'A_\\mathrm{P}/10^{-9}'
     gd_samples[0].paramNames.parWithName('ns').label = 'n_\\mathrm{P}'
     params = ["ns", "Ap", "hub", "omegamh2"]
     plimits = np.array([[0.8, 0.995], [1.2e-9, 2.6e-9], [0.65, 0.75], [0.14, 0.146]])
     gticks = np.array([[0.85,0.95], [1.6e-9,2.2e-9], [0.68,0.72], [0.141,0.144]])
     gtlabels = np.array([['0.85','0.95'], ['1.6','2.2'], ['0.68','0.72'], ['0.141','0.144']])
-    
+
     gdplot = gdplt.get_subplot_plotter()
     gdplot.settings.axes_fontsize = 20
     gdplot.settings.axes_labelsize = 28
@@ -95,7 +95,7 @@ def astro_corner(chain_dirs, savefile=None, labels=None, bhprior=False):
         gd_samples.append(loadMCSamples(chain_dir, settings={'ignore_rows':nn[np.where(gr < 1)[0][0]]/nn[-1]}))
     for gd_sample in gd_samples:
         print('Using', gd_sample.numrows, 'samples')
-        
+
     gd_samples[0].paramNames.parWithName('herei').label = 'z^{HeII}_i'
     gd_samples[0].paramNames.parWithName('heref').label = 'z^{HeII}_f'
     gd_samples[0].paramNames.parWithName('alphaq').label = '\\alpha_{q}'
@@ -106,7 +106,7 @@ def astro_corner(chain_dirs, savefile=None, labels=None, bhprior=False):
     plimits = np.array([[3.5, 4.1], [2.6, 3.2], [1.4, 2.5], [6.5, 8.0], [0.03, 0.07]])
     gticks = np.array([[3.7,3.9], [2.8,3.0], [1.8,2.2], [7,7.5], [0.04, 0.06]])
     gtlabels = np.array([['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['7.0','7.5'], ['0.04', '0.06']])
-    
+
     gdplot = gdplt.get_subplot_plotter()
     gdplot.settings.axes_fontsize = 20
     gdplot.settings.axes_labelsize = 28
@@ -149,7 +149,7 @@ def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
     gd_samples[0].paramNames.parWithName('herei').label = 'z^{HeII}_i'
     gd_samples[0].paramNames.parWithName('heref').label = 'z^{HeII}_f'
     gd_samples[0].paramNames.parWithName('alphaq').label = '\\alpha_{q}'
-    gd_samples[0].paramNames.parWithName('hireionz').label = 'z^{HI}'  
+    gd_samples[0].paramNames.parWithName('hireionz').label = 'z^{HI}'
     gd_samples[0].paramNames.parWithName('bhfeedback').label = '\\epsilon_{AGN}'
 
     params = np.array(["ns", "Ap", "herei", "heref", "alphaq", "hub", "omegamh2", "hireionz", "bhfeedback"])
@@ -157,7 +157,7 @@ def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
     gticks = np.array([[0.85,0.95], [1.6e-9,2.2e-9], [3.7,3.9], [2.8,3.0], [1.8,2.2], [0.68,0.72], [0.141,0.144], [7,7.5], [0.04, 0.06]])
     gtlabels = np.array([['0.85','0.95'], ['1.6','2.2'], ['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['0.68','0.72'], ['0.141','0.144'], ['7.0','7.5'], ['0.04', '0.06']])
     nparams = np.size(params)
-    
+
     gdplot = gdplt.get_subplot_plotter()
     gdplot.settings.axes_fontsize = 20
     gdplot.settings.axes_labelsize = 28
@@ -197,7 +197,7 @@ def pp_corner(chain_dirs, savefile=None, labels=None):
     gticks = np.array([[-0.2,0.1], [1.0,1.2], [-0.1,0.1], [-0.02,0.02], [0.008,0.011]])
     gtlabels = np.array([['-0.2','0.1'], ['1.0','1.2'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011']])
     nparams = np.size(params)
-        
+
     gdplot = gdplt.get_subplot_plotter()
     gdplot.settings.axes_fontsize = 20
     gdplot.settings.axes_labelsize = 28
@@ -217,9 +217,9 @@ def pp_corner(chain_dirs, savefile=None, labels=None):
     if savefile is not None:
         gdplot.export(savefile)
     plt.show()
-        
-        
-        
+
+
+
 
 # plot the samples, parameter limits
 # t0_samps is the indices of the samples that are to be highlighted
@@ -227,21 +227,21 @@ def plot_samples(lores_json, hires_json, savefile=None, t0_samps=None):
     # get samples
     hires = np.array(json.load(open(hires_json, 'r'))['sample_params'])
     lores = np.array(json.load(open(lores_json, 'r'))['sample_params'])
-    
+
     # Difference between FPS and T0 samples
     if t0_samps is not None:
         t0 = lores[t0_samps]
         uu, nn = np.unique(np.concatenate([lores, t0]), axis=0, return_counts=True)
         lores = uu[np.where(nn==1)]
     nsim, npar = np.shape(lores)
-        
+
     # get parameter limits
     plimits = np.array(json.load(open(lores_json, 'r'))['param_limits'])
 
     # parameter names - update formatting from the json file
-    names = [r'$\bf{n_P}$', r'$\bf{A_p}$', r'$\bf{z^{HeII}_i}$', r'$\bf{z^{HeII}_f}$', r'$\bf{\alpha_q}$', r'$\bf{h}$', r'$\bf{\Omega_M h^2}$', 
+    names = [r'$\bf{n_P}$', r'$\bf{A_p}$', r'$\bf{z^{HeII}_i}$', r'$\bf{z^{HeII}_f}$', r'$\bf{\alpha_q}$', r'$\bf{h}$', r'$\bf{\Omega_M h^2}$',
              r'$\bf{z^{HI}}$', r'$\bf{\epsilon_{AGN}}$']
-    
+
     # make the plot
     yy = np.ones(nsim)
     fig, ax = plt.subplots(figsize=(10.625, 11), nrows=npar, ncols=1)
@@ -260,7 +260,7 @@ def plot_samples(lores_json, hires_json, savefile=None, t0_samps=None):
         ax[i].spines['top'].set_visible(False)
         ax[i].spines['left'].set_visible(False)
         ax[i].yaxis.set_ticks_position('left')
-        ax[i].xaxis.set_ticks_position('bottom')    
+        ax[i].xaxis.set_ticks_position('bottom')
         ax[i].patch.set_facecolor('none')
 
     fig.subplots_adjust(hspace=2, wspace=0)
@@ -280,7 +280,7 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
     # set up the likelihood class
     like = lk.LikelihoodClass(basedir, tau_thresh=1e6, max_z=4.6, min_z=2.2, traindir=traindir, HRbasedir=HRbasedir)
     zz = np.round(like.zout, 1)
-    
+
     call_names = ['dtau0', 'tau0', 'ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'bhfeedback', 'a_lls', 'a_dla', 'fSiIII']
     okf, pred, std = [], [], []
     for chaindir in chain_dirs:
@@ -299,7 +299,7 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
         for bb in range(like.zout.size):
             predi[bb] = predi[bb]*like.get_data_correction(okfi[bb], best_par, like.zout[bb])
         pred.append(predi)
-                
+
     nrows, ncols = 3, 2
     colors = [c_sunshine, c_flatirons, c_skyline_ll]
     fig, axes = plt.subplots(figsize=(10.625*2, 11*1.75), nrows=nrows, ncols=ncols, sharex=True, gridspec_kw={'height_ratios': [1, 1, 2]})
@@ -354,7 +354,7 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
         plt.savefig(savefile)
     plt.show()
 
-    
+
 
 # plot the mean temperature observations, and some max posterior predictions
 def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=None):
@@ -367,7 +367,7 @@ def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=
         gpemu = temu.get_MFemulator(HRbasedir=HRbasedir, max_z=4.6, min_z=2.2)
     else:
         gpemu = temu.get_emulator(max_z=4.6, min_z=2.2)
-    
+
     # names in the chain files for each parameter
     call_names = ['ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'bhfeedback']
     pred, std = [], []
@@ -383,7 +383,7 @@ def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=
             best_par.append(best)
         pred.append(gpemu.predict(np.array(best_par))[0].flatten())
         std.append(gpemu.predict(np.array(best_par))[1].flatten())
-        
+
     colors = [c_sunshine, c_flatirons, c_skyline_ll]
     fig, ax = plt.subplots(nrows=1,ncols=1,figsize=(10.625, 8))
     plt.setp(ax, xticks=[4.6,4.2,3.8,3.4,3.0,2.6,2.2], xlim=[4.7,2.1], ylim=[0.7,1.65])
@@ -402,8 +402,8 @@ def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=
     if savefile is not None:
         plt.savefig(savefile, bbox_inches='tight', pad_inches=0)
     plt.show()
-    
-    
+
+
 # plot showing the emulator errors across each parameter space, along with
 # the resulting posteriors, and the training samples
 # chains is a list of the filepath/filename for each chain set
@@ -445,14 +445,14 @@ def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None):
     hires[:,1] *= 10**9
     params[1] *= 10**9
     # parameter names
-    names = [r'$\bf{n_P}$', r'$10^{9}\bf{A_p}$', r'$\bf{z^{HeII}_i}$', r'$\bf{z^{HeII}_f}$', r'$\bf{\alpha_q}$', r'$\bf{h}$', r'$\bf{\Omega_M h^2}$', 
+    names = [r'$\bf{n_P}$', r'$10^{9}\bf{A_p}$', r'$\bf{z^{HeII}_i}$', r'$\bf{z^{HeII}_f}$', r'$\bf{\alpha_q}$', r'$\bf{h}$', r'$\bf{\Omega_M h^2}$',
              r'$\bf{z^{HI}}$']
     call_names = ['ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz']
     rounder = np.array([3,2,2,2,2,2,3,2])
     colors_dist = np.array([c_flatirons, c_sunshine])
     lws = np.array([2,4])
     dist_labels = ['LOO Posterior', 'GP Error Posterior']
-    
+
     # make the plot
     fig, ax = plt.subplots(figsize=(10.625*2, 14), nrows=4, ncols=2)
     for i in range(4):
@@ -484,7 +484,7 @@ def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None):
             ax[i,j].spines['top'].set_visible(False)
             ax[i,j].spines['left'].set_visible(False)
             ax[i,j].yaxis.set_ticks_position('left')
-            ax[i,j].xaxis.set_ticks_position('bottom')    
+            ax[i,j].xaxis.set_ticks_position('bottom')
             ax[i,j].patch.set_facecolor('none')
 
     ax[2,1].legend(loc=[-1., 4.2], fontsize=28, numpoints=2, ncol=2)
@@ -492,5 +492,3 @@ def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None):
     if savefile is not None:
         fig.savefig(savefile, bbox_inches='tight', pad_inches=0)
     plt.show()
-    
-    

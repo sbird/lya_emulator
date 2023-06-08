@@ -1,5 +1,6 @@
 """Module to load the covariance matrix (from BOSS DR9 or SDSS DR5 data) from tables."""
 import os.path
+import pandas
 import numpy as np
 import numpy.testing as npt
 
@@ -111,8 +112,6 @@ class BOSSData(SDSSData):
                 dfile = os.path.join(covardir, "cct4b"+str(bb+1)+".dat")
                 dd = np.loadtxt(dfile) #k-bin correlation matrix (35 x 35) for single redshift
                 self.covar[35*bb:35*(bb+1), 35*bb:35*(bb+1)] = dd #Filling in block matrices along diagonal
-        else:
-            raise NotImplementedError("SDSS Data %s not found!" % datafile)
 
     def get_covar(self, zbin=None):
         """Get the covariance matrix"""
@@ -132,3 +131,42 @@ class BOSSData(SDSSData):
     def get_covar_diag(self):
         """Get the diagonal of the covariance matrix"""
         return self.covar_diag
+class KSData(object):
+    """A class to store the flux power and corresponding covariance matrix from KODIAQ-SQUAD."""
+    def __init__(self, datafile=None, covardir=None):
+        cdir = os.path.dirname(__file__)
+
+        # by default load the more recent data, from DR14: Chanbanier 2019, arXiv:1812.03554
+        if datafile is None or datafile == 'dr14':
+            datafile = os.path.join(cdir,"data/kodiaq_squad/detailed-p1d-results-karacayli_etal2021.txt")
+            covarfile = covardir
+            systfile = None
+            # Read KODIAQ-SQUAD flux power data.
+            # Column #1 : redshift
+            # Column #2: k
+            # Column #3: power
+            a = pandas.read_csv(datafile, skiprows=[0], sep='|', header=None)
+            self.redshifts = np.array(a[1], dtype='float')
+            self.kf = np.array(a[2], dtype='float')
+            self.pf = np.array(a[3], dtype='float')
+            self.nz = np.size(self.get_redshifts())
+            self.nk = np.size(self.get_kf())
+
+    def get_kf(self, kf_bin_nums=None):
+        """Get the (unique) flux k values"""
+        kf_array = np.sort(np.array(list(set(self.kf))))
+        if kf_bin_nums is None:
+            return kf_array
+        else:
+            return kf_array[kf_bin_nums]
+
+    def get_redshifts(self):
+        """Get the (unique) redshift bins, sorted in decreasing redshift"""
+        return np.sort(np.array(list(set(self.redshifts))))[::-1]
+
+    def get_pf(self, zbin=None):
+        """Get the power spectrum"""
+        if zbin is None:
+            return self.pf
+        ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
+        return self.pf[ii]

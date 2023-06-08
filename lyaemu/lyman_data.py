@@ -137,21 +137,70 @@ class KSData(object):
     def __init__(self, datafile=None, covardir=None):
         cdir = os.path.dirname(__file__)
 
-        # by default load the more recent data, from DR14: Chanbanier 2019, arXiv:1812.03554
-        if datafile is None or datafile == 'dr14':
-            datafile = os.path.join(cdir,"data/kodiaq_squad/detailed-p1d-results-karacayli_etal2021.txt")
-            covarfile = covardir
-            systfile = None
-            # Read KODIAQ-SQUAD flux power data.
-            # Column #1 : redshift
-            # Column #2: k
-            # Column #3: power
-            a = pandas.read_csv(datafile, skiprows=[0], sep='|', header=None)
-            self.redshifts = np.array(a[1], dtype='float')
-            self.kf = np.array(a[2], dtype='float')
-            self.pf = np.array(a[3], dtype='float')
-            self.nz = np.size(self.get_redshifts())
-            self.nk = np.size(self.get_kf())
+        # data from the supplementary material in Karacayli+21](https://academic.oup.com/mnras/article/509/2/2842/6425772)
+        
+        datafile = os.path.join(cdir,"data/kodiaq_squad/detailed-p1d-results-karacayli_etal2021.txt")
+        
+        # Read KODIAQ-SQUAD flux power data.
+        # Column #1 : redshift
+        # Column #2: k
+        # Column #3: power
+        a = pandas.read_csv(datafile, skiprows=[0], sep='|', header=None)
+        self.redshifts = np.array(a[1], dtype='float')
+        self.kf = np.array(a[2], dtype='float')
+        self.pf = np.array(a[3], dtype='float')
+        self.nz = np.size(self.get_redshifts())
+        self.nk = np.size(self.get_kf())
+        # systematic uncertainies (8 contributions):
+        # continuum, noise, resolution, DLA, metals
+        self.covar_diag = np.zeros_like(self.kf)
+        for i in [7,9,10,12,13,14]:
+            self.covar_diag += np.array(a[i], dtype='float')**2
+        self.covar_diag = np.sqrt(self.covar_diag)
+
+    def get_kf(self, kf_bin_nums=None):
+        """Get the (unique) flux k values"""
+        kf_array = np.sort(np.array(list(set(self.kf))))
+        if kf_bin_nums is None:
+            return kf_array
+        else:
+            return kf_array[kf_bin_nums]
+
+    def get_redshifts(self):
+        """Get the (unique) redshift bins, sorted in decreasing redshift"""
+        return np.sort(np.array(list(set(self.redshifts))))[::-1]
+
+    def get_pf(self, zbin=None):
+        """Get the power spectrum"""
+        if zbin is None:
+            return self.pf
+        ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
+        return self.pf[ii]
+    
+    def get_covar_diag(self, zbin=None):
+        """Get the diagonal of the covariance matrix"""
+        ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
+        return self.covar_diag[ii]
+
+
+class XQ100ata(object):
+    """A class to store the flux power and corresponding covariance matrix from XQ100."""
+    def __init__(self, datafile=None, covardir=None):
+        cdir = os.path.dirname(__file__)
+
+        # data from https://github.com/bayu-wilson/lyb_pk/tree/main/output , [Wilson+21](https://arxiv.org/abs/2106.04837)
+
+        datafile = os.path.join(cdir,"data/xq100/pk_obs_corrNR_offset_DLATrue_metalTrue_res0.csv")
+        
+        # Read XQ100 flux power data.
+        # Columns are labeled as 'z', 'k' and 'paa'
+
+        a = pandas.read_csv(datafile)
+        self.redshifts = np.array(a['z'], dtype='float')
+        self.kf = np.array(a['k'], dtype='float')
+        self.pf = np.array(a['paa'], dtype='float')
+        self.nz = np.size(self.get_redshifts())
+        self.nk = np.size(self.get_kf())
 
     def get_kf(self, kf_bin_nums=None):
         """Get the (unique) flux k values"""

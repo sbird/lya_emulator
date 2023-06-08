@@ -435,8 +435,9 @@ class LikelihoodClass:
         except LoggedError as err:
             pass
         success = all(comm.allgather(success))
-        if not success and rank == 0:
-            print("Sampling failed!")
+        if not success:
+            if rank == 0:
+                print("Sampling failed!")
         else:
             all_chains = comm.gather(sampler.products()["sample"], root=0)
             return sampler, all_chains

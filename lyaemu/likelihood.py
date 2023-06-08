@@ -416,7 +416,7 @@ class LikelihoodClass:
             data_power = load_data(datadir, data_index=data_index, kfkms=self.kf, kfmpc=kfmpc, t0=self.t0_training_value, zout=self.zout, max_z=self.max_z, min_z=self.min_z, tau_thresh=self.tau_thresh)
             # get the appropriate simulation data for temperature as well
             if use_meant:
-                self.sim_meant = t0_likelihood.load_data(datadir+'/emulator_meanT.hdf5', data_index, max_z=3.8, min_z=2.2)
+                self.sim_meant = t0_likelihood.load_data(datadir+'/emulator_meanT.hdf5', data_index % 10, max_z=3.8, min_z=2.2)
 
         # Construct the "info" dictionary used by Cobaya
         info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples, use_meant=use_meant, meant_fac=meant_fac, hprior=hprior, oprior=oprior, bhprior=bhprior)

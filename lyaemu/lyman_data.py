@@ -151,8 +151,12 @@ class KSData(object):
         self.pf = np.array(a[3], dtype='float')
         self.nz = np.size(self.get_redshifts())
         self.nk = np.size(self.get_kf())
-
-        self.covar_diag = np.sum(syst**2, axis=1) + data[:, 3]**2
+        # systematic uncertainies (8 contributions):
+        # continuum, noise, resolution, DLA, metals
+        self.covar_diag = np.zeros_like(self.kf)
+        for i in [7,9,10,12,13,14]:
+            self.covar_diag += np.array(a[i], dtype='float')**2
+        self.covar_diag = np.sqrt(self.covar_diag)
 
     def get_kf(self, kf_bin_nums=None):
         """Get the (unique) flux k values"""
@@ -172,6 +176,11 @@ class KSData(object):
             return self.pf
         ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
         return self.pf[ii]
+    
+    def get_covar_diag(self, zbin=None):
+        """Get the diagonal of the covariance matrix"""
+        ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
+        return self.covar_diag[ii]
 
 
 class XQ100ata(object):

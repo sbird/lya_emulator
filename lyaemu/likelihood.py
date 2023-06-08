@@ -61,17 +61,29 @@ def load_data(datadir, *, kfkms, kfmpc, zout, max_z=4.6, min_z=2.2, t0=1., tau_t
         zinds = np.where((min_z <= zout)*(max_z >= zout))[0]
         data_hdf5 = h5py.File(savefile, 'r')
         dfp = data_hdf5['flux_vectors'][data_index].reshape(zout.size, -1)[zinds].flatten()
-        params = data_hdf5['params'][data_index]
+        try:
+            params = data_hdf5['params'][data_index]
+            omega_m = params[7]/params[6]**2
+            _, data_fluxpower = flux_power.rebin_power_to_kms(kfkms=kfkms, kfmpc=kfmpc, flux_powers=dfp, zbins=zout[zinds], omega_m=omega_m)
+        except KeyError:
+            data_fluxpower = dfp
         data_hdf5.close()
-        omega_m = params[7]/params[6]**2
-        _, data_fluxpower = flux_power.rebin_power_to_kms(kfkms=kfkms, kfmpc=kfmpc, flux_powers=dfp, zbins=zout[zinds], omega_m=omega_m)
-    except:
+    except IOError:
         #Load the data directory
         myspec = flux_power.MySpectra(max_z=max_z, min_z=min_z)
         pps = myspec.get_snapshot_list(datadir)
         #self.data_fluxpower is used in likelihood.
         data_fluxpower = pps.get_power(kf=kfkms, mean_fluxes=np.exp(-t0*mflux.obs_mean_tau(myspec.zout, amp=0)), tau_thresh=tau_thresh)
         assert np.size(data_fluxpower) % np.size(kfkms) == 0
+        if not os.path.exists(savefile):
+            #Open for write, fail if exists
+            save = h5py.File(savefile, 'x')
+            save["zout"] = myspec.zout
+            save["flux_vectors"] = data_fluxpower
+            #No params saved here. Just a single directory.
+            #   Save in both km/s and Mpc/h units.
+            save["kfkms"] = kfkms
+            save.close()
     return data_fluxpower.flatten()
 
 class LikelihoodClass:

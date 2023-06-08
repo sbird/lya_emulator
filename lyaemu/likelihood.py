@@ -56,9 +56,10 @@ def DLAcorr(kf, z, alpha):
 
 def load_data(datadir, *, kfkms, kfmpc, zout, max_z=4.6, min_z=2.2, t0=1., tau_thresh=None, data_index=21):
     """Load and initialise a "fake data" flux power spectrum"""
+    savefile = datadir+'/mf_emulator_flux_vectors_tau'+str(int(self.tau_thresh))+".hdf5"
     try: # first, try loading an existing file for the flux power
         zinds = np.where((min_z <= zout)*(max_z >= zout))[0]
-        data_hdf5 = h5py.File(datadir+'/mf_emulator_flux_vectors_tau1000000.hdf5', 'r')
+        data_hdf5 = h5py.File(savefile, 'r')
         dfp = data_hdf5['flux_vectors'][data_index].reshape(zout.size, -1)[zinds].flatten()
         params = data_hdf5['params'][data_index]
         data_hdf5.close()
@@ -388,7 +389,7 @@ class LikelihoodClass:
         info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True, "learn_proposal_Rminus1_max": 20, "learn_proposal_Rminus1_max_early": 30}}
         return info
 
-    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=80, include_emu_error=True, use_meant=None, meant_fac=9.1, hprior='none', oprior=False, bhprior=False):
+    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=80, include_emu_error=True, use_meant=None, meant_fac=9.1, hprior='none', oprior=False, bhprior=False, data_index=0):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # if use_meant not specificed, default to setting from initialization
@@ -400,10 +401,10 @@ class LikelihoodClass:
         if datadir is not None:
             _, kfmpc, _ = self.emulator.get_flux_vectors(max_z=self.max_z, min_z=self.min_z, kfunits="mpc")
             # Load the data directory (i.e. use a simulation flux power as data)
-            data_power = load_data(datadir, kfkms=self.kf, kfmpc=kfmpc, t0=self.t0_training_value, zout=self.zout, max_z=self.max_z, min_z=self.min_z, tau_thresh=self.tau_thresh)
+            data_power = load_data(datadir, data_index=data_index, kfkms=self.kf, kfmpc=kfmpc, t0=self.t0_training_value, zout=self.zout, max_z=self.max_z, min_z=self.min_z, tau_thresh=self.tau_thresh)
             # get the appropriate simulation data for temperature as well
             if use_meant:
-                self.sim_meant = t0_likelihood.load_data(datadir+'/emulator_meanT.hdf5', 0, max_z=3.8, min_z=2.2)
+                self.sim_meant = t0_likelihood.load_data(datadir+'/emulator_meanT.hdf5', data_index, max_z=3.8, min_z=2.2)
 
         # Construct the "info" dictionary used by Cobaya
         info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples, use_meant=use_meant, meant_fac=meant_fac, hprior=hprior, oprior=oprior, bhprior=bhprior)

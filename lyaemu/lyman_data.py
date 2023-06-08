@@ -18,6 +18,9 @@ class SDSSData(object):
         # Fifth column (ignored): The amount of foreground noise power subtracted from each bin.
         # Sixth column (ignored): The amound of background power subtracted from each bin.
         # A metal contamination subtraction that McDonald does but we don't.
+        cdir = os.path.dirname(__file__)
+        datafile = os.path.join(cdir,datafile)
+        covarfile = os.path.join(cdir, covarfile)
         data = np.loadtxt(datafile)
         self.redshifts = data[:, 0]
         self.kf = data[:, 1]

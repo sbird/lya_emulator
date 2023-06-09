@@ -137,29 +137,44 @@ class BOSSData(SDSSData):
         return self.covar_diag
 class KSData(object):
     """A class to store the flux power and corresponding covariance matrix from KODIAQ-SQUAD."""
-    def __init__(self, datafile=None, covardir=None):
+    def __init__(self, datafile=None, conservative=False):
         cdir = os.path.dirname(__file__)
-
         # data from the supplementary material in Karacayli+21](https://academic.oup.com/mnras/article/509/2/2842/6425772)
-        
-        datafile = os.path.join(cdir,"data/kodiaq_squad/detailed-p1d-results-karacayli_etal2021.txt")
-        
-        # Read KODIAQ-SQUAD flux power data.
-        # Column #1 : redshift
-        # Column #2: k
-        # Column #3: power
-        a = pandas.read_csv(datafile, skiprows=[0], sep='|', header=None)
-        self.redshifts = np.array(a[1], dtype='float')
-        self.kf = np.array(a[2], dtype='float')
-        self.pf = np.array(a[3], dtype='float')
-        self.nz = np.size(self.get_redshifts())
-        self.nk = np.size(self.get_kf())
-        # systematic uncertainies (8 contributions):
-        # continuum, noise, resolution, DLA, metals
-        self.covar_diag = np.zeros_like(self.kf)
-        for i in [7,9,10,12,13,14]:
-            self.covar_diag += np.array(a[i], dtype='float')**2
-        self.covar_diag = np.sqrt(self.covar_diag)
+        if conservative:
+            datafile = os.path.join(cdir,"data/kodiaq_squad/final-conservative-p1d-karacayli_etal2021.txt")
+            # Read KODIAQ-SQUAD flux power data.
+            # Column #1 : redshift
+            # Column #2: k
+            # Column #3: power
+            # Column #4: estimated error
+            a = pandas.read_csv(datafile, skiprows=[0], sep='|', header=None)
+            self.redshifts = np.array(a[1], dtype='float')
+            self.kf = np.array(a[2], dtype='float')
+            self.pf = np.array(a[3], dtype='float')
+            self.nz = np.size(self.get_redshifts())
+            self.nk = np.size(self.get_kf())            
+            self.covar_diag = np.array(a[4], dtype='float')
+
+
+        else:
+            datafile = os.path.join(cdir,"data/kodiaq_squad/detailed-p1d-results-karacayli_etal2021.txt")
+            
+            # Read KODIAQ-SQUAD flux power data.
+            # Column #1 : redshift
+            # Column #2: k
+            # Column #3: power
+            a = pandas.read_csv(datafile, skiprows=[0], sep='|', header=None)
+            self.redshifts = np.array(a[1], dtype='float')
+            self.kf = np.array(a[2], dtype='float')
+            self.pf = np.array(a[3], dtype='float')
+            self.nz = np.size(self.get_redshifts())
+            self.nk = np.size(self.get_kf())
+            # systematic uncertainies (8 contributions):
+            # continuum, noise, resolution, DLA, metals
+            self.covar_diag = np.zeros_like(self.kf)
+            for i in [7,9,10,12,13,14]:
+                self.covar_diag += np.array(a[i], dtype='float')**2
+            self.covar_diag = np.sqrt(self.covar_diag)
 
     def get_kf(self, kf_bin_nums=None):
         """Get the (unique) flux k values"""

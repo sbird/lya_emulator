@@ -60,7 +60,7 @@ def load_data(datadir, *, kfkms, kfmpc, zout, max_z=4.6, min_z=2.2, t0=1., tau_t
     try: # first, try loading an existing file for the flux power
         zinds = np.where((min_z <= zout)*(max_z >= zout))[0]
         data_hdf5 = h5py.File(savefile, 'r')
-        dfp = data_hdf5['flux_vectors'][data_index].reshape(zout.size, -1)[zinds].flatten()
+        dfp = data_hdf5['flux_vectors'][data_index].reshape(zout.size, -1)[zinds]
         try:
             params = data_hdf5['params'][data_index]
             omega_m = params[7]/params[6]**2
@@ -84,7 +84,9 @@ def load_data(datadir, *, kfkms, kfmpc, zout, max_z=4.6, min_z=2.2, t0=1., tau_t
             #   Save in both km/s and Mpc/h units.
             save["kfkms"] = kfkms
             save.close()
-    return data_fluxpower.flatten()
+        zinds = np.where((min_z <= zout)*(max_z >= zout))[0]
+        data_fluxpower = data_fluxpower.reshape(zout.size, -1)[zinds]
+    return data_fluxpower
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
@@ -334,6 +336,9 @@ class LikelihoodClass:
         nkf = int(np.size(self.kf))
         nz = np.shape(predicted)[0]
         assert nz == int(np.size(data_power)/nkf)
+        #Make sure the data power is correctly shaped
+        assert np.shape(data_power)[0] == nz
+        assert np.shape(data_power)[1] == nkf
         # Likelihood using full covariance matrix
         chi2 = 0
         for bb in range(nz):

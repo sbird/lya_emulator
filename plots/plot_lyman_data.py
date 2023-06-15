@@ -72,7 +72,7 @@ for z in zz:
 #     plt.ylim(0.8*np.min(bpf), 1.2*np.max([np.max(kpf), np.max(bpf)]))
     plt.ylim(0., 1.1*np.max([np.max(kpf), np.max(bpf)]))
     plt.xlabel(r"$k_F$ (s/km)")
-    plt.ylabel(r"$k P_F(k)$")
+    plt.ylabel(r"$P_F(k)$")
     plt.legend()
     plt.tight_layout()
     plt.savefig("lymandata-z%.1f.pdf" % z)

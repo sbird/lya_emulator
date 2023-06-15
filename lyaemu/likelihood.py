@@ -57,6 +57,7 @@ def DLAcorr(kf, z, alpha):
 def load_data(datadir, *, kfkms, kfmpc, zout, max_z=4.6, min_z=2.2, t0=1., tau_thresh=None, data_index=21):
     """Load and initialise a "fake data" flux power spectrum"""
     savefile = datadir+'/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
+    params = None
     try: # first, try loading an existing file for the flux power
         zinds = np.where((min_z <= zout)*(max_z >= zout))[0]
         data_hdf5 = h5py.File(savefile, 'r')
@@ -89,7 +90,7 @@ def load_data(datadir, *, kfkms, kfmpc, zout, max_z=4.6, min_z=2.2, t0=1., tau_t
             save.close()
         zinds = np.where((min_z <= zout)*(max_z >= zout))[0]
         data_fluxpower = data_fluxpower.reshape(zout.size, -1)[zinds]
-    return data_fluxpower
+    return data_fluxpower, params
 
 class LikelihoodClass:
     """Class to contain likelihood computations."""
@@ -421,10 +422,10 @@ class LikelihoodClass:
         if datadir is not None:
             _, kfmpc, _ = self.emulator.get_flux_vectors(max_z=self.max_z, min_z=self.min_z, kfunits="mpc")
             # Load the data directory (i.e. use a simulation flux power as data)
-            data_power = load_data(datadir, data_index=data_index, kfkms=self.kf, kfmpc=kfmpc, t0=self.t0_training_value, zout=self.zout, max_z=self.max_z, min_z=self.min_z, tau_thresh=self.tau_thresh)
+            data_power, data_params = load_data(datadir, data_index=data_index, kfkms=self.kf, kfmpc=kfmpc, t0=self.t0_training_value, zout=self.zout, max_z=self.max_z, min_z=self.min_z, tau_thresh=self.tau_thresh)
             # get the appropriate simulation data for temperature as well
             if use_meant:
-                self.sim_meant = t0_likelihood.load_data(datadir+'/emulator_meanT.hdf5', data_index % 10, max_z=3.8, min_z=2.2)
+                self.sim_meant = t0_likelihood.load_data(datadir+'/emulator_meanT.hdf5', data_params[1:], max_z=np.max([self.max_z,3.8]), min_z=self.min_z)
 
         # Construct the "info" dictionary used by Cobaya
         info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples, use_meant=use_meant, meant_fac=meant_fac, hprior=hprior, oprior=oprior, bhprior=bhprior)

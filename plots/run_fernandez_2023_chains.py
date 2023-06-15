@@ -12,7 +12,7 @@ import sys
 from lyaemu import likelihood as lk
 from lyaemu.meanT import t0_likelihood as t0lk
 basedir = '../dtau-48-48'
-chaindir = 'chains'
+chaindir = 'chains/'
 
 ####################
 ######### meant only

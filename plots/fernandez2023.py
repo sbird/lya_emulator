@@ -494,3 +494,27 @@ def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None):
     if savefile is not None:
         fig.savefig(savefile, bbox_inches='tight', pad_inches=0)
     plt.show()
+
+def get_params(savefile, data_index=21):
+    """Get parameters from savefile"""
+    with h5py.File(savefile, 'r') as data_hdf5:
+        if np.size(np.shape(data_hdf5["params"])) == 1:
+            simpar = data_hdf5['params'][1:]
+        else:
+            simpar = data_hdf5['params'][data_index][1:]
+    return simpar
+
+if __name__ == "__main__":
+    #Plot chains from known truth data
+    #Get simulation parameters
+    tau_thresh=1e6
+    savefile = '../dtau-48-48/hires/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
+    simpar1 = get_params(savefile, data_index=21)
+    #Do plot
+    full_corner(["chains/like-test/mf-48-48-z2.2-4.6",], "simdat.pdf", labels=None, simpar=simpar1)
+    #Get simulation parameters
+    tau_thresh=1e6
+    savefile = '../dtau-48-48/ns0.881-seed/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
+    simpar2 = get_params(savefile)
+    #Do plot
+    full_corner(["chains/like-test/seed",], "simdat2.pdf", labels=None, simpar=simpar2)

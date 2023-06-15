@@ -134,9 +134,11 @@ def astro_corner(chain_dirs, savefile=None, labels=None, bhprior=False):
     plt.show()
 
 
-# full corner plot
-# pass array of correct parameters to simpar if using simulation as observation
 def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
+    """
+    Full corner plot. for chain_dirs
+    simpar: Pass array of correct parameters if known (ie, if input is a simulation).
+    """
     gd_samples = []
     for chain_dir in chain_dirs:
         nn, gr = np.loadtxt(os.path.abspath(chain_dir+'.progress'), usecols=(0, 3)).T

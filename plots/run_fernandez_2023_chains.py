@@ -97,10 +97,10 @@ like.do_sampling(savefile=chaindir+'fps-meant/mf-48-48-z2.2-4.6-priors', burnin=
 
 ##### Likelihood function checks
 # Using a simulated HR dataset
-like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=False, min_z=2.2, max_z=4.6, use_meant=True)
+like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=False, min_z=2.2, max_z=4.6, use_meant=True, data_corr=False)
 #ns909 tau = 1.15
 like.do_sampling(datadir=basedir+'/hires', data_index=21, savefile=chaindir+'/like-test/mf-48-48-z2.2-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=True, hprior='none', oprior=False, bhprior=False, meant_fac=mtf_fullz_emu)
 #Using a simulated LR dataset with a different seed
-like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=None, loo_errors=False, min_z=2.2, max_z=4.6, use_meant=False)
+like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=None, loo_errors=False, min_z=2.2, max_z=4.6, use_meant=False, data_corr=False)
 #ns909 tau = 1.15
 like.do_sampling(datadir=basedir+"/ns0.881-seed", data_index=0, savefile=chaindir+'/like-test/seed', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=False, hprior='none', oprior=False, bhprior=False)

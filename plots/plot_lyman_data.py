@@ -44,24 +44,24 @@ zz = np.arange(2.2, 4.8, 0.2)
 
 sigma = 1
 for z in zz:
-    plt.figure()
-    kpf = kodiaq.get_pf(zbin=z)
+#     plt.figure()
+    kpf = koqk * kodiaq.get_pf(zbin=z) / np.pi
     plt.plot(koqk, kpf, label="KODIAQ z=%.1f" % z, ls="--", color="blue")
-    koqstd = np.sqrt(kodiaq.get_covar_diag(zbin=z))
+    koqstd = koqk * np.sqrt(kodiaq.get_covar_diag(zbin=z))
     plt.fill_between(koqk, kpf-sigma*koqstd , kpf+sigma*koqstd , alpha=0.25, color="blue")
 
-    bpf = boss.get_pf(zbin=z)
+    bpf = bok * boss.get_pf(zbin=z) / np.pi
     plt.plot(bok, bpf, label="DR14 z=%.1f" % z, color="black")
     #Standard errors
-    bstd = np.sqrt(np.diag(boss.get_covar(zbin=z)))
+    bstd = bok * np.sqrt(np.diag(boss.get_covar(zbin=z)))
     plt.fill_between(bok, bpf-sigma*bstd, bpf+sigma*bstd, alpha=0.5, color="grey")
     xqpf = xq100.get_pf(zbin=z)
     if np.size(xqpf) > 0:
-#         xqpf *=xqk
+        xqpf *=xqk / np.pi
         plt.plot(xqk, xqpf, label="XQ100 z=%.1f" % z, ls="-.", color="orange")
     bpf9 = bossdr9.get_pf(zbin=z)
     if np.size(bpf9) > 0:
-#         bpf9*=bok9
+        bpf9*=bok9 / np.pi
         plt.plot(bok9, bpf9, label="DR9 z=%.1f" % z, ls=":", color="green")
     # sdf = sdss.get_pf(zbin=z)
     # if np.size(sdf) > 0:
@@ -72,14 +72,15 @@ for z in zz:
 #     plt.ylim(0.8*np.min(bpf), 1.2*np.max([np.max(kpf), np.max(bpf)]))
     plt.ylim(0., 1.1*np.max([np.max(kpf), np.max(bpf)]))
     plt.xlabel(r"$k_F$ (s/km)")
-    plt.ylabel(r"$P_F(k)$")
+    plt.ylabel(r"$k P_F(k) / \pi$")
     plt.legend()
     plt.tight_layout()
     plt.savefig("lymandata-z%.1f.pdf" % z)
+    plt.clf()
 
 zz2 = np.arange(2.0, 2.2)
 for z in zz2:
-    plt.figure()
+#     plt.figure()
     kpf = kodiaq.get_pf(zbin=z)
     plt.plot(koqk, kpf, label="KODIAQ z=%.1f" % z, ls="--", color="blue")
     koqstd = np.sqrt(kodiaq.get_covar_diag(zbin=z))
@@ -91,3 +92,4 @@ for z in zz2:
     plt.legend()
     plt.tight_layout()
     plt.savefig("lymandata-z%.1f.pdf" % z)
+    plt.clf()

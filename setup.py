@@ -12,7 +12,7 @@ setup(
     packages = ['lyaemu', 'lyaemu.tests', 'lyaemu.SimulationRunner.SimulationRunner', 'lyaemu.meanT'],
     requires=['numpy', 'pandas', 'fake_spectra','scipy', "GPy", "cobaya", "h5py"],
     package_data = {
-            'lyaemu': ['data/boss_dr14_data/*.dat','data/*', 'data/Gaikwad/Gaikwad_2020b_T0_Evolution_All_Statistics.txt'],
+            'lyaemu': ['data/boss_dr14_data/*.dat','data/kodiaq_squad/*.txt','data/xq100/*.csv','data/*', 'data/Gaikwad/Gaikwad_2020b_T0_Evolution_All_Statistics.txt'],
            },
     classifiers = ["Development Status :: 4 - Beta",
                    "Intended Audience :: Developers",

@@ -270,20 +270,26 @@ def plot_samples(lores_json, hires_json, savefile=None, t0_samps=None):
         fig.savefig(savefile, bbox_inches='tight', pad_inches=0)
     plt.show()
 
-
-
-# plot the flux power spectrum observations, and some max posterior predictions
-def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefile=None, labels=None):
+def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefile=None, labels=None, datapf=None):
+    """plot the flux power spectrum observations, and some max posterior predictions"""
     # get the observations
     boss = ld.BOSSData()
     boss_err = boss.covar_diag.reshape(13,-1)[::-1]
-    bosspf = boss.get_pf().reshape(13,-1)[::-1]
+    if datapf is None:
+        bosspf = boss.get_pf().reshape(13,-1)[::-1]
+    else:
+        bosspf = datapf
     bosskf = boss.kf.reshape(13,-1)
+    bosspf *= bosskf  / np.pi
+    boss_err *= bosskf**2 / np.pi**2
     # set up the likelihood class
     like = lk.LikelihoodClass(basedir, tau_thresh=1e6, max_z=4.6, min_z=2.2, traindir=traindir, HRbasedir=HRbasedir)
     zz = np.round(like.zout, 1)
 
-    call_names = ['dtau0', 'tau0', 'ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'bhfeedback', 'a_lls', 'a_dla', 'fSiIII']
+    if datapf is None:
+        call_names = ['dtau0', 'tau0', 'ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'bhfeedback', 'a_lls', 'a_dla', 'fSiIII']
+    else:
+        call_names = ['dtau0', 'tau0', 'ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'bhfeedback']
     okf, pred, std = [], [], []
     for chaindir in chain_dirs:
         # get best parameters for each chain
@@ -297,66 +303,49 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
             best_par.append(best)
         okfi, predi, stdi = like.get_predicted(best_par[:like.ndim-len(like.data_params)])
         okf.append(okfi)
-        std.append(stdi)
         for bb in range(like.zout.size):
-            predi[bb] = predi[bb]*like.get_data_correction(okfi[bb], best_par, like.zout[bb])
+            if datapf is None:
+                predi[bb] = predi[bb]*like.get_data_correction(okfi[bb], best_par, like.zout[bb])
+            predi[bb] = okfi[bb] * predi[bb] / np.pi
+            stdi[bb] = okfi[bb] * stdi[bb] / np.pi
         pred.append(predi)
+        std.append(stdi)
 
     nrows, ncols = 3, 2
     colors = [c_sunshine, c_flatirons, c_skyline_ll]
-    fig, axes = plt.subplots(figsize=(10.625*2, 11*1.75), nrows=nrows, ncols=ncols, sharex=True, gridspec_kw={'height_ratios': [1, 1, 2]})
+    fig, axes = plt.subplots(figsize=(10.625*2, 11*1.75), nrows=nrows, ncols=ncols, sharex=True, gridspec_kw={'height_ratios': [1, 1, 1]})
     axes = axes.flatten()
-    for m, ax in enumerate(axes):
-        if m < 4:
+    for mm, ax in enumerate(axes):
+        mplot = [2*mm, 2*mm+1]
+        if mm == 5:
+            mplot.append(2*mm+2)
+        for m in mplot:
             for ii in range(len(pred)):
-                ax.errorbar(okf[ii][m], pred[ii][m], yerr=std[ii][m], fmt='--', color=colors[ii], lw=4, alpha=0.95)
+                ax.errorbar(okf[ii][m], pred[ii][m], yerr=std[ii][m], fmt='-', color=colors[ii], lw=2, alpha=0.95)
             ax.plot(bosskf[m], bosspf[m], '-o', color=c_midnight, lw=2, zorder=0)
             ax.fill_between(bosskf[m], bosspf[m]-np.sqrt(boss_err[m]), bosspf[m]+np.sqrt(boss_err[m]), color=c_midnight, alpha=0.5, zorder=0)
-            ax.text(0.0165, 0.93*np.max(bosspf[m]), 'z: '+str(zz[m]), fontsize=28)
-            if m % 2 == 0:
-                ax.tick_params(which='both', direction='inout', right=False, labelright=False, labelleft=True, length=12)
-                ax.tick_params(which='minor', length=8, labelright=False, labelleft=False)
-            else:
-                ax.tick_params(which='both', direction='inout', right=True, left=False, labelright=True, labelleft=False, length=12)
-                ax.tick_params(which='minor', length=8, labelright=False, labelleft=False)
-        if m == 4:
-            ax.text(0.01, 0.93*np.max(bosspf[m]), r'In He$\tt{II}$, z: '+str(zz[m])+'-'+str(zz[m+4]), fontsize=28)
+        ax.text(0.002, 0.93*np.max(bosspf[np.min(mplot)]), r'z: '+str(zz[np.min(mplot)])+'-'+str(zz[np.max(mplot)]), fontsize=28)
+        if mm % 2 == 0:
             ax.tick_params(which='both', direction='inout', right=False, labelright=False, labelleft=True, length=12)
             ax.tick_params(which='minor', length=8, labelright=False, labelleft=False)
-            for ii in range(len(pred)):
-                for j in range(m, m+5):
-                    ax.errorbar(okf[ii][j], pred[ii][j], yerr=std[ii][j], fmt='--', color=colors[ii], lw=4, alpha=0.95)
-            for j in range(m, m+5):
-                ax.plot(bosskf[j], bosspf[j], '-o', color=c_midnight, lw=2, zorder=0)
-                ax.fill_between(bosskf[j], bosspf[j]-np.sqrt(boss_err[j]), bosspf[j]+np.sqrt(boss_err[j]), color=c_midnight, alpha=0.5, zorder=0)
-        if m == 5:
-            ax.text(0.0095, 0.93*np.max(bosspf[m+4]), r'Post He$\tt{II}$, z: '+str(zz[m+4])+'-'+str(zz[-1]), fontsize=28)
+        else:
             ax.tick_params(which='both', direction='inout', right=True, left=False, labelright=True, labelleft=False, length=12)
             ax.tick_params(which='minor', length=8, labelright=False, labelleft=False)
-            for ii in range(len(pred)):
-                for j in range(m+4, 13):
-                    ax.errorbar(okf[ii][j], pred[ii][j], yerr=std[ii][j], fmt='--', color=colors[ii], lw=4, alpha=0.95)
-            for j in range(m+4, 13):
-                ax.plot(bosskf[j], bosspf[j], '-o', color=c_midnight, lw=2, zorder=0)
-                ax.fill_between(bosskf[j], bosspf[j]-np.sqrt(boss_err[j]), bosspf[j]+np.sqrt(boss_err[j]), color=c_midnight, alpha=0.5, zorder=0)
-        ax.set_yscale('log')
-
-    axes[0].text(0.5e-2, 190, 'Chabanier 2019', fontsize=24, color=c_midnight)
+        ax.set_ylim(ymin=0)
+#         ax.set_yscale('log')
+#     axes[0].text(0.5e-2, 190, 'Chabanier 2019', fontsize=24, color=c_midnight)
     for ii in range(len(pred)):
-        axes[0].text(1.1e-3, 42-(ii*8), labels[ii], fontsize=24, color=colors[ii])
+        axes[0].text(0.01, 0.1-(ii*0.05), labels[ii], fontsize=24, color=colors[ii])
     # add figure centered x- and y-axis labels
     fig.add_subplot(111, frameon=False)
     plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
     plt.grid(False)
-    plt.ylabel(r'$P_F(k)$', size=26)
+    plt.ylabel(r'$k P_F(k) / \pi$', size=26, labelpad=16.)
     plt.xlabel('k [s/km]', size=26)
-
     fig.subplots_adjust(hspace=0, wspace=0)
     if savefile is not None:
         plt.savefig(savefile)
     plt.show()
-
-
 
 # plot the mean temperature observations, and some max posterior predictions
 def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=None):
@@ -508,13 +497,29 @@ if __name__ == "__main__":
     #Plot chains from known truth data
     #Get simulation parameters
     tau_thresh=1e6
-    savefile = '../dtau-48-48/hires/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
+    basedir="../dtau-48-48/"
+    savefile = basedir+'hires/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
     simpar1 = get_params(savefile, data_index=21)
     #Do plot
-    full_corner(["chains/like-test/mf-48-48-z2.2-4.6",], "simdat.pdf", labels=None, simpar=simpar1)
+    full_corner(["chains/like-test2/mf-48-48-z2.2-4.6",], "simdat.pdf", labels=None, simpar=simpar1)
     #Get simulation parameters
-    tau_thresh=1e6
-    savefile = '../dtau-48-48/ns0.881-seed/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
+    savefile = basedir+'/ns0.881-seed/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
     simpar2 = get_params(savefile)
     #Do plot
-    full_corner(["chains/like-test/seed",], "simdat2.pdf", labels=None, simpar=simpar2)
+    chain_dirs = ["chains/like-test2/seed",]
+    full_corner(chain_dirs, "simdat2.pdf", labels=None, simpar=simpar2)
+    #Make a plot of the best-fit P_F(k) with a different seed
+    traindir=basedir+"/trained_mf"
+    with h5py.File(savefile, 'r') as data_hdf5:
+            datapf = data_hdf5["flux_vectors"][:]
+            datapf=datapf.reshape(13, -1)
+    plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=None, savefile="seed-best-fit.pdf", labels=["Seed",], datapf=datapf)
+    #Make corner plot of best-fit P_F(k)
+    chain_dirs = ["chains-mfern/fps-only/mf-48-z2.6-4.6-emuerr",
+                  "chains-mfern/fps-meant/mf-48-48-z2.6-4.6-emuerr",
+                  "chains-mfern/fps-meant/mf-48-48-z2.2-4.6-emuerr"]
+    labels = [r"FPS, z = $2.6$ - $4.6$",
+              r"FPS + $T_0$, z = $2.6$ - $4.6$",
+              r"FPS + $T_0$, z = $2.2$ - $4.6$"]
+    full_corner(chain_dirs, "allp_corner.pdf", labels=labels)
+    plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=basedir+'/hires', savefile="fps_data_fit.pdf", labels=labels)

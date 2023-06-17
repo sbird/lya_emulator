@@ -315,13 +315,15 @@ class LikelihoodClass:
         planck_mean, planck_sigma = 0.1424, 0.001
         return -((params[oo]-planck_mean)/planck_sigma)**2
 
-    def bhfeedback_prior(self, params):
+    def bhfeedback_prior(self, params, bhprior=True):
         """Return a prior on black hole feedback (prior away)"""
         # value range is [0.03, 0.07]
         bh = self.emulator.param_names['bhfeedback']
         if self.mf_slope:
             bh = bh + 2
-        bh_mean, bh_sigma = 0.05, 0.01
+        bh_mean, bh_sigma = 0.05, 0.005
+        if bhprior is not True:
+            bh_mean = bhprior
         return -((params[bh]-bh_mean)/bh_sigma)**2
 
     def likelihood(self, params, include_emu=True, data_power=None, hprior='none', oprior=False, bhprior=False, use_meant=None, meant_fac=9.1):
@@ -381,7 +383,7 @@ class LikelihoodClass:
             chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu, data_meanT=self.sim_meant)*meant_fac
         chi2 += self.hubble_prior(params, source=hprior)
         if oprior: chi2 += self.omega_prior(params)
-        if bhprior: chi2 += self.bhfeedback_prior(params)
+        if bhprior: chi2 += self.bhfeedback_prior(params, bhprior=bhprior)
         return chi2
 
     def get_pnames(self):

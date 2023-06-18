@@ -20,8 +20,6 @@ import itertools as it
 import getdist.plots as gdplt
 from getdist.mcsamples import loadMCSamples
 import os
-matplotlib.use('TkAgg')
-
 
 # set up the ticks and axes
 plt.rc('xtick',labelsize=26)
@@ -303,6 +301,7 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
             best = pvals[np.where(probs == probs.max())][0]
             best_par.append(best)
         okfi, predi, stdi = like.get_predicted(best_par[:like.ndim-len(like.data_params)])
+        print(chaindir, " Best: ", best_par)
         okf.append(okfi)
         for bb in range(like.zout.size):
             if datapf is None:
@@ -396,10 +395,77 @@ def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=
     plt.show()
 
 
-# plot showing the emulator errors across each parameter space, along with
-# the resulting posteriors, and the training samples
-# chains is a list of the filepath/filename for each chain set
+def plot_1d_marginals(basedir, chains, traindir=None, savefile=None, labels=None):
+    """plot showing the emulator errors across each parameter space, along with
+       the resulting posteriors, and the training samples.
+       chains is a list of the filepath/filename for each chain set"""
+    # get chains
+    gd_sample = []
+    for chainfile in chains:
+        nn, gr = np.loadtxt(os.path.abspath(chainfile+'.progress'), usecols=(0, 3)).T
+        gd_sample.append(loadMCSamples(chainfile, settings={'ignore_rows':nn[np.where(gr < 1)[0][0]]/nn[-1]}))
+    # get parameter limits, adjust Ap scale for plotting
+    plimits = np.array(json.load(open(basedir+'/emulator_params.json', 'r'))['param_limits'])
+    plimits = np.concatenate([plimits, np.array([[0.92, 1.28],])])
+    nsteps = 30
+    params = np.linspace(plimits[:,0], plimits[:,1], nsteps).T
+
+    plimits[1] *= 10**9
+    params[1] *= 10**9
+    # parameter names
+    names = [r'$\bf{n_P}$', r'$10^{9}\bf{A_p}$', r'$\bf{z^{HeII}_i}$', r'$\bf{z^{HeII}_f}$', r'$\bf{\alpha_q}$', r'$\bf{h}$', r'$\bf{\Omega_M h^2}$',
+             r'$\bf{z^{HI}}$', r'$\tau_0$', r'$d\tau_0$'] #r'$\epsilon_{AGN}$',
+    call_names = ['ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'tau0', 'dtau0']
+    assert len(names) == len(call_names)
+    rounder = 2*np.ones(len(names), dtype=np.int)
+    rounder[0] = 3
+    rounder[6] = 3
+    colors_dist = [c_sunshine, c_flatirons, c_skyline_ll]
+
+    nrows = len(call_names)//2
+    # make the plot
+    fig, ax = plt.subplots(figsize=(10.625*2, 14), nrows=nrows, ncols=2)
+    for i in range(nrows):
+        for j in range(2):
+            cc = int(2*i+j)
+            ax[i,j].set_yticks([0.1])
+            ax[i,j].set_yticklabels([names[cc]], fontsize=30)
+            use_ticks = np.copy(plimits[cc,:])
+            for k in range(np.size(gd_sample)):
+                probs = gd_sample[k].get1DDensity(call_names[cc]).P
+                pvals = gd_sample[k].get1DDensity(call_names[cc]).x
+                if call_names[cc] == 'Ap':
+                    pvals *= 10**9
+                #Use best fit unless it is close to an existing tick
+                best = pvals[np.where(probs == probs.max())]
+                if np.min(np.abs(best/use_ticks[:2+k]-1)) > 0.15:
+                    use_ticks = np.append(use_ticks, best)
+                ax[i,j].plot(pvals, probs, color=colors_dist[k], lw=4, label=labels[k])
+            ax[i,j].set_xlim(plimits[cc])
+            ax[i,j].set_xticks(use_ticks, np.round(use_ticks, rounder[cc]))#, rotation=30)
+            if cc == 0:
+                ticks = ax[i,j].xaxis.get_majorticklabels()
+                ticks[0].set_ha("left")
+                ticks[1].set_ha("right")
+            ax[i,j].set_ylim([0, 1.03])
+
+            ax[i,j].spines['right'].set_visible(False)
+            ax[i,j].spines['top'].set_visible(False)
+            ax[i,j].spines['left'].set_visible(False)
+            ax[i,j].yaxis.set_ticks_position('left')
+            ax[i,j].xaxis.set_ticks_position('bottom')
+            ax[i,j].patch.set_facecolor('none')
+
+    ax[2,1].legend(loc=[-1., 4.2], fontsize=28, numpoints=2, ncol=2)
+    fig.subplots_adjust(hspace=0.5, wspace=0.25)
+    if savefile is not None:
+        fig.savefig(savefile, bbox_inches='tight', pad_inches=0)
+    plt.show()
+
 def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None):
+    """plot showing the emulator errors across each parameter space, along with
+       the resulting posteriors, and the training samples.
+       chains is a list of the filepath/filename for each chain set"""
     # get samples
     lores = np.array(json.load(open(basedir+'/emulator_params.json', 'r'))['sample_params'])
     nsim, npar = lores.shape
@@ -438,9 +504,12 @@ def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None):
     params[1] *= 10**9
     # parameter names
     names = [r'$\bf{n_P}$', r'$10^{9}\bf{A_p}$', r'$\bf{z^{HeII}_i}$', r'$\bf{z^{HeII}_f}$', r'$\bf{\alpha_q}$', r'$\bf{h}$', r'$\bf{\Omega_M h^2}$',
-             r'$\bf{z^{HI}}$']
-    call_names = ['ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz']
-    rounder = np.array([3,2,2,2,2,2,3,2])
+             r'$\bf{z^{HI}}$', r'$\tau_0$', r'$d\tau_0$'] #r'$\epsilon_{AGN}$',
+    call_names = ['ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'tau0', 'dtau0']
+    assert len(names) == len(call_names)
+    rounder = 2*np.ones(len(names), dtype=np.int)
+    rounder[0] = 3
+    rounder[6] = 3
     colors_dist = np.array([c_flatirons, c_sunshine])
     lws = np.array([2,4])
     dist_labels = ['LOO Posterior', 'GP Error Posterior']
@@ -456,13 +525,16 @@ def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None):
             ax[i,j].plot(hires[:, cc], np.ones(hfnsim)*0.1, 'o', color=c_flatirons_l, ms=17, mew=3, mfc='none', label='HF Samples')
             ax[i,j].plot(params[cc], errors[cc, :].mean(axis=1).mean(axis=1), 'o', color=c_sunshine, label='GP Predicted Errors')
             ax[i,j].plot(params[cc], loo_error*np.ones(nsteps), '--', color=c_flatirons, lw=2.5, label='Leave-One-Out Errors')
-            use_ticks = np.zeros(np.size(gd_sample))
+            use_ticks = np.copy(plimits[cc,:])
             for k in range(np.size(gd_sample)):
                 probs = gd_sample[k].get1DDensity(call_names[cc]).P
                 pvals = gd_sample[k].get1DDensity(call_names[cc]).x
                 if call_names[cc] == 'Ap':
                     pvals *= 10**9
-                use_ticks[k] = pvals[np.where(probs == probs.max())]
+                best = pvals[np.where(probs == probs.max())]
+                #Use best fit unless it is close to an existing tick
+                if np.min(np.abs(best/use_ticks[:2+k]-1)) > 0.15:
+                    use_ticks = np.append(use_ticks, best)
                 ax[i,j].plot(pvals, probs, color=colors_dist[k], lw=lws[k], label=dist_labels[k])
             ax[i,j].set_xlim(plimits[cc])
             ax[i,j].set_xticks(use_ticks, np.round(use_ticks, rounder[cc]))#, rotation=30)
@@ -500,21 +572,21 @@ if __name__ == "__main__":
     tau_thresh=1e6
     basedir="../dtau-48-48/"
     savefile = basedir+'hires/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
-    simpar1 = get_params(savefile, data_index=21)
+    simpar1 = np.concatenate([get_params(savefile, data_index=21), [1.0, 0.]])
     #Do plot
     full_corner(["chains/like-test2/mf-48-48-z2.2-4.6",], "simdat.pdf", labels=None, simpar=simpar1)
     #Get simulation parameters
     savefile = basedir+'/ns0.881-seed/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
-    simpar2 = get_params(savefile)
+    simpar2 = np.concatenate([get_params(savefile), [1.0, 0.]])
     #Do plot
-    chain_dirs = ["chains/like-test2/seed",]
+    chain_dirs = ["chains/like-test2/seed-bhprior","chains/like-test2/seed-loo-bhprior"]
     full_corner(chain_dirs, "simdat2.pdf", labels=None, simpar=simpar2)
     #Make a plot of the best-fit P_F(k) with a different seed
     traindir=basedir+"/trained_mf"
     with h5py.File(savefile, 'r') as data_hdf5:
             datapf = data_hdf5["flux_vectors"][:]
             datapf=datapf.reshape(13, -1)
-    plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=None, savefile="seed-best-fit.pdf", labels=["Seed",], datapf=datapf)
+    plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=None, savefile="seed-best-fit.pdf", labels=["Seed GP error", "Seed LOO error" ], datapf=datapf)
     #Make corner plot of best-fit P_F(k)
     chain_dirs = ["chains-mfern/fps-only/mf-48-z2.6-4.6-emuerr",
                   "chains-mfern/fps-meant/mf-48-48-z2.6-4.6-emuerr",
@@ -522,5 +594,7 @@ if __name__ == "__main__":
     labels = [r"FPS, z = $2.6$ - $4.6$",
               r"FPS + $T_0$, z = $2.6$ - $4.6$",
               r"FPS + $T_0$, z = $2.2$ - $4.6$"]
+    plot_1d_marginals(basedir, chain_dirs, traindir=traindir, savefile="allp_1d.pdf", labels=labels)
     full_corner(chain_dirs, "allp_corner.pdf", labels=labels)
     plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=basedir+'/hires', savefile="fps_data_fit.pdf", labels=labels)
+    plot_err_dists(basedir, basedir+"/loo_fps.hdf5", ["chains-mfern/fps-only/mf-48-z2.6-4.6", "chains-mfern/fps-only/mf-48-z2.6-4.6-emuerr"], traindir=traindir, savefile="loo_vs_emu_error_wlegend.pdf")

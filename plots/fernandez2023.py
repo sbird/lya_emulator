@@ -153,11 +153,12 @@ def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
     gd_samples[0].paramNames.parWithName('alphaq').label = '\\alpha_{q}'
     gd_samples[0].paramNames.parWithName('hireionz').label = 'z^{HI}'
     gd_samples[0].paramNames.parWithName('bhfeedback').label = '\\epsilon_{AGN}'
+    gd_samples[0].paramNames.parWithName('tau0').label = '\\tau_0'
 
-    params = np.array(["ns", "Ap", "herei", "heref", "alphaq", "hub", "omegamh2", "hireionz", "bhfeedback"])
-    plimits = np.array([[0.8, 0.995], [1.2e-9, 2.6e-9], [3.5, 4.1], [2.6, 3.2], [1.4, 2.5], [0.65, 0.75], [0.14, 0.146], [6.5, 8.0], [0.03, 0.07]])
-    gticks = np.array([[0.85,0.95], [1.6e-9,2.2e-9], [3.7,3.9], [2.8,3.0], [1.8,2.2], [0.68,0.72], [0.141,0.144], [7,7.5], [0.04, 0.06]])
-    gtlabels = np.array([['0.85','0.95'], ['1.6','2.2'], ['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['0.68','0.72'], ['0.141','0.144'], ['7.0','7.5'], ['0.04', '0.06']])
+    params = np.array(["ns", "Ap", "herei", "heref", "alphaq", "hub", "omegamh2", "hireionz", "bhfeedback", 'tau0', 'dtau0'])
+    plimits = np.array([[0.8, 0.995], [1.2e-9, 2.6e-9], [3.5, 4.1], [2.6, 3.2], [1.3, 2.5], [0.65, 0.75], [0.14, 0.146], [6.5, 8.0], [0.03, 0.07], [0.92, 1.28],[-0.4, 0.25]])
+    gticks = np.array([[0.85,0.95], [1.6e-9,2.2e-9], [3.7,3.9], [2.8,3.0], [1.8,2.2], [0.68,0.72], [0.141,0.144], [7,7.5], [0.04, 0.06], [1.0,1.2],[-0.2,0.1]])
+    gtlabels = np.array([['0.85','0.95'], ['1.6','2.2'], ['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['0.68','0.72'], ['0.141','0.144'], ['7.0','7.5'], ['0.04', '0.06'], ['1.0','1.2'],['-0.2','0.1']])
     nparams = np.size(params)
 
     gdplot = gdplt.get_subplot_plotter()

@@ -42,26 +42,32 @@ xqk = xq100.get_kf()
 #zz = np.array([2.2,2.4,2.6])
 zz = np.arange(2.2, 4.8, 0.2)
 
+def get_delta(pf, kf):
+    """Convert pf to dimensionless kf"""
+    return kf * pf / np.pi
+
 sigma = 1
 for z in zz:
 #     plt.figure()
-    kpf = koqk * kodiaq.get_pf(zbin=z) / np.pi
+    kpf = get_delta(kodiaq.get_pf(zbin=z), koqk)
     plt.plot(koqk, kpf, label="KODIAQ z=%.1f" % z, ls="--", color="blue")
-    koqstd = koqk * np.sqrt(kodiaq.get_covar_diag(zbin=z))
+    koqstd =  np.sqrt(kodiaq.get_covar_diag(zbin=z))
+    koqstd = get_delta(koqstd, koqk)
+
     plt.fill_between(koqk, kpf-sigma*koqstd , kpf+sigma*koqstd , alpha=0.25, color="blue")
 
-    bpf = bok * boss.get_pf(zbin=z) / np.pi
+    bpf = get_delta(boss.get_pf(zbin=z), bok)
     plt.plot(bok, bpf, label="DR14 z=%.1f" % z, color="black")
     #Standard errors
-    bstd = bok * np.sqrt(np.diag(boss.get_covar(zbin=z)))
+    bstd = get_delta(np.sqrt(np.diag(boss.get_covar(zbin=z))), bok)
     plt.fill_between(bok, bpf-sigma*bstd, bpf+sigma*bstd, alpha=0.5, color="grey")
     xqpf = xq100.get_pf(zbin=z)
     if np.size(xqpf) > 0:
-        xqpf *=xqk / np.pi
+        xqpf = get_delta(xqpf, xqk)
         plt.plot(xqk, xqpf, label="XQ100 z=%.1f" % z, ls="-.", color="orange")
     bpf9 = bossdr9.get_pf(zbin=z)
     if np.size(bpf9) > 0:
-        bpf9*=bok9 / np.pi
+        bpf9 = get_delta(bpf9, bok9)
         plt.plot(bok9, bpf9, label="DR9 z=%.1f" % z, ls=":", color="green")
     # sdf = sdss.get_pf(zbin=z)
     # if np.size(sdf) > 0:
@@ -81,9 +87,10 @@ for z in zz:
 zz2 = np.arange(2.0, 2.2)
 for z in zz2:
 #     plt.figure()
-    kpf = kodiaq.get_pf(zbin=z)
+    kpf = get_delta(kodiaq.get_pf(zbin=z), koqk)
     plt.plot(koqk, kpf, label="KODIAQ z=%.1f" % z, ls="--", color="blue")
     koqstd = np.sqrt(kodiaq.get_covar_diag(zbin=z))
+    koqstd = get_delta(koqstd, koqk)
     plt.fill_between(koqk, kpf-sigma*koqstd , kpf+sigma*koqstd , alpha=0.25, color="blue")
     plt.xlim(1e-3, 0.02)
     plt.ylim(0., 20)

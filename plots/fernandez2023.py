@@ -60,10 +60,10 @@ def cosmo_corner(chain_dirs, savefile=None, labels=None):
 
     gd_samples[0].paramNames.parWithName('Ap').label = 'A_\\mathrm{P}/10^{-9}'
     gd_samples[0].paramNames.parWithName('ns').label = 'n_\\mathrm{P}'
-    params = ["ns", "Ap", "hub", "omegamh2"]
-    plimits = np.array([[0.8, 0.995], [1.2e-9, 2.6e-9], [0.65, 0.75], [0.14, 0.146]])
-    gticks = np.array([[0.85,0.95], [1.6e-9,2.2e-9], [0.68,0.72], [0.141,0.144]])
-    gtlabels = np.array([['0.85','0.95'], ['1.6','2.2'], ['0.68','0.72'], ['0.141','0.144']])
+    params = ['tau0', 'dtau0', "ns", "Ap", "hub", "omegamh2"]
+    plimits = np.array([[0.92, 1.28],[-0.4, 0.25],[0.8, 0.995], [1.2e-9, 2.6e-9], [0.65, 0.75], [0.14, 0.146]])
+    gticks = np.array([[1.0,1.2],[-0.2,0.1],[0.85,0.95], [1.6e-9,2.2e-9], [0.68,0.72], [0.141,0.144]])
+    gtlabels = np.array([['1.0','1.2'],['-0.2','0.1'],['0.85','0.95'], ['1.6','2.2'], ['0.68','0.72'], ['0.141','0.144']])
 
     gdplot = gdplt.get_subplot_plotter()
     gdplot.settings.axes_fontsize = 20
@@ -100,10 +100,10 @@ def astro_corner(chain_dirs, savefile=None, labels=None, bhprior=False):
     gd_samples[0].paramNames.parWithName('hireionz').label = 'z^{HI}'
     gd_samples[0].paramNames.parWithName('bhfeedback').label = '\\epsilon_{AGN}'
 
-    params = ["herei", "heref", "alphaq", "hireionz", "bhfeedback"]
-    plimits = np.array([[3.5, 4.1], [2.6, 3.2], [1.4, 2.5], [6.5, 8.0], [0.03, 0.07]])
-    gticks = np.array([[3.7,3.9], [2.8,3.0], [1.8,2.2], [7,7.5], [0.04, 0.06]])
-    gtlabels = np.array([['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['7.0','7.5'], ['0.04', '0.06']])
+    params = ["herei", "heref", "alphaq", "hireionz", "bhfeedback", "a_lls", "a_dla", "fSiIII"]
+    plimits = np.array([[3.5, 4.1], [2.6, 3.2], [1.4, 2.5], [6.5, 8.0], [0.03, 0.07],[-0.2, 0.25], [-0.035, 0.035], [0.006, 0.013]])
+    gticks = np.array([[3.7,3.9], [2.8,3.0], [1.8,2.2], [7,7.5], [0.04, 0.06],[-0.1,0.1], [-0.02,0.02], [0.008,0.011]])
+    gtlabels = np.array([['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['7.0','7.5'], ['0.04', '0.06'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011']])
 
     gdplot = gdplt.get_subplot_plotter()
     gdplot.settings.axes_fontsize = 20
@@ -595,5 +595,7 @@ if __name__ == "__main__":
               r"FPS + $T_0$, z = $2.2$ - $4.6$"]
     plot_1d_marginals(basedir, chain_dirs, traindir=traindir, savefile="allp_1d.pdf", labels=labels)
     full_corner(chain_dirs, "allp_corner.pdf", labels=labels)
+    cosmo_corner(chain_dirs, "cosmo_corner.pdf", labels=labels)
+    astro_corner(chain_dirs, "astro_corner.pdf", labels=labels)
     plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=basedir+'/hires', savefile="fps_data_fit.pdf", labels=labels)
     plot_err_dists(basedir, basedir+"/loo_fps.hdf5", ["chains-mfern/fps-only/mf-48-z2.6-4.6", "chains-mfern/fps-only/mf-48-z2.6-4.6-emuerr"], traindir=traindir, savefile="loo_vs_emu_error_wlegend.pdf")

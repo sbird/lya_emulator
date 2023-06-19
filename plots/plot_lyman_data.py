@@ -93,7 +93,6 @@ for z in zz2:
     koqstd = get_delta(koqstd, koqk)
     plt.fill_between(koqk, kpf-sigma*koqstd , kpf+sigma*koqstd , alpha=0.25, color="blue")
     plt.xlim(1e-3, 0.02)
-    plt.ylim(0., 20)
     plt.xlabel(r"$k_F$ (s/km)")
     plt.ylabel(r"$k P_F(k)$")
     plt.legend()

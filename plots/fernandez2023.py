@@ -405,8 +405,7 @@ def plot_1d_marginals(basedir, chains, traindir=None, savefile=None, labels=None
         nn, gr = np.loadtxt(os.path.abspath(chainfile+'.progress'), usecols=(0, 3)).T
         gd_sample.append(loadMCSamples(chainfile, settings={'ignore_rows':nn[np.where(gr < 1)[0][0]]/nn[-1]}))
     # get parameter limits, adjust Ap scale for plotting
-    plimits = np.array(json.load(open(basedir+'/emulator_params.json', 'r'))['param_limits'])
-    plimits = np.concatenate([plimits, np.array([[0.92, 1.28],])])
+    plimits = np.array([[0.8, 0.995], [1.2e-9, 2.6e-9], [3.5, 4.1], [2.6, 3.2], [1.3, 2.5], [0.65, 0.75], [0.14, 0.146], [6.5, 8.0], [0.92, 1.28],[-0.4, 0.25]])
     nsteps = 30
     params = np.linspace(plimits[:,0], plimits[:,1], nsteps).T
 
@@ -438,7 +437,7 @@ def plot_1d_marginals(basedir, chains, traindir=None, savefile=None, labels=None
                     pvals *= 10**9
                 #Use best fit unless it is close to an existing tick
                 best = pvals[np.where(probs == probs.max())]
-                if np.min(np.abs(best/use_ticks[:2+k]-1)) > 0.15:
+                if np.min(np.abs(best/use_ticks[:2+k]-1)) > 0.2:
                     use_ticks = np.append(use_ticks, best)
                 ax[i,j].plot(pvals, probs, color=colors_dist[k], lw=4, label=labels[k])
             ax[i,j].set_xlim(plimits[cc])
@@ -533,7 +532,7 @@ def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None):
                     pvals *= 10**9
                 best = pvals[np.where(probs == probs.max())]
                 #Use best fit unless it is close to an existing tick
-                if np.min(np.abs(best/use_ticks[:2+k]-1)) > 0.15:
+                if np.min(np.abs(best/use_ticks[:2+k]-1)) > 0.2:
                     use_ticks = np.append(use_ticks, best)
                 ax[i,j].plot(pvals, probs, color=colors_dist[k], lw=lws[k], label=dist_labels[k])
             ax[i,j].set_xlim(plimits[cc])

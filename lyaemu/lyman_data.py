@@ -191,18 +191,25 @@ class DESIEDRData(SDSSData):
         # Column #4: k
         # Column #5: power
         # Column #-1: total estimated error
-        a = pandas.read_csv(datafile, skiprows=[0], sep='|', header=None)
-        self.redshifts = np.array(a[0], dtype='float')
-        self.kf = np.array(a[3], dtype='float')
-        self.pf = np.array(a[4], dtype='float')
+        a = np.loadtxt(datafile)
+        self.redshifts = np.array(a[:,0], dtype='float')
+        self.kf = np.array(a[:,3], dtype='float')
+        self.pf = np.array(a[:, 4], dtype='float')
         self.nz = np.size(self.get_redshifts())
         self.nk = np.size(self.get_kf())
-        self.covar_diag = np.array(a[-1], dtype='float')
+        self.covar_diag = np.array(a[:,-1], dtype='float')
 
     def get_covar_diag(self, zbin=None):
         """Get the diagonal of the covariance matrix"""
         ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
         return self.covar_diag[ii]
+
+    def get_kf(self, zbin=None):
+        """Get the (unique) flux k values"""
+        if zbin is None:
+            return self.kf
+        ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01))
+        return self.kf[ii]
 
 class XQ100Data(SDSSData):
     """A class to store the flux power and corresponding covariance matrix from XQ100."""

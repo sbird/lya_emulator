@@ -32,6 +32,8 @@ bossdr9 = lyd.BOSSData(datafile="dr9")
 sdss = lyd.SDSSData()
 #XQ100
 xq100 = lyd.XQ100Data()
+#DESI EDR
+desi = lyd.DESIEDRData()
 
 koqk = kodiaq.get_kf()
 bok = boss.get_kf()
@@ -49,12 +51,19 @@ def get_delta(pf, kf):
 sigma = 1
 for z in zz:
 #     plt.figure()
+    desik = desi.get_kf(zbin=z)
     kpf = get_delta(kodiaq.get_pf(zbin=z), koqk)
     plt.plot(koqk, kpf, label="KODIAQ z=%.1f" % z, ls="--", color="blue")
     koqstd =  np.sqrt(kodiaq.get_covar_diag(zbin=z))
     koqstd = get_delta(koqstd, koqk)
 
     plt.fill_between(koqk, kpf-sigma*koqstd , kpf+sigma*koqstd , alpha=0.25, color="blue")
+
+    ddpf = get_delta(desi.get_pf(zbin=z), desik)
+    plt.plot(desik, ddpf, label="DESI z=%.1f" % z, ls="--", color="red")
+    desistd =  np.sqrt(desi.get_covar_diag(zbin=z))
+    desistd = get_delta(desistd, desik)
+    plt.fill_between(desik, ddpf-sigma*desistd , ddpf+sigma*desistd , alpha=0.25, color="red")
 
     bpf = get_delta(boss.get_pf(zbin=z), bok)
     plt.plot(bok, bpf, label="DR14 z=%.1f" % z, color="black")

@@ -180,24 +180,42 @@ class KSData(SDSSData):
         return self.covar_diag[ii]
 
 class DESIEDRData(SDSSData):
-    """A class to store the flux power and corresponding covariance matrix from KODIAQ-SQUAD."""
-    def __init__(self, datafile=None):
+    """A class to store the flux power and corresponding covariance matrix from DESI EDRP.
+       Note that if datafile == fft, k P(k) / pi is returned. Wavenumbers are in 1/Angstrom."""
+    def __init__(self, datafile='qmle'):
         cdir = os.path.dirname(__file__)
-        # data from the supplementary material of https://arxiv.org/pdf/2306.06316.pdf
-        #here https://zenodo.org/record/8007370
-        datafile = os.path.join(cdir,"data/desi_edrp_qmle_data/desi-edrp-lyasb1subt-p1d-detailed-results.txt")
-        # Read DESI flux power data.
-        # Column #1 : redshift
-        # Column #4: k
-        # Column #5: power
-        # Column #-1: total estimated error
-        a = np.loadtxt(datafile)
-        self.redshifts = np.array(a[:,0], dtype='float')
-        self.kf = np.array(a[:,3], dtype='float')
-        self.pf = np.array(a[:, 4], dtype='float')
-        self.nz = np.size(self.get_redshifts())
-        self.nk = np.size(self.get_kf())
-        self.covar_diag = np.array(a[:,-1], dtype='float')
+        if datafile == 'qmle':
+            # data from the supplementary material of https://arxiv.org/pdf/2306.06316.pdf
+            #here https://zenodo.org/record/8007370
+            datafile = os.path.join(cdir,"data/desi_edrp_qmle_data/desi-edrp-lyasb1subt-p1d-detailed-results.txt")
+            # Read DESI flux power data.
+            # Column #1 : redshift
+            # Column #4: k
+            # Column #5: power
+            # Column #-1: total estimated error
+            a = np.loadtxt(datafile)
+            self.redshifts = np.array(a[:,0], dtype='float')
+            self.kf = np.array(a[:,3], dtype='float')
+            self.pf = np.array(a[:, 4], dtype='float')
+            self.nz = np.size(self.get_redshifts())
+            self.nk = np.size(self.get_kf())
+            self.covar_diag = np.array(a[:,-1], dtype='float')
+        else:
+            # data from the supplementary material of https://arxiv.org/pdf/2306.06311.pdf
+            #here https://zenodo.org/record/8020269
+            datafile = os.path.join(cdir,"data/desi_edrp_fft_data/p1d_measurement.txt")
+            # Read DESI flux power data.
+            # Column #1 : redshift
+            # Column #4: k
+            # Column #5: power
+            # Column #-1: total estimated error
+            a = np.loadtxt(datafile)
+            self.redshifts = np.array(a[:,0], dtype='float')
+            self.kf = np.array(a[:,1], dtype='float')
+            self.pf = np.array(a[:, 2], dtype='float')
+            self.nz = np.size(self.get_redshifts())
+            self.nk = np.size(self.get_kf())
+            self.covar_diag = np.array(a[:,3], dtype='float')
 
     def get_covar_diag(self, zbin=None):
         """Get the diagonal of the covariance matrix"""

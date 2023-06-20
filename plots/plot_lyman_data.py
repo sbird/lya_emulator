@@ -34,6 +34,7 @@ sdss = lyd.SDSSData()
 xq100 = lyd.XQ100Data()
 #DESI EDR
 desi = lyd.DESIEDRData()
+# desif = lyd.DESIEDRData(datafile="fft")
 
 koqk = kodiaq.get_kf()
 bok = boss.get_kf()
@@ -52,6 +53,8 @@ sigma = 1
 for z in zz:
 #     plt.figure()
     desik = desi.get_kf(zbin=z)
+    # desifk = desif.get_kf(zbin=z)
+
     kpf = get_delta(kodiaq.get_pf(zbin=z), koqk)
     plt.plot(koqk, kpf, label="KODIAQ z=%.1f" % z, ls="--", color="blue")
     koqstd =  np.sqrt(kodiaq.get_covar_diag(zbin=z))
@@ -64,6 +67,13 @@ for z in zz:
     desistd =  np.sqrt(desi.get_covar_diag(zbin=z))
     desistd = get_delta(desistd, desik)
     plt.fill_between(desik, ddpf-sigma*desistd , ddpf+sigma*desistd , alpha=0.25, color="red")
+
+    #DESI FFT comes as delta = k P / pi and the wavenumbers are in Angstrom.
+    # ddfpf = desif.get_pf(zbin=z)
+    # plt.plot(desifk, ddfpf, label="DESI-F z=%.1f" % z, ls="--", color="pink")
+    # desifstd =  np.sqrt(desif.get_covar_diag(zbin=z))
+    # plt.fill_between(desifk, ddfpf-sigma*desifstd , ddfpf+sigma*desifstd , alpha=0.25, color="pink")
+
 
     bpf = get_delta(boss.get_pf(zbin=z), bok)
     plt.plot(bok, bpf, label="DR14 z=%.1f" % z, color="black")

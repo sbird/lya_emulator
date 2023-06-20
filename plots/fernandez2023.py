@@ -437,7 +437,7 @@ def plot_1d_marginals(basedir, chains, traindir=None, savefile=None, labels=None
                     pvals *= 10**9
                 #Use best fit unless it is close to an existing tick
                 best = pvals[np.where(probs == probs.max())]
-                if np.min(np.abs(best/use_ticks[:2+k]-1)) > 0.2:
+                if np.min(np.abs(best - use_ticks)/(plimits[cc,1]-plimits[cc,0])) > 0.2:
                     use_ticks = np.append(use_ticks, best)
                 ax[i,j].plot(pvals, probs, color=colors_dist[k], lw=4, label=labels[k])
             ax[i,j].set_xlim(plimits[cc])

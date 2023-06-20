@@ -3,9 +3,12 @@
 import os.path
 import h5py
 import numpy as np
+import matplotlib.pyplot as plt
 from lyaemu.likelihood import LikelihoodClass
 from lyaemu.flux_power import rebin_power_to_kms
 from lyaemu.lyman_data import BOSSData
+from lyaemu import lyman_data as lyd
+
 
 def compute_cosmic_variance_fps_hub(basedir="../dtau-48-48"):
     """Using that the effect of the hubble parameter on the flux power spectrum is dominated
@@ -28,8 +31,8 @@ def compute_cosmic_variance_fps_hub(basedir="../dtau-48-48"):
         means[i] = ss
         _, fv2, _ = like.get_predicted(means)
         flux_vectors[nn, :] = fv2
-    variance = np.var(flux_vectors, axis=0)
-    return variance
+    var = np.var(flux_vectors, axis=0)
+    return var
 
 def compute_cosmic_variance_ratio(basedir="../dtau-48-48", seed_flux="seed_converge.hdf5"):
     """Estimate the cosmic variance using the ratio between two simulations with different seeds."""
@@ -41,13 +44,50 @@ def compute_cosmic_variance_ratio(basedir="../dtau-48-48", seed_flux="seed_conve
         flux_seed = hh["flux_powers"]["seed"][:]
         kfmpc = hh["kfmpc"][:]
         zout = hh["zout"][:]
-        nk = np.shape(kfmpc)[0]
         #Loading an element in the training set
         omega_m = 0.288
         _, data_flux_orig = rebin_power_to_kms(kfkms=kfkms, kfmpc=kfmpc, flux_powers=flux_orig, zbins=zout, omega_m=omega_m)
         _, data_flux_seed = rebin_power_to_kms(kfkms=kfkms, kfmpc=kfmpc, flux_powers=flux_seed, zbins=zout, omega_m=omega_m)
     #Single-element estimate of the variance!
-    return data_flux_seed**2 + data_flux_orig**2 - (data_flux_seed + data_flux_orig)**2/4, data_flux_orig, data_flux_seed
+    return np.var([data_flux_seed[:], data_flux_orig[:]], axis=0)
+
+def get_loo_errors(l1norm=True, basedir="../dtau-48-48", savefile="loo_fps.hdf5", hremu=False):
+    """Get the LOO errors"""
+    if hremu:
+        filepath = os.path.join(os.path.join(basedir, "hires"), savefile)
+    else:
+        filepath = os.path.join(basedir, savefile)
+    ff = h5py.File(filepath, 'r')
+    fpp, fpt, looz = ff['flux_predict'][:], ff['flux_true'][:], ff['zout'][:]
+    ff.close()
+    # after loading the absolute difference, calculate errors including BOSS data
+    if l1norm:
+        loo_errors = np.mean(np.abs(fpp - fpt), axis=0)
+    else:
+        loo_errors = np.mean((fpp - fpt)**2, axis=0)
+    return looz, loo_errors
+
+def plot_errors():
+    """Plot some different error terms."""
+    looz, loo_error2 = get_loo_errors(l1norm=False)
+    _, loo_error_hr= get_loo_errors(l1norm=False, hremu=True)
+    cv_err = compute_cosmic_variance_ratio()
+    #Get the eBOSS errors
+    boss = lyd.BOSSData()
+    kf = boss.get_kf()
+    boss_diag = np.sqrt(np.diag(boss.get_covar()))
+    boss_diag = boss_diag.reshape(13,-1)[::-1]
+    for i in range(0,13):
+        plt.figure()
+        plt.plot(kf, boss_diag[i,:], ls="-", label="BOSS")
+        if i >=2:
+            plt.plot(kf, cv_err[i-2,:], ls="--", label="CV")
+        plt.plot(kf, loo_error2[i,:], ls="-.", label="LOO")
+        plt.plot(kf, loo_error_hr[i,:], ls=":", label="LOOHR")
+        plt.title("z=%.2g" % looz[i])
+        plt.legend()
+        plt.savefig("err-%.2g.pdf" % looz[i])
+        plt.clf()
 
 if __name__=="__main__":
     variance = compute_cosmic_variance_fps_hub()

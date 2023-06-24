@@ -130,7 +130,11 @@ class LikelihoodClass:
         # Units: km / s; Size: n_z * n_k
         self.mf_slope = False
         # get leave_one_out errors
-        if loo_errors: self.get_loo_errors()
+        if loo_errors:
+            self.get_loo_errors()
+        else:
+            #Otherwise precompute the covariance matrices for later use
+            self.precompute_inverse_cov()
         # Param limits on t0
         t0_factor = np.array([0.75, 1.25])
         if mean_flux == 'c':
@@ -226,6 +230,16 @@ class LikelihoodClass:
             self.icov_bin.append(np.linalg.inv(covar_bin))
             self.cdet.append(np.linalg.slogdet(covar_bin)[1])
         return loo_errors
+
+    def precompute_inverse_cov(self):
+        # after loading the absolute difference, calculate errors including BOSS data
+        nz = np.size(self.zout)
+        self.icov_bin = []
+        self.cdet = []
+        for bb in range(nz):
+            covar_bin = self.get_BOSS_error(bb)
+            self.icov_bin.append(np.linalg.inv(covar_bin))
+            self.cdet.append(np.linalg.slogdet(covar_bin)[1])
 
     def calculate_loo_errors(self, savefile='loo_fps.hdf5'):
         """Calculate leave-one-out errors: saves predicted flux power, true flux power,
@@ -362,17 +376,15 @@ class LikelihoodClass:
             assert np.shape(np.outer(std_bin, std_bin)) == np.shape(covar_bin)
             if include_emu:
                 if self.loo_errors:
-                    icov_bin = self.icov_bin[bb]
-                    cdet = self.cdet[bb]
-                else:
-                    # Assume completely correlated emulator errors within this bin
-                    covar_emu = np.outer(std_bin, std_bin)
-                    covar_bin += covar_emu
-                    icov_bin = np.linalg.inv(covar_bin)
-                    cdet = np.linalg.slogdet(covar_bin)[1]
-            else:
+                    raise ValueError("Do not enable both loo errors and emulator errors!")
+                # Assume completely correlated emulator errors within this bin
+                covar_emu = np.outer(std_bin, std_bin)
+                covar_bin += covar_emu
                 icov_bin = np.linalg.inv(covar_bin)
                 cdet = np.linalg.slogdet(covar_bin)[1]
+            else:
+                icov_bin = self.icov_bin[bb]
+                cdet = self.cdet[bb]
             dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
             chi2 += dcd -0.5 * cdet
             assert 0 > chi2 > -2**31

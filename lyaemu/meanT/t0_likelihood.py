@@ -15,12 +15,17 @@ def load_data(datafile, desparams, max_z=3.8, min_z=2.0):
     """Load "fake data" mean temperatures"""
     zout = flux_power.MySpectra(max_z=max_z, min_z=min_z).zout
     meanT_file = h5py.File(datafile, 'r')
-    ii = np.argmin( np.sum(meanT_file["params"]/desparams - 1)**2)
-    assert np.max(np.abs(meanT_file["params"][ii]/desparams-1)) < 1e-3
+    params = meanT_file["params"][:]
     # find indices in meanT_file for relevant redshifts
     zintersect = np.intersect1d(np.round(zout, 2), np.round(meanT_file['zout'][:], 2), return_indices=True)
+    meanT = meanT_file["meanT"][:]
+    if len(np.shape(params)) > 1:
+        ii = np.argmin(np.sum(params/desparams - 1)**2)
+        params = params[ii]
+        meanT = meanT[ii]
+    assert np.max(np.abs(params/desparams-1)) < 1e-3
     # from high to low redshift
-    data_meanT =meanT_file['meanT'][ii][zintersect[2]][::-1]
+    data_meanT = meanT[zintersect[2]][::-1]
     return data_meanT
 
 class T0LikelihoodClass:

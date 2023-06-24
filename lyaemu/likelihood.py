@@ -206,16 +206,17 @@ class LikelihoodClass:
             self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=np.min([3.8, self.max_z]), min_z=self.min_z, optimise_GP=optimise_GP, HRbasedir=self.HRbasedir, loo_errors=loo_errors)
 
     def get_loo_errors(self, savefile="loo_fps.hdf5"):
-        if self.HRbasedir is None:
-            filepath = os.path.join(self.basedir, savefile)
-        else:
-            filepath = os.path.join(self.HRbasedir, savefile)
+#         if self.HRbasedir is None:
+        filepath = os.path.join(self.basedir, savefile)
+#         else:
+#             filepath = os.path.join(self.HRbasedir, savefile)
         ff = h5py.File(filepath, 'r')
         fpp, fpt, looz = ff['flux_predict'][:], ff['flux_true'][:], ff['zout'][:]
         ff.close()
         zinds = np.where([(looz <= self.max_z)*(looz >= self.min_z)])[1]
         # after loading the absolute difference, calculate errors including BOSS data
-        loo_errors = np.mean(np.abs(fpp - fpt)[:, zinds], axis=0)
+        loo_errors = np.mean(((fpp - fpt)[:,zinds])**2, axis=0)
+#         loo_errors = np.mean(np.abs(fpp - fpt)[:, zinds], axis=0)
         nz = np.shape(loo_errors)[0]
         self.icov_bin = []
         self.cdet = []

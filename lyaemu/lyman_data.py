@@ -191,12 +191,12 @@ class DESIEDRData(SDSSData):
             # Read DESI flux power data.
             # Column #1 : redshift
             # Column #4: k
-            # Column #5: power
+            # Column #6: final power
             # Column #-1: total estimated error
             a = np.loadtxt(datafile)
             self.redshifts = np.array(a[:,0], dtype='float')
             self.kf = np.array(a[:,3], dtype='float')
-            self.pf = np.array(a[:, 4], dtype='float')
+            self.pf = np.array(a[:, 6], dtype='float')
             self.nz = np.size(self.get_redshifts())
             self.nk = np.size(self.get_kf())
             self.covar_diag = np.array(a[:,-1], dtype='float')

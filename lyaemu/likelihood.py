@@ -370,14 +370,11 @@ class LikelihoodClass:
                 # Get and apply the DLA and SiIII corrections to the prediction
                 predicted[bb] = predicted[bb]*self.get_data_correction(okf[bb], params, self.zout[bb])
             diff_bin = predicted[bb] - data_power[bb][idp]
-            diff_bin = diff_bin
             std_bin = std[bb]
             bindx = np.min(idp)
             covar_bin = self.get_BOSS_error(bb)[bindx:, bindx:]
             assert np.shape(np.outer(std_bin, std_bin)) == np.shape(covar_bin)
             if include_emu:
-                if self.loo_errors:
-                    raise ValueError("Do not enable both loo errors and emulator errors!")
                 # Assume completely correlated emulator errors within this bin
                 covar_emu = np.outer(std_bin, std_bin)
                 covar_bin += covar_emu

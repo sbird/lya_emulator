@@ -281,14 +281,16 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
     bosskf = boss.kf.reshape(13,-1)
     bosspf *= bosskf  / np.pi
     boss_err *= bosskf**2 / np.pi**2
+    call_names = ['dtau0', 'tau0', 'ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'bhfeedback', 'a_lls', 'a_dla', 'fSiIII']
+    datacorr = True
+    #Simulated data has no corrections
+    if datapf is not None:
+        call_names = call_names[:-3]
+        datacorr = False
     # set up the likelihood class
-    like = lk.LikelihoodClass(basedir, tau_thresh=1e6, max_z=4.6, min_z=2.2, traindir=traindir, HRbasedir=HRbasedir)
+    like = lk.LikelihoodClass(basedir, tau_thresh=1e6, max_z=4.6, min_z=2.2, traindir=traindir, HRbasedir=HRbasedir, data_corr=datacorr)
     zz = np.round(like.zout, 1)
 
-    if datapf is None:
-        call_names = ['dtau0', 'tau0', 'ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'bhfeedback', 'a_lls', 'a_dla', 'fSiIII']
-    else:
-        call_names = ['dtau0', 'tau0', 'ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'bhfeedback']
     okf, pred, std = [], [], []
     for chaindir in chain_dirs:
         # get best parameters for each chain
@@ -299,12 +301,24 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
             probs = getgd.P
             pvals = getgd.x
             best = pvals[np.where(probs == probs.max())][0]
+            #Avoid the edges a little for likelihood calculation
+            if best >= like.param_limits[i,1]:
+                best*=0.9999
+            if best <= like.param_limits[i,0]:
+                best/=0.9999
             best_par.append(best)
+        best_par = np.array(best_par)
         okfi, predi, stdi = like.get_predicted(best_par[:like.ndim-len(like.data_params)])
         print(chaindir, " Best: ", best_par)
+        chi2 = like.likelihood(best_par, data_power = datapf)
+        if datapf is not None:
+            dof = np.size(datapf)
+        else:
+            dof = np.size(like.BOSS_flux_power)
+        print(chaindir, "chi^2 per degree",chi2/dof)
         okf.append(okfi)
         for bb in range(like.zout.size):
-            if datapf is None:
+            if datacorr:
                 predi[bb] = predi[bb]*like.get_data_correction(okfi[bb], best_par, like.zout[bb])
             predi[bb] = okfi[bb] * predi[bb] / np.pi
             stdi[bb] = okfi[bb] * stdi[bb] / np.pi

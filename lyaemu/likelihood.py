@@ -220,7 +220,7 @@ class LikelihoodClass:
         ff.close()
         zinds = np.where([(looz <= self.max_z)*(looz >= self.min_z)])[1]
         # after loading the absolute difference, calculate errors including BOSS data
-        loo_errors = np.mean(((fpp - fpt)[:,zinds])**2, axis=0)
+        loo_errors = np.sqrt(np.mean(((fpp - fpt)[:,zinds])**2, axis=0))
 #         loo_errors = np.mean(np.abs(fpp - fpt)[:, zinds], axis=0)
         nz = np.shape(loo_errors)[0]
         self.icov_bin = []

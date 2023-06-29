@@ -288,7 +288,7 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
         call_names = call_names[:-3]
         datacorr = False
     # set up the likelihood class
-    like = lk.LikelihoodClass(basedir, tau_thresh=1e6, max_z=4.6, min_z=2.2, traindir=traindir, HRbasedir=HRbasedir, data_corr=datacorr)
+    like = lk.LikelihoodClass(basedir, tau_thresh=1e6, max_z=4.6, min_z=2.2, traindir=traindir, HRbasedir=HRbasedir, data_corr=datacorr, loo_errors=True)
     zz = np.round(like.zout, 1)
 
     okf, pred, std = [], [], []

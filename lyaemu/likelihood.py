@@ -308,19 +308,16 @@ class LikelihoodClass:
         siIII_corr = SiIIIcorr(params[self.data_params['fSiIII']], tau_eff, okf)
         return dla_corr*siIII_corr
 
-    def hubble_prior(self, params, source='none'):
-        """Return a prior on little h (either Planck or SH0ES)"""
-        if source == 'none': return 0
+    def hub_prior(self, params):
+        """Return a prior on little h that puts it in the middle of the range.
+           Note that the h variation is dominated by cosmic variance, so we place
+           a weak prior on the middle of the parameter range. to avoid regions
+           where prediction accuracy is low."""
         hh = self.emulator.param_names['hub']
         if self.mf_slope:
             hh = hh + 2
-        if source == 'shoes':
-            shoes_mean, shoes_sigma = 0.7253, 0.0099 # SH0ES arxiv: 2112.04510
-            return -((params[hh]-shoes_mean)/shoes_sigma)**2
-        if source == 'planck':
-            planck_mean, planck_sigma = 0.674, 0.005 # Planck arxiv: 1807.06209
-            return -((params[hh]-planck_mean)/planck_sigma)**2
-        else: return 0
+        hh_mean, hh_sigma = 0.7, 0.015
+        return -((params[hh]-hh_mean)/hh_sigma)**2
 
     def omega_prior(self, params):
         """Return a prior on Omega_m h^2 (Planck 2018)"""
@@ -342,7 +339,7 @@ class LikelihoodClass:
             bh_mean = bhprior
         return -((params[bh]-bh_mean)/bh_sigma)**2
 
-    def likelihood(self, params, include_emu=True, data_power=None, hprior='none', oprior=False, bhprior=False, use_meant=None, meant_fac=9.1):
+    def likelihood(self, params, include_emu=True, data_power=None, hprior=False, oprior=False, bhprior=False, use_meant=None, meant_fac=9.1):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix.
         The covariance for the emulator points is assumed to be
@@ -392,7 +389,7 @@ class LikelihoodClass:
             indi = 0
             if self.mf_slope: indi = 2
             chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu, data_meanT=self.sim_meant)*meant_fac
-        chi2 += self.hubble_prior(params, source=hprior)
+        if hprior: chi2 += self.hub_prior(params)
         if oprior: chi2 += self.omega_prior(params)
         if bhprior: chi2 += self.bhfeedback_prior(params, bhprior=bhprior)
         return chi2
@@ -408,7 +405,7 @@ class LikelihoodClass:
             pnames = pnames + self.dnames
         return pnames
 
-    def make_cobaya_dict(self, *, data_power=None, burnin=1e4, nsamples=3e4, use_meant=None, meant_fac=9.1, pscale=80, emu_error=True, hprior='none', oprior=False, bhprior=False):
+    def make_cobaya_dict(self, *, data_power=None, burnin=1e4, nsamples=3e4, use_meant=None, meant_fac=9.1, pscale=80, emu_error=True, hprior=False, oprior=False, bhprior=False):
         """Return a dictionary that can be used to run Cobaya MCMC sampling."""
         # Parameter names
         pnames = self.get_pnames()
@@ -424,7 +421,7 @@ class LikelihoodClass:
         info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True, "learn_proposal_Rminus1_max": 20, "learn_proposal_Rminus1_max_early": 30}}
         return info
 
-    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=80, include_emu_error=True, use_meant=None, meant_fac=9.1, hprior='none', oprior=False, bhprior=False, data_index=0):
+    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=80, include_emu_error=True, use_meant=None, meant_fac=9.1, hprior=False, oprior=False, bhprior=False, data_index=0):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # if use_meant not specificed, default to setting from initialization
@@ -531,7 +528,7 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     data_power: float = None
     include_emu: bool = True
     loo_errors: bool = False
-    hprior: str = 'none'
+    hprior: bool = False
     oprior: bool = False
     bhprior: bool = False
     # Required for Cobaya to correctly parse which parameters are for input

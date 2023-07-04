@@ -115,7 +115,7 @@ class T0LikelihoodClass:
         predicted, std = self.gpemu.predict(np.array(params).reshape(1, -1))
         return predicted, std
 
-    def likelihood(self, params, data_meanT=None, include_emu=True, hprior='none', oprior=False, bhprior=False):
+    def likelihood(self, params, data_meanT=None, include_emu=True, hprior=False, oprior=False, bhprior=False):
         """A simple likelihood function for the mean temperature."""
         # Default to use is Gaikwad data
         if data_meanT is None:
@@ -136,24 +136,23 @@ class T0LikelihoodClass:
             else:
                 error = data_error**2 + std**2
         chi2 = -np.sum(diff**2/(2*error) + 0.5*np.log(error))
-        chi2 += self.hubble_prior(params, source=hprior)
+        if hprior: chi2 += self.hub_prior(params)
         if oprior: chi2 += self.omega_prior(params)
         if bhprior: chi2 += self.bhfeedback_prior(params)
         assert 0 > chi2 > -2**31
         assert not np.isnan(chi2)
         return chi2
 
-    def hubble_prior(self, params, source='none'):
-        """Return a prior on little h (either Planck or SH0ES)"""
-        if source == 'none': return 0
+    def hub_prior(self, params):
+        """Return a prior on little h that puts it in the middle of the range.
+           Note that the h variation is dominated by cosmic variance, so we place
+           a weak prior on the middle of the parameter range. to avoid regions
+           where prediction accuracy is low."""
         hh = self.emulator.param_names['hub']
-        if source == 'shoes':
-            shoes_mean, shoes_sigma = 0.7304, 0.0104 # SH0ES arxiv: 2112.04510
-            return -((params[hh]-shoes_mean)/shoes_sigma)**2
-        if source == 'planck':
-            planck_mean, planck_sigma = 0.6741, 0.005 # Planck arxiv: 1807.06209
-            return -((params[hh]-planck_mean)/planck_sigma)**2
-        else: return 0
+        if self.mf_slope:
+            hh = hh + 2
+        hh_mean, hh_sigma = 0.7, 0.015
+        return -((params[hh]-hh_mean)/hh_sigma)**2
 
     def omega_prior(self, params):
         """Return a prior on Omega_m h^2 (Planck 2018)"""
@@ -171,7 +170,7 @@ class T0LikelihoodClass:
         bh_mean, bh_sigma = 0.05, 0.01
         return -((params[bh]-bh_mean)/bh_sigma)**2
 
-    def make_cobaya_dict(self, *, data_meanT, burnin, nsamples, dataset, hprior='none', oprior=False, bhprior=False, pscale=50):
+    def make_cobaya_dict(self, *, data_meanT, burnin, nsamples, dataset, hprior=False, oprior=False, bhprior=False, pscale=50):
         """Return a dictionary that can be used to run Cobaya MCMC sampling."""
         # Parameter names
         pnames = self.emulator.print_pnames()
@@ -232,7 +231,7 @@ class T0CobayaLikelihoodClass(Likelihood, T0LikelihoodClass):
     HRbasedir: str = None
     data_meanT: float = None
     loo_errors: bool = False
-    hprior: str = 'none'
+    hprior: bool = False
     oprior: bool = False
     bhprior: bool = False
     # Required for Cobaya to correctly parse which parameters are for input

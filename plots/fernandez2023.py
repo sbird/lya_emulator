@@ -335,7 +335,8 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
             mplot.append(2*mm+2)
         for m in mplot:
             for ii in range(len(pred)):
-                ax.errorbar(okf[ii][m], pred[ii][m], yerr=std[ii][m], fmt='-', color=colors[ii], lw=2, alpha=0.95)
+#                 ax.errorbar(okf[ii][m], pred[ii][m], yerr=std[ii][m], fmt='-', color=colors[ii], lw=2)
+                ax.errorbar(okf[ii][m], pred[ii][m], fmt='-', color=colors[ii], lw=2)
             ax.plot(bosskf[m], bosspf[m], '-o', color=c_midnight, lw=2, zorder=0)
             ax.fill_between(bosskf[m], bosspf[m]-np.sqrt(boss_err[m]), bosspf[m]+np.sqrt(boss_err[m]), color=c_midnight, alpha=0.5, zorder=0)
         ax.text(0.002, 0.93*np.max(bosspf[np.min(mplot)]), r'z: '+str(zz[np.min(mplot)])+'-'+str(zz[np.max(mplot)]), fontsize=28)
@@ -361,10 +362,15 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
         plt.savefig(savefile)
     plt.show()
 
-# plot the mean temperature observations, and some max posterior predictions
-def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=None):
+def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=None, datadir=None, dataparams=None):
+    """Plot the mean temperature observations, and some max posterior prediction"""
     # get the observations
     gaikwad = np.loadtxt('../lyaemu/data/Gaikwad/Gaikwad_2020b_T0_Evolution_All_Statistics.txt').T # temperature at mean density
+    if datadir is not None:
+        simt0 = tlk.load_data(datadir+'/emulator_meanT.hdf5', dataparams, max_z=3.8, min_z=2.0)
+        #Last element left alone as sim doesn't have z=2.0
+        #Also order needs to be reversed
+        gaikwad[7][1:] = simt0[::-1]
     # get an emulator, to make the prediction
     temu = tcg.T0Emulator(basedir, max_z=4.6, min_z=2.2)
     temu.load()
@@ -587,19 +593,21 @@ if __name__ == "__main__":
     savefile = basedir+'hires/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
     simpar1 = np.concatenate([get_params(savefile, data_index=21), [1.0, 0.]])
     #Do plot
-    full_corner(["chains/like-test2/mf-48-48-z2.2-4.6",], "simdat.pdf", labels=None, simpar=simpar1)
+    full_corner(["chains/like-test2/mf-48-48-z2.2-4.6",], "simdat.pdf", labels=["LOO"], simpar=simpar1)
     #Get simulation parameters
     savefile = basedir+'/ns0.881-seed/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
     simpar2 = np.concatenate([get_params(savefile), [1.0, 0.]])
     #Do plot
-    chain_dirs = ["chains/like-test2/seed-bhprior","chains/like-test2/seed-loo-bhprior"]
-    full_corner(chain_dirs, "simdat2.pdf", labels=None, simpar=simpar2)
+    chain_dirs = ["chains/simdat/seed-loo-2.2-4.6","chains/simdat/seed-gperr-2.2-4.6","chains/simdat/seed-meant-loo-2.2-4.6" ]
+    labels = ["Seed LOO", "Seed LOO+GP",r"Seed FPS+$T_0$" ]
+    full_corner(chain_dirs, "simdat-seed.pdf", labels=labels, simpar=simpar2)
     #Make a plot of the best-fit P_F(k) with a different seed
     traindir=basedir+"/trained_mf"
     with h5py.File(savefile, 'r') as data_hdf5:
             datapf = data_hdf5["flux_vectors"][:]
             datapf=datapf.reshape(13, -1)
-    plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=None, savefile="seed-best-fit.pdf", labels=["Seed GP error", "Seed LOO error" ], datapf=datapf)
+    plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=None, savefile="seed-best-fit.pdf", labels=labels, datapf=datapf)
+    plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile="seed-best-fit-t0.pdf", labels=labels, datadir=basedir+'ns0.881-seed', dataparams=None)
     #Make corner plot of best-fit P_F(k)
     chain_dirs = ["chains-mfern/fps-only/mf-48-z2.6-4.6-emuerr",
                   "chains-mfern/fps-meant/mf-48-48-z2.6-4.6-emuerr",

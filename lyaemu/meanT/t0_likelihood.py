@@ -23,7 +23,7 @@ def load_data(datafile, desparams, max_z=3.8, min_z=2.0):
         ii = np.argmin(np.sum(params/desparams - 1)**2)
         params = params[ii]
         meanT = meanT[ii]
-    assert np.max(np.abs(params/desparams-1)) < 1e-3
+        assert np.max(np.abs(params/desparams-1)) < 1e-3
     # from high to low redshift
     data_meanT = meanT[zintersect[2]][::-1]
     return data_meanT

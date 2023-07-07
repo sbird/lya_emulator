@@ -609,15 +609,49 @@ if __name__ == "__main__":
     plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=None, savefile="seed-best-fit.pdf", labels=labels, datapf=datapf)
     plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile="seed-best-fit-t0.pdf", labels=labels, datadir=basedir+'ns0.881-seed', dataparams=None)
     #Make corner plot of best-fit P_F(k)
-    chain_dirs = ["chains-mfern/fps-only/mf-48-z2.6-4.6-emuerr",
-                  "chains-mfern/fps-meant/mf-48-48-z2.6-4.6-emuerr",
-                  "chains-mfern/fps-meant/mf-48-48-z2.2-4.6-emuerr"]
-    labels = [r"FPS, z = $2.6$ - $4.6$",
+    chain_dirs = ["chains/fps-meant/mf-48-48-z2.6-4.6",
+                  "chains/fps-meant/mf-48-48-z2.4-4.6",
+                  "chains/fps-meant/mf-48-48-z2.2-4.6"]
+    labels = [r"FPS,+ $T_0$ z = $2.6$ - $4.6$",
+              r"FPS + $T_0$, z = $2.4$ - $4.6$",
+              r"FPS + $T_0$, z = $2.2$ - $4.6$"]
+    full_corner(chain_dirs, "allp_corner24.pdf", labels=labels)
+    chain_dirs = ["chains/fps-only/mf-48-48-z2.6-4.6",
+                  "chains/fps-meant/mf-48-48-z2.6-4.6",
+                  "chains/fps-meant/mf-48-48-z2.2-4.6"]
+    labels = [r"FPS z = $2.6$ - $4.6$",
               r"FPS + $T_0$, z = $2.6$ - $4.6$",
               r"FPS + $T_0$, z = $2.2$ - $4.6$"]
-    plot_1d_marginals(basedir, chain_dirs, traindir=traindir, savefile="allp_1d.pdf", labels=labels)
     full_corner(chain_dirs, "allp_corner.pdf", labels=labels)
     cosmo_corner(chain_dirs, "cosmo_corner.pdf", labels=labels)
     astro_corner(chain_dirs, "astro_corner.pdf", labels=labels)
     plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=basedir+'/hires', savefile="fps_data_fit.pdf", labels=labels)
-    plot_err_dists(basedir, basedir+"/loo_fps.hdf5", ["chains-mfern/fps-only/mf-48-z2.6-4.6", "chains-mfern/fps-only/mf-48-z2.6-4.6-emuerr"], traindir=traindir, savefile="loo_vs_emu_error_wlegend.pdf")
+    plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=basedir+'/hires', savefile="t0_best_fit.pdf", labels=labels)
+    plot_err_dists(basedir, basedir+"/loo_fps.hdf5", chain_dirs, traindir=traindir, savefile="all_1d_best_fit.pdf")
+#     plot_err_dists(basedir, basedir+"/loo_fps.hdf5", ["chains-mfern/fps-only/mf-48-z2.6-4.6", "chains-mfern/fps-only/mf-48-z2.6-4.6-emuerr"], traindir=traindir, savefile="loo_vs_emu_error_wlegend.pdf")
+    #DR9 plot
+    chain_dirs = ["chains/fps-only/mf-48-z2.6-4.6",
+                  "chains/fps-only/mf-48-z2.2-4.6",
+                  "chains/fps-only/mf-48-dr9-z2.6-4.6",
+                  "chains/fps-only/mf-48-dr9-z2.2-4.6"]
+    labels = [r"DR14 z = $2.6$ - $4.6$",
+              r"DR14 z = $2.2$ - $4.6$",
+              r"DR9 z = $2.6$ - $4.6$",
+              r"DR9 z = $2.2$ - $4.6$"]
+    full_corner(chain_dirs, "dr9_allp_corner.pdf", labels=labels)
+    cosmo_corner(chain_dirs, "dr9_cosmo_corner.pdf", labels=labels)
+    astro_corner(chain_dirs, "dr9_astro_corner.pdf", labels=labels)
+    plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=basedir+'/hires', savefile="dr9_fps_best_fit.pdf", labels=labels)
+    #MeanT only plot
+    chain_dirs = ["chains/meant-only/bpdf-48-emu",
+                  "chains/meant-only/curvature-48-emu",
+                  "chains/meant-only/fps-48-emu",
+                  "chains/meant-only/wavelet-48-emu"]
+    labels = [r"BPDF",
+              r"Curvature",
+              r"FPS",
+              r"Wavelet"]
+    full_corner(chain_dirs, "datasets_t0_corner.pdf", labels=labels)
+    cosmo_corner(chain_dirs, "datasets_t0_cosmo.pdf", labels=labels)
+    astro_corner(chain_dirs, "datasets_t0_astro.pdf", labels=labels)
+    plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=basedir+'/hires', savefile="datasets_t0_best_fit.pdf", labels=labels)

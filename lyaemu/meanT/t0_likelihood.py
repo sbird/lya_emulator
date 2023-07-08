@@ -149,8 +149,6 @@ class T0LikelihoodClass:
            a weak prior on the middle of the parameter range. to avoid regions
            where prediction accuracy is low."""
         hh = self.emulator.param_names['hub']
-        if self.mf_slope:
-            hh = hh + 2
         hh_mean, hh_sigma = 0.7, 0.015
         return -((params[hh]-hh_mean)/hh_sigma)**2
 
@@ -165,8 +163,6 @@ class T0LikelihoodClass:
         """Return a prior on black hole feedback (marginalize out)"""
         # value range is [0.03, 0.07]
         bh = self.emulator.param_names['bhfeedback']
-        if self.mf_slope:
-            bh = bh + 2
         bh_mean, bh_sigma = 0.05, 0.01
         return -((params[bh]-bh_mean)/bh_sigma)**2
 

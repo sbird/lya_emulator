@@ -85,8 +85,8 @@ def cosmo_corner(chain_dirs, savefile=None, labels=None):
         gdplot.export(savefile)
     plt.show()
 
-# corner plots for astrophysical parameters
 def astro_corner(chain_dirs, savefile=None, labels=None, bhprior=False):
+    """Corner plots for astrophysical parameters"""
     gd_samples = []
     for chain_dir in chain_dirs:
         nn, gr = np.loadtxt(os.path.abspath(chain_dir+'.progress'), usecols=(0, 3)).T
@@ -131,6 +131,45 @@ def astro_corner(chain_dirs, savefile=None, labels=None, bhprior=False):
         gdplot.export(savefile)
     plt.show()
 
+def temp_corner(chain_dirs, savefile=None, labels=None):
+    """Corner plots for parameters constrained by temperature data"""
+    gd_samples = []
+    for chain_dir in chain_dirs:
+        nn, gr = np.loadtxt(os.path.abspath(chain_dir+'.progress'), usecols=(0, 3)).T
+        gd_samples.append(loadMCSamples(chain_dir, settings={'ignore_rows':nn[np.where(gr < 1)[0][0]]/nn[-1]}))
+    for gd_sample in gd_samples:
+        print('Using', gd_sample.numrows, 'samples')
+
+    gd_samples[0].paramNames.parWithName('Ap').label = 'A_\\mathrm{P}/10^{-9}'
+    gd_samples[0].paramNames.parWithName('herei').label = 'z^{HeII}_i'
+    gd_samples[0].paramNames.parWithName('heref').label = 'z^{HeII}_f'
+    gd_samples[0].paramNames.parWithName('alphaq').label = '\\alpha_{q}'
+    gd_samples[0].paramNames.parWithName('hireionz').label = 'z^{HI}'
+
+    params = ["Ap", "herei", "heref", "alphaq", "hireionz"]
+    plimits = np.array([[1.2e-9, 2.6e-9], [3.5, 4.1], [2.6, 3.2], [1.4, 2.5], [6.5, 8.0]])
+    gticks = np.array([[1.6e-9, 2.2e-9], [3.7,3.9], [2.8,3.0], [1.8,2.2], [7,7.5]])
+    gtlabels = np.array([[1.6, 2.2], ['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['7.0','7.5']])
+
+    gdplot = gdplt.get_subplot_plotter()
+    gdplot.settings.axes_fontsize = 20
+    gdplot.settings.axes_labelsize = 28
+    gdplot.settings.legend_fontsize = 24
+    gdplot.settings.tight_layout = True
+    gdplot.settings.figure_legend_loc = 'upper right'
+
+    gdplot.triangle_plot(gd_samples, params, legend_labels=labels, filled=True, contour_lws=2.5, contour_ls='-', contour_colors=[c_midnight, c_flatirons, c_sunshine, c_skyline])
+    for pi in range(5):
+        for pi2 in range(pi + 1):
+            ax = gdplot.subplots[pi, pi2]
+            if pi != pi2:
+                ax.set_ylim(plimits[pi])
+                ax.set_yticks(gticks[pi], gtlabels[pi])
+            ax.set_xlim(plimits[pi2])
+            ax.set_xticks(gticks[pi2], gtlabels[pi2])
+    if savefile is not None:
+        gdplot.export(savefile)
+    plt.show()
 
 def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
     """
@@ -395,7 +434,7 @@ def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=
         pred.append(gpemu.predict(np.array(best_par))[0].flatten())
         std.append(gpemu.predict(np.array(best_par))[1].flatten())
 
-    colors = [c_sunshine, c_flatirons, c_skyline_ll]
+    colors = [c_sunshine, c_flatirons, c_skyline_ll, c_flatirons_ll]
     fig, ax = plt.subplots(nrows=1,ncols=1,figsize=(10.625, 8))
     plt.setp(ax, xticks=[4.6,4.2,3.8,3.4,3.0,2.6,2.2], xlim=[4.7,2.1], ylim=[0.7,1.65])
     for ii in range(len(pred)):
@@ -481,7 +520,7 @@ def plot_1d_marginals(basedir, chains, traindir=None, savefile=None, labels=None
         fig.savefig(savefile, bbox_inches='tight', pad_inches=0)
     plt.show()
 
-def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None):
+def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None, labels=None):
     """plot showing the emulator errors across each parameter space, along with
        the resulting posteriors, and the training samples.
        chains is a list of the filepath/filename for each chain set"""
@@ -529,9 +568,7 @@ def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None):
     rounder = 2*np.ones(len(names), dtype=np.int)
     rounder[0] = 3
     rounder[6] = 3
-    colors_dist = np.array([c_flatirons, c_sunshine])
-    lws = np.array([2,4])
-    dist_labels = ['LOO Posterior', 'GP Error Posterior']
+    colors_dist = np.array([c_flatirons, c_sunshine, c_skyline])
 
     # make the plot
     fig, ax = plt.subplots(figsize=(10.625*2, 14), nrows=4, ncols=2)
@@ -554,7 +591,7 @@ def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None):
                 #Use best fit unless it is close to an existing tick
                 if np.min(np.abs(best/use_ticks[:2+k]-1)) > 0.2:
                     use_ticks = np.append(use_ticks, best)
-                ax[i,j].plot(pvals, probs, color=colors_dist[k], lw=lws[k], label=dist_labels[k])
+                ax[i,j].plot(pvals, probs, color=colors_dist[k], lw=2, label=labels[k])
             ax[i,j].set_xlim(plimits[cc])
             ax[i,j].set_xticks(use_ticks, np.round(use_ticks, rounder[cc]))#, rotation=30)
             if cc == 0:
@@ -616,7 +653,7 @@ if __name__ == "__main__":
               r"FPS + $T_0$, z = $2.4$ - $4.6$",
               r"FPS + $T_0$, z = $2.2$ - $4.6$"]
     full_corner(chain_dirs, "allp_corner24.pdf", labels=labels)
-    chain_dirs = ["chains/fps-only/mf-48-48-z2.6-4.6",
+    chain_dirs = ["chains/fps-only/mf-48-z2.6-4.6",
                   "chains/fps-meant/mf-48-48-z2.6-4.6",
                   "chains/fps-meant/mf-48-48-z2.2-4.6"]
     labels = [r"FPS z = $2.6$ - $4.6$",
@@ -627,13 +664,13 @@ if __name__ == "__main__":
     astro_corner(chain_dirs, "astro_corner.pdf", labels=labels)
     plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=basedir+'/hires', savefile="fps_data_fit.pdf", labels=labels)
     plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=basedir+'/hires', savefile="t0_best_fit.pdf", labels=labels)
-    plot_err_dists(basedir, basedir+"/loo_fps.hdf5", chain_dirs, traindir=traindir, savefile="all_1d_best_fit.pdf")
-#     plot_err_dists(basedir, basedir+"/loo_fps.hdf5", ["chains-mfern/fps-only/mf-48-z2.6-4.6", "chains-mfern/fps-only/mf-48-z2.6-4.6-emuerr"], traindir=traindir, savefile="loo_vs_emu_error_wlegend.pdf")
+    plot_err_dists(basedir, basedir+"/loo_fps.hdf5", chain_dirs, traindir=traindir, savefile="all_1d_best_fit.pdf", labels=labels)
+    plot_err_dists(basedir, basedir+"/loo_fps.hdf5", ["chains/fps-meant/mf-48-48-z2.6-4.6", "chains/fps-meant/mf-48-48-z2.6-4.6-gpemu"], traindir=traindir, savefile="loo_vs_emu_error_wlegend.pdf", labels=["LOO", "LOO+GPERR"])
     #DR9 plot
     chain_dirs = ["chains/fps-only/mf-48-z2.6-4.6",
                   "chains/fps-only/mf-48-z2.2-4.6",
-                  "chains/fps-only/mf-48-dr9-z2.6-4.6",
-                  "chains/fps-only/mf-48-dr9-z2.2-4.6"]
+                  "chains/fps-only/mf-48-dr9-z2.6-4.4",
+                  "chains/fps-only/mf-48-dr9-z2.2-4.4"]
     labels = [r"DR14 z = $2.6$ - $4.6$",
               r"DR14 z = $2.2$ - $4.6$",
               r"DR9 z = $2.6$ - $4.6$",
@@ -641,7 +678,6 @@ if __name__ == "__main__":
     full_corner(chain_dirs, "dr9_allp_corner.pdf", labels=labels)
     cosmo_corner(chain_dirs, "dr9_cosmo_corner.pdf", labels=labels)
     astro_corner(chain_dirs, "dr9_astro_corner.pdf", labels=labels)
-    plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=basedir+'/hires', savefile="dr9_fps_best_fit.pdf", labels=labels)
     #MeanT only plot
     chain_dirs = ["chains/meant-only/bpdf-48-emu",
                   "chains/meant-only/curvature-48-emu",
@@ -651,7 +687,5 @@ if __name__ == "__main__":
               r"Curvature",
               r"FPS",
               r"Wavelet"]
-    full_corner(chain_dirs, "datasets_t0_corner.pdf", labels=labels)
-    cosmo_corner(chain_dirs, "datasets_t0_cosmo.pdf", labels=labels)
-    astro_corner(chain_dirs, "datasets_t0_astro.pdf", labels=labels)
+    temp_corner(chain_dirs, "datasets_t0_corner.pdf", labels=labels)
     plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=basedir+'/hires', savefile="datasets_t0_best_fit.pdf", labels=labels)

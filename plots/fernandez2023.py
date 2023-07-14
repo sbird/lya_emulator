@@ -60,10 +60,10 @@ def cosmo_corner(chain_dirs, savefile=None, labels=None):
 
     gd_samples[0].paramNames.parWithName('Ap').label = 'A_\\mathrm{P}/10^{-9}'
     gd_samples[0].paramNames.parWithName('ns').label = 'n_\\mathrm{P}'
-    params = ['tau0', 'dtau0', "ns", "Ap", "hub", "omegamh2"]
-    plimits = np.array([[0.92, 1.28],[-0.4, 0.25],[0.8, 0.995], [1.2e-9, 2.6e-9], [0.65, 0.75], [0.14, 0.146]])
-    gticks = np.array([[1.0,1.2],[-0.2,0.1],[0.85,0.95], [1.6e-9,2.2e-9], [0.68,0.72], [0.141,0.144]])
-    gtlabels = np.array([['1.0','1.2'],['-0.2','0.1'],['0.85','0.95'], ['1.6','2.2'], ['0.68','0.72'], ['0.141','0.144']])
+    params = ['tau0', 'dtau0', "ns", "Ap", "omegamh2"]
+    plimits = np.array([[1.0, 1.25],[-0.35, 0.15],[0.86, 0.995], [1.2e-9, 2.0e-9], [0.14, 0.146]])
+    gticks = np.array([[1.0,1.2],[-0.2,0.0],[0.9,0.97], [1.3e-9,1.6e-9,1.9e-9], [0.141,0.144]])
+    gtlabels = np.array([['1.0','1.2'],['-0.2','0.0'],['0.9','0.97'], ['1.3','1.6','1.9'], ['0.141','0.144']])
 
     gdplot = gdplt.get_subplot_plotter()
     gdplot.settings.axes_fontsize = 20
@@ -98,12 +98,13 @@ def astro_corner(chain_dirs, savefile=None, labels=None, bhprior=False):
     gd_samples[0].paramNames.parWithName('heref').label = 'z^{HeII}_f'
     gd_samples[0].paramNames.parWithName('alphaq').label = '\\alpha_{q}'
     gd_samples[0].paramNames.parWithName('hireionz').label = 'z^{HI}'
-    gd_samples[0].paramNames.parWithName('bhfeedback').label = '\\epsilon_{AGN}'
+    gd_samples[0].paramNames.parWithName('hub').label = r'v_\mathrm{scale}'
+#     gd_samples[0].paramNames.parWithName('bhfeedback').label = '\\epsilon_{AGN}'
 
-    params = ["herei", "heref", "alphaq", "hireionz", "bhfeedback", "a_lls", "a_dla", "fSiIII"]
-    plimits = np.array([[3.5, 4.1], [2.6, 3.2], [1.4, 2.5], [6.5, 8.0], [0.03, 0.07],[-0.2, 0.25], [-0.035, 0.035], [0.006, 0.013]])
-    gticks = np.array([[3.7,3.9], [2.8,3.0], [1.8,2.2], [7,7.5], [0.04, 0.06],[-0.1,0.1], [-0.02,0.02], [0.008,0.011]])
-    gtlabels = np.array([['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['7.0','7.5'], ['0.04', '0.06'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011']])
+    params = ["herei", "heref", "alphaq", "hireionz", "a_lls", "a_dla", "fSiIII", 'hub']
+    plimits = np.array([[3.5, 4.1], [2.6, 3.2], [1.4, 2.5], [6.5, 8.0],[-0.2, 0.25], [-0.035, 0.035], [0.006, 0.013],[0.65, 0.75]])
+    gticks = np.array([[3.7,3.9], [2.8,3.0], [1.8,2.2], [7,7.5], [-0.1,0.1], [-0.02,0.02], [0.008,0.011], [0.68,0.72]])
+    gtlabels = np.array([['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['7.0','7.5'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011'], [0.68,0.72]])
 
     gdplot = gdplt.get_subplot_plotter()
     gdplot.settings.axes_fontsize = 20
@@ -189,13 +190,14 @@ def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
     gd_samples[0].paramNames.parWithName('heref').label = 'z^{HeII}_f'
     gd_samples[0].paramNames.parWithName('alphaq').label = '\\alpha_{q}'
     gd_samples[0].paramNames.parWithName('hireionz').label = 'z^{HI}'
-    gd_samples[0].paramNames.parWithName('bhfeedback').label = '\\epsilon_{AGN}'
+    gd_samples[0].paramNames.parWithName('hub').label = r'v_\mathrm{scale}'
+#     gd_samples[0].paramNames.parWithName('bhfeedback').label = '\\epsilon_{AGN}'
     gd_samples[0].paramNames.parWithName('tau0').label = '\\tau_0'
 
-    params = np.array(["ns", "Ap", "herei", "heref", "alphaq", "hub", "omegamh2", "hireionz", "bhfeedback", 'tau0', 'dtau0'])
-    plimits = np.array([[0.8, 0.995], [1.2e-9, 2.6e-9], [3.5, 4.1], [2.6, 3.2], [1.3, 2.5], [0.65, 0.75], [0.14, 0.146], [6.5, 8.0], [0.03, 0.07], [0.92, 1.28],[-0.4, 0.25]])
-    gticks = np.array([[0.85,0.95], [1.6e-9,2.2e-9], [3.7,3.9], [2.8,3.0], [1.8,2.2], [0.68,0.72], [0.141,0.144], [7,7.5], [0.04, 0.06], [1.0,1.2],[-0.2,0.1]])
-    gtlabels = np.array([['0.85','0.95'], ['1.6','2.2'], ['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['0.68','0.72'], ['0.141','0.144'], ['7.0','7.5'], ['0.04', '0.06'], ['1.0','1.2'],['-0.2','0.1']])
+    params = np.array(["ns", "Ap", "herei", "heref", "alphaq", "hub", "omegamh2", "hireionz", 'tau0', 'dtau0'])
+    plimits = np.array([[0.8, 0.995], [1.2e-9, 2.6e-9], [3.5, 4.1], [2.6, 3.2], [1.3, 2.5], [0.65, 0.75], [0.14, 0.146], [6.5, 8.0], [0.92, 1.28],[-0.4, 0.25]])
+    gticks = np.array([[0.85,0.95], [1.6e-9,2.2e-9], [3.7,3.9], [2.8,3.0], [1.8,2.2], [0.68,0.72], [0.141,0.144], [7,7.5], [1.0,1.2],[-0.2,0.1]])
+    gtlabels = np.array([['0.85','0.95'], ['1.6','2.2'], ['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['0.68','0.72'], ['0.141','0.144'], ['7.0','7.5'], ['1.0','1.2'],['-0.2','0.1']])
     nparams = np.size(params)
 
     gdplot = gdplt.get_subplot_plotter()

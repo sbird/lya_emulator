@@ -4,9 +4,8 @@ import os.path
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
-from lyaemu.likelihood import LikelihoodClass
+# from lyaemu.likelihood import LikelihoodClass
 from lyaemu.flux_power import rebin_power_to_kms
-from lyaemu.lyman_data import BOSSData
 from lyaemu import lyman_data as lyd
 
 
@@ -36,7 +35,7 @@ def compute_cosmic_variance_fps_hub(basedir="../dtau-48-48"):
 
 def compute_cosmic_variance_ratio(basedir="../dtau-48-48", seed_flux="seed_converge.hdf5"):
     """Estimate the cosmic variance using the ratio between two simulations with different seeds."""
-    boss = BOSSData()
+    boss = lyd.BOSSData()
     kfkms = boss.get_kf()
     with h5py.File(os.path.join(basedir,seed_flux),'r') as hh:
         #Low-res is current.
@@ -86,8 +85,56 @@ def plot_errors():
         plt.plot(kf, loo_error_hr[i,:], ls=":", label="LOOHR")
         plt.title("z=%.2g" % looz[i])
         plt.legend()
+        plt.xlabel(r"$k_F$ (s/km)")
+        plt.ylabel(r"Diagonal Covariance")
         plt.savefig("err-%.2g.pdf" % looz[i])
         plt.clf()
+
+def plot_cv_error():
+    """Plot some different error terms."""
+    looz, loo_error2 = get_loo_errors(l1norm=False)
+    #Get the eBOSS errors
+    boss = lyd.BOSSData()
+    kf = boss.get_kf()
+    boss_diag = np.sqrt(np.diag(boss.get_covar()))
+    boss_diag = boss_diag.reshape(13,-1)[::-1]
+    plt.figure()
+    lss = ["-.", ":", "--", "-", "--", ":"]
+    colors = ["black", "blue", "grey", "brown", "red", "orange"]
+    for j,i in enumerate([9,6]):
+        plt.plot(kf, boss_diag[i,:], ls=lss[2*j], color=colors[2*j], label="BOSS z=%.2g" % looz[i])
+        plt.plot(kf, loo_error2[i,:], ls=lss[2*j+1], color=colors[2*j+1], label="LOO z=%.2g" % looz[i])
+        # plt.title("z=%.2g" % looz[i])
+    plt.legend()
+    plt.xlabel(r"$k_F$ (s/km)")
+    plt.ylabel(r"Diagonal Covariance")
+    plt.savefig("errors_loo.pdf")
+    plt.clf()
+
+def plot_covar_errors():
+    """Plot some different error terms."""
+    looz, _ = get_loo_errors(l1norm=False)
+    #Get the eBOSS errors
+    boss = lyd.BOSSData()
+    kf = boss.get_kf()
+    boss_diag = np.sqrt(np.diag(boss.get_covar()))
+    boss_diag = boss_diag.reshape(13,-1)[::-1]
+    #Get the eBOSS errors
+    desi = lyd.DESIEDRData()
+    colors=["blue", "red", "black", "brown"]
+    ccnt = 0
+    for i in [5, 12]:
+        plt.plot(kf, boss_diag[i,:], ls="-", label="BOSS z=%.2g" % looz[i], color=colors[ccnt])
+        ccnt += 1
+        if looz[i] < 3.9:
+            desi_diag = np.sqrt(desi.get_covar_diag(zbin=looz[i]))
+            dkf = desi.get_kf(zbin=looz[i])
+            plt.plot(dkf, desi_diag, ls="--", label="DESI z=%.2g" % looz[i], color=colors[ccnt])
+            ccnt += 1
+    plt.legend()
+    plt.xlabel(r"$k_F$ (s/km)")
+    plt.ylabel(r"Diagonal Covariance")
+    plt.savefig("covar-bossdesi.pdf")
 
 if __name__=="__main__":
     variance = compute_cosmic_variance_fps_hub()

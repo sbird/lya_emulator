@@ -194,10 +194,15 @@ def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
 #     gd_samples[0].paramNames.parWithName('bhfeedback').label = '\\epsilon_{AGN}'
     gd_samples[0].paramNames.parWithName('tau0').label = '\\tau_0'
 
-    params = np.array(["ns", "Ap", "herei", "heref", "alphaq", "hub", "omegamh2", "hireionz", 'tau0', 'dtau0'])
-    plimits = np.array([[0.8, 0.995], [1.2e-9, 2.6e-9], [3.5, 4.1], [2.6, 3.2], [1.3, 2.5], [0.65, 0.75], [0.14, 0.146], [6.5, 8.0], [0.92, 1.28],[-0.4, 0.25]])
-    gticks = np.array([[0.85,0.95], [1.6e-9,2.2e-9], [3.7,3.9], [2.8,3.0], [1.8,2.2], [0.68,0.72], [0.141,0.144], [7,7.5], [1.0,1.2],[-0.2,0.1]])
-    gtlabels = np.array([['0.85','0.95'], ['1.6','2.2'], ['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['0.68','0.72'], ['0.141','0.144'], ['7.0','7.5'], ['1.0','1.2'],['-0.2','0.1']])
+    params = np.array(["ns", "Ap", "herei", "heref", "alphaq", "hub", "omegamh2", "hireionz", 'tau0', 'dtau0',"a_lls", "a_dla", "fSiIII"])
+    plimits = np.array([[0.8, 0.995], [1.2e-9, 2.6e-9], [3.5, 4.1], [2.6, 3.2], [1.3, 2.5], [0.65, 0.75], [0.14, 0.146], [6.5, 8.0], [0.92, 1.28],[-0.4, 0.25],[-0.2, 0.25],  [-0.035, 0.035], [0.006, 0.013]])
+    gticks = np.array([[0.85,0.95], [1.6e-9,2.2e-9], [3.7,3.9], [2.8,3.0], [1.8,2.2], [0.68,0.72], [0.141,0.144], [7,7.5], [1.0,1.2],[-0.2,0.1], [-0.1,0.1], [-0.02,0.02], [0.008,0.011]])
+    gtlabels = np.array([['0.85','0.95'], ['1.6','2.2'], ['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['0.68','0.72'], ['0.141','0.144'], ['7.0','7.5'], ['1.0','1.2'],['-0.2','0.1'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011']])
+    if simpar is not None:
+        params = params[:-3]
+        plimits = plimits[:-3]
+        gticks = gticks[:-3]
+        gtlabels = gtlabels[:-3]
     nparams = np.size(params)
 
     gdplot = gdplt.get_subplot_plotter()
@@ -217,9 +222,12 @@ def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
             ax.set_xlim(plimits[pi2])
             ax.set_xticks(gticks[pi2], gtlabels[pi2])
             if simpar is not None:
-                ax.axvline(x=simpar[pi2], ls='--', color=c_flatirons_l, lw=2.2)
+                #Because of epsilon_AGN
+                skip = pi2 > nparams-3
+                ax.axvline(x=simpar[pi2 + skip], ls='--', color=c_flatirons_l, lw=2.2)
                 if pi != pi2:
-                    ax.axhline(y=simpar[pi], ls='--', color=c_flatirons_l, lw=2.2)
+                    skip = pi > nparams-3
+                    ax.axhline(y=simpar[pi+skip], ls='--', color=c_flatirons_l, lw=2.2)
     if savefile is not None:
         gdplot.export(savefile)
     plt.show()
@@ -281,7 +289,7 @@ def plot_samples(lores_json, hires_json, savefile=None, t0_samps=None):
     plimits = np.array(json.load(open(lores_json, 'r'))['param_limits'])
 
     # parameter names - update formatting from the json file
-    names = [r'$\bf{n_P}$', r'$\bf{A_p}$', r'$\bf{z^{HeII}_i}$', r'$\bf{z^{HeII}_f}$', r'$\bf{\alpha_q}$', r'$\bf{h}$', r'$\bf{\Omega_M h^2}$',
+    names = [r'$\bf{n_P}$', r'$\bf{A_p}$', r'$\bf{z^{HeII}_i}$', r'$\bf{z^{HeII}_f}$', r'$\bf{\alpha_q}$', r'$v_\mathrm{scale}$', r'$\bf{\Omega_M h^2}$',
              r'$\bf{z^{HI}}$', r'$\bf{\epsilon_{AGN}}$']
 
     # make the plot
@@ -456,7 +464,7 @@ def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=
     plt.show()
 
 
-def plot_1d_marginals(basedir, chains, traindir=None, savefile=None, labels=None):
+def plot_1d_marginals(basedir, chains, savefile=None, labels=None):
     """plot showing the emulator errors across each parameter space, along with
        the resulting posteriors, and the training samples.
        chains is a list of the filepath/filename for each chain set"""
@@ -473,8 +481,8 @@ def plot_1d_marginals(basedir, chains, traindir=None, savefile=None, labels=None
     plimits[1] *= 10**9
     params[1] *= 10**9
     # parameter names
-    names = [r'$\bf{n_P}$', r'$10^{9}\bf{A_p}$', r'$\bf{z^{HeII}_i}$', r'$\bf{z^{HeII}_f}$', r'$\bf{\alpha_q}$', r'$\bf{h}$', r'$\bf{\Omega_M h^2}$',
-             r'$\bf{z^{HI}}$', r'$\tau_0$', r'$d\tau_0$'] #r'$\epsilon_{AGN}$',
+    names = [r'$\bf{n_P}$', r'$10^{9}\bf{A_p}$', r'$\bf{z^{HeII}_i}$', r'$\bf{z^{HeII}_f}$', r'$\bf{\alpha_q}$', r'$\bf{v}_\mathrm{scale}$', r'$\bf{\Omega_M h^2}$',
+             r'$\bf{z^{HI}}$', r'$\bf{\tau_0}$', r'$\bf{d\tau_0}$'] #r'$\epsilon_{AGN}$',
     call_names = ['ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'tau0', 'dtau0']
     assert len(names) == len(call_names)
     rounder = 2*np.ones(len(names), dtype=np.int)
@@ -563,7 +571,7 @@ def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None, labe
     hires[:,1] *= 10**9
     params[1] *= 10**9
     # parameter names
-    names = [r'$\bf{n_P}$', r'$10^{9}\bf{A_p}$', r'$\bf{z^{HeII}_i}$', r'$\bf{z^{HeII}_f}$', r'$\bf{\alpha_q}$', r'$\bf{h}$', r'$\bf{\Omega_M h^2}$',
+    names = [r'$\bf{n_P}$', r'$10^{9}\bf{A_p}$', r'$\bf{z^{HeII}_i}$', r'$\bf{z^{HeII}_f}$', r'$\bf{\alpha_q}$', r'$\bf{v}_\mathrm{scale}$', r'$\bf{\Omega_M h^2}$',
              r'$\bf{z^{HI}}$', r'$\tau_0$', r'$d\tau_0$'] #r'$\epsilon_{AGN}$',
     call_names = ['ns', 'Ap', 'herei', 'heref', 'alphaq', 'hub', 'omegamh2', 'hireionz', 'tau0', 'dtau0']
     assert len(names) == len(call_names)
@@ -630,7 +638,7 @@ if __name__ == "__main__":
     tau_thresh=1e6
     basedir="../dtau-48-48/"
     savefile = basedir+'hires/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
-    simpar1 = np.concatenate([get_params(savefile, data_index=21), [1.0, 0.]])
+    simpar1 = np.concatenate([get_params(savefile, data_index=21), [1.15, 0.]])
     #Do plot
     full_corner(["chains/like-test2/mf-48-48-z2.2-4.6",], "simdat.pdf", labels=["LOO"], simpar=simpar1)
     #Get simulation parameters
@@ -638,7 +646,7 @@ if __name__ == "__main__":
     simpar2 = np.concatenate([get_params(savefile), [1.0, 0.]])
     #Do plot
     chain_dirs = ["chains/simdat/seed-loo-2.2-4.6","chains/simdat/seed-gperr-2.2-4.6","chains/simdat/seed-meant-loo-2.2-4.6" ]
-    labels = ["Seed LOO", "Seed LOO+GP",r"Seed FPS+$T_0$" ]
+    labels = ["Seed FPS", "Seed FPS+GPERR",r"Seed FPS+$T_0$" ]
     full_corner(chain_dirs, "simdat-seed.pdf", labels=labels, simpar=simpar2)
     #Make a plot of the best-fit P_F(k) with a different seed
     traindir=basedir+"/trained_mf"
@@ -655,19 +663,27 @@ if __name__ == "__main__":
               r"FPS + $T_0$, z = $2.4$ - $4.6$",
               r"FPS + $T_0$, z = $2.2$ - $4.6$"]
     full_corner(chain_dirs, "allp_corner24.pdf", labels=labels)
+    #For proposal
     chain_dirs = ["chains/fps-only/mf-48-z2.6-4.6",
-                  "chains/fps-meant/mf-48-48-z2.6-4.6",
-                  "chains/fps-meant/mf-48-48-z2.2-4.6"]
-    labels = [r"FPS z = $2.6$ - $4.6$",
-              r"FPS + $T_0$, z = $2.6$ - $4.6$",
-              r"FPS + $T_0$, z = $2.2$ - $4.6$"]
+                  "chains/fps-only/mf-48-z2.2-4.6"]
+    labels = [r"z = $2.6$ - $4.6$",
+              r"z = $2.2$ - $4.6$"]
+    cosmo_corner(chain_dirs, "cosmo_corner_proposal.pdf", labels=labels)
+    #Main results
+    chain_dirs = ["chains/fps-only/mf-48-z2.2-4.6",
+                  "chains/fps-only/mf-48-z2.6-4.6",
+                  "chains/fps-meant/mf-48-48-z2.6-4.6"]
+    labels = [r"FPS z = $2.2$ - $4.6$",
+              r"FPS z = $2.6$ - $4.6$",
+              r"FPS + $T_0$, z = $2.6$ - $4.6$"]
     full_corner(chain_dirs, "allp_corner.pdf", labels=labels)
     cosmo_corner(chain_dirs, "cosmo_corner.pdf", labels=labels)
     astro_corner(chain_dirs, "astro_corner.pdf", labels=labels)
     plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=basedir+'/hires', savefile="fps_data_fit.pdf", labels=labels)
     plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=basedir+'/hires', savefile="t0_best_fit.pdf", labels=labels)
+    plot_1d_marginals(basedir, chain_dirs, savefile="all_1d_marginals.pdf", labels=labels)
     plot_err_dists(basedir, basedir+"/loo_fps.hdf5", chain_dirs, traindir=traindir, savefile="all_1d_best_fit.pdf", labels=labels)
-    plot_err_dists(basedir, basedir+"/loo_fps.hdf5", ["chains/fps-meant/mf-48-48-z2.6-4.6", "chains/fps-meant/mf-48-48-z2.6-4.6-gpemu"], traindir=traindir, savefile="loo_vs_emu_error_wlegend.pdf", labels=["LOO", "LOO+GPERR"])
+    plot_err_dists(basedir, basedir+"/loo_fps.hdf5", ["chains/fps-meant/mf-48-48-z2.6-4.6", "chains/fps-meant/mf-48-48-z2.6-4.6-gpemu"], traindir=traindir, savefile="loo_vs_emu_error_wlegend.pdf", labels=["Posterior", "GPERR Posterior"])
     #DR9 plot
     chain_dirs = ["chains/fps-only/mf-48-z2.6-4.6",
                   "chains/fps-only/mf-48-z2.2-4.6",

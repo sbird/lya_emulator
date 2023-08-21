@@ -172,6 +172,40 @@ def temp_corner(chain_dirs, savefile=None, labels=None):
         gdplot.export(savefile)
     plt.show()
 
+def print_latex_table(chain_dirs, labels):
+    """
+    Print Latex table of the 1 and 2 sigma contours.
+    """
+    params = np.array(["ns", "Ap", "herei", "heref", "alphaq", "hub", "omegamh2", "hireionz", 'tau0', 'dtau0',"a_lls", "a_dla", "fSiIII"])
+    gd_samples = []
+    for chain_dir in chain_dirs:
+        nn, gr = np.loadtxt(os.path.abspath(chain_dir+'.progress'), usecols=(0, 3)).T
+        gd_sample = loadMCSamples(chain_dir, settings={'ignore_rows':nn[np.where(gr < 1)[0][0]]/nn[-1]})
+        gd_sample.paramNames.parWithName('Ap').label = r'A_\mathrm{P}/10^{-9}'
+        gd_sample.paramNames.parWithName('ns').label = r'n_\mathrm{P}'
+        gd_sample.paramNames.parWithName('herei').label = r'z^{HeII}_i'
+        gd_sample.paramNames.parWithName('heref').label = r'z^{HeII}_f'
+        gd_sample.paramNames.parWithName('alphaq').label = r'\alpha_{q}'
+        gd_sample.paramNames.parWithName('hireionz').label = r'z^{HI}'
+        gd_sample.paramNames.parWithName('hub').label = r'v_\mathrm{scale}'
+        gd_sample.paramNames.parWithName('tau0').label = '\\tau_0'
+        AsVec = (0.4/(2*np.pi))**(gd_sample['ns']-1) * gd_sample['Ap'] * 1e9
+        gd_sample.addDerived(paramVec=AsVec, name=r"A_\mathrm{s}/10^{-9}")
+        gd_samples.append(gd_sample)
+
+    # This does not work, despite docs: Traceback (most recent call last):
+    # print(ResultTable(ncol=2,results=gd_samples,paramList=params, limit=2, titles=labels).tableTex())
+    # File "/rhome/sbird/.local/lib/python3.9/site-packages/getdist/types.py", line 300, in __init__
+    #  self.tableParamNames = self.tableParamNames.filteredCopy(paramList)
+    # AttributeError: 'MCSamples' object has no attribute 'filteredCopy'
+    #print(ResultTable(ncol=2,results=gd_samples,paramList=params, limit=2, titles=labels).tableTex())
+    for gd, label in zip(gd_samples, labels):
+        print(label)
+        print(gd.getTable(columns=1, limit=1).tableTex())
+        print(gd.getTable(columns=1, limit=2).tableTex())
+#         print(gd.PCA(params))
+#         print(gd.getLikeStats())
+
 def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
     """
     Full corner plot. for chain_dirs
@@ -676,6 +710,7 @@ if __name__ == "__main__":
     labels = [r"FPS z = $2.2$ - $4.6$",
               r"FPS z = $2.6$ - $4.6$",
               r"FPS + $T_0$, z = $2.6$ - $4.6$"]
+    print_latex_table(chain_dirs, labels=labels)
     full_corner(chain_dirs, "allp_corner.pdf", labels=labels)
     cosmo_corner(chain_dirs, "cosmo_corner.pdf", labels=labels)
     astro_corner(chain_dirs, "astro_corner.pdf", labels=labels)

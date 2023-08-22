@@ -20,6 +20,8 @@ import itertools as it
 import getdist.plots as gdplt
 from getdist.mcsamples import loadMCSamples
 import os
+import classylss.binding as CLASS
+
 
 # set up the ticks and axes
 plt.rc('xtick',labelsize=26)
@@ -172,6 +174,24 @@ def temp_corner(chain_dirs, savefile=None, labels=None):
         gdplot.export(savefile)
     plt.show()
 
+def find_sigma8(spectralp, ap, h0, omh2):
+    """Get sigma8 for a power spectrum
+    ."""
+    #Precision
+    #pre_params = {'tol_background_integration': 1e-9, 'tol_perturb_integration' : 1.e-7, 'tol_thermo_integration':1.e-5, 'k_per_decade_for_pk': 50, 'k_bao_width': 8, 'k_per_decade_for_bao':  200, 'neglect_CMB_sources_below_visibility' : 1.e-30, 'transfer_neglect_late_source': 3000., 'l_max_g' : 50, 'l_max_ur':150}
+    #Class takes omega_m h^2 as parameters
+    omegab = 0.0486
+    ocdm = omh2/h0**2 - omegab
+    preparams = {'h':h0, 'Omega_cdm':ocdm,'Omega_b':omegab, 'Omega_k': 0, 'n_s': spectralp}
+    preparams['A_s'] = (0.4/(2*np.pi))**(spectralp - 1) * ap
+    #Pass options for the power spectrum
+    preparams.update({'output': 'mPk', 'z_pk': 0})
+    #Make the power spectra module
+    engine = CLASS.ClassEngine(preparams)
+    powspec = CLASS.Spectra(engine)
+    print("sigma_8(z=0) = ", powspec.sigma8, "A_s = ",powspec.A_s, 'Ap ',ap, 'np', spectralp)
+    return powspec.sigma8
+
 def print_latex_table(chain_dirs, labels):
     """
     Print Latex table of the 1 and 2 sigma contours.
@@ -190,7 +210,9 @@ def print_latex_table(chain_dirs, labels):
         gd_sample.paramNames.parWithName('hub').label = r'v_\mathrm{scale}'
         gd_sample.paramNames.parWithName('tau0').label = '\\tau_0'
         AsVec = (0.4/(2*np.pi))**(gd_sample['ns']-1) * gd_sample['Ap'] * 1e9
-        gd_sample.addDerived(paramVec=AsVec, name=r"A_\mathrm{s}/10^{-9}")
+        gd_sample.addDerived(paramVec=AsVec, name=r"A_\mathrm{s}/10^{-9}", derived=True)
+        sigmaVec = [find_sigma8(np, ap, h0, omh2) for (np, ap, h0, omh2) in zip(gd_sample['ns'], gd_sample['Ap'], gd_sample['hub'], gd_sample['omegamh2'])]
+        gd_sample.addDerived(paramVec=sigmaVec, name=r"\sigma_8", derived=True)
         gd_samples.append(gd_sample)
 
     # This does not work, despite docs: Traceback (most recent call last):

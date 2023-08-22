@@ -103,7 +103,7 @@ def plot_cv_error():
     colors = ["black", "blue", "grey", "brown", "red", "orange"]
     for j,i in enumerate([9,6]):
         plt.plot(kf, boss_diag[i,:], ls=lss[2*j], color=colors[2*j], label="BOSS z=%.2g" % looz[i])
-        plt.plot(kf, loo_error2[i,:], ls=lss[2*j+1], color=colors[2*j+1], label="LOO z=%.2g" % looz[i])
+        plt.plot(kf, loo_error2[i,:], ls=lss[2*j+1], color=colors[2*j+1], label=r"$\sigma_{CV}$ z=%.2g" % looz[i])
         # plt.title("z=%.2g" % looz[i])
     plt.legend()
     plt.xlabel(r"$k_F$ (s/km)")

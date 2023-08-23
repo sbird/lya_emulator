@@ -189,7 +189,7 @@ def find_sigma8(spectralp, ap, h0, omh2):
     #Make the power spectra module
     engine = CLASS.ClassEngine(preparams)
     powspec = CLASS.Spectra(engine)
-    print("sigma_8(z=0) = ", powspec.sigma8, "A_s = ",powspec.A_s, 'Ap ',ap, 'np', spectralp)
+#     print("sigma_8(z=0) = ", powspec.sigma8, "A_s = ",powspec.A_s, 'Ap ',ap, 'np', spectralp, flush=True)
     return powspec.sigma8
 
 def print_latex_table(chain_dirs, labels):
@@ -209,10 +209,12 @@ def print_latex_table(chain_dirs, labels):
         gd_sample.paramNames.parWithName('hireionz').label = r'z^{HI}'
         gd_sample.paramNames.parWithName('hub').label = r'v_\mathrm{scale}'
         gd_sample.paramNames.parWithName('tau0').label = '\\tau_0'
+        gd_sample.thin(40)
         AsVec = (0.4/(2*np.pi))**(gd_sample['ns']-1) * gd_sample['Ap'] * 1e9
-        gd_sample.addDerived(paramVec=AsVec, name=r"A_\mathrm{s}/10^{-9}", derived=True)
+        gd_sample.addDerived(paramVec=AsVec, name=r"A_\mathrm{s}/10^{-9}")
+        print("samples ",np.size(AsVec),flush=True)
         sigmaVec = [find_sigma8(np, ap, h0, omh2) for (np, ap, h0, omh2) in zip(gd_sample['ns'], gd_sample['Ap'], gd_sample['hub'], gd_sample['omegamh2'])]
-        gd_sample.addDerived(paramVec=sigmaVec, name=r"\sigma_8", derived=True)
+        gd_sample.addDerived(paramVec=sigmaVec, name=r"\sigma_8")
         gd_samples.append(gd_sample)
 
     # This does not work, despite docs: Traceback (most recent call last):
@@ -225,7 +227,7 @@ def print_latex_table(chain_dirs, labels):
         print(label)
         print(gd.getTable(columns=1, limit=1).tableTex())
         print(gd.getTable(columns=1, limit=2).tableTex())
-#         print(gd.PCA(params))
+        print(gd.PCA(params))
 #         print(gd.getLikeStats())
 
 def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):

@@ -339,6 +339,54 @@ class LikelihoodClass:
             bh_mean = bhprior
         return -((params[bh]-bh_mean)/bh_sigma)**2
 
+    def chi2_zbin(self, params, bb, okf, predicted, std, data_power, include_emu=True):
+        """Get the likelihood for a single bin of the flux power spectrum."""
+        idp = np.where(self.kf >= okf[bb][0])
+        if len(self.data_params) != 0:
+            # Get and apply the DLA and SiIII corrections to the prediction
+            predicted[bb] = predicted[bb]*self.get_data_correction(okf[bb], params, self.zout[bb])
+        diff_bin = predicted[bb] - data_power[bb][idp]
+        std_bin = std[bb]
+        bindx = np.min(idp)
+        covar_bin = self.get_BOSS_error(bb)[bindx:, bindx:]
+        assert np.shape(np.outer(std_bin, std_bin)) == np.shape(covar_bin)
+        if include_emu:
+            # Assume completely correlated emulator errors within this bin
+            covar_emu = np.outer(std_bin, std_bin)
+            covar_bin += covar_emu
+            icov_bin = np.linalg.inv(covar_bin)
+            cdet = np.linalg.slogdet(covar_bin)[1]
+        else:
+            icov_bin = self.icov_bin[bb]
+            cdet = self.cdet[bb]
+        dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
+        chi2 = dcd -0.5 * cdet
+        assert 0 > chi2 > -2**31
+        assert not np.isnan(chi2)
+        return chi2
+
+    def likelihood_per_zbin(self, zbin, params, include_emu=True, data_power=None):
+        """Get the likelihood (raw chi2 without priors) for a single redshift bin."""
+        # Default data to use is BOSS data
+        if data_power is None:
+            data_power = np.copy(self.BOSS_flux_power)
+        # Set parameter limits as the hull of the original emulator.
+        if np.any(params >= self.param_limits[:, 1]) or np.any(params <= self.param_limits[:, 0]):
+            return -np.inf
+
+        okf, predicted, std = self.get_predicted(params[:self.ndim-len(self.data_params)])
+        nkf = int(np.size(self.kf))
+        nz = np.shape(predicted)[0]
+        assert nz == int(np.size(data_power)/nkf)
+        #Make sure the data power is correctly shaped
+        assert np.shape(data_power)[0] == nz
+        assert np.shape(data_power)[1] == nkf
+        # Likelihood using full covariance matrix
+        bb = np.argmin(np.abs(zbin - self.zout))
+        assert np.abs(zbin - self.zout[bb]) < 0.1
+        chi2 = self.chi2_zbin(params, bb, okf, predicted, std, data_power, include_emu=include_emu)
+        return chi2
+
     def likelihood(self, params, include_emu=True, data_power=None, hprior=False, oprior=False, bhprior=False, use_meant=None, meant_fac=9.1):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix.
@@ -362,36 +410,19 @@ class LikelihoodClass:
         # Likelihood using full covariance matrix
         chi2 = 0
         for bb in range(nz):
-            idp = np.where(self.kf >= okf[bb][0])
-            if len(self.data_params) != 0:
-                # Get and apply the DLA and SiIII corrections to the prediction
-                predicted[bb] = predicted[bb]*self.get_data_correction(okf[bb], params, self.zout[bb])
-            diff_bin = predicted[bb] - data_power[bb][idp]
-            std_bin = std[bb]
-            bindx = np.min(idp)
-            covar_bin = self.get_BOSS_error(bb)[bindx:, bindx:]
-            assert np.shape(np.outer(std_bin, std_bin)) == np.shape(covar_bin)
-            if include_emu:
-                # Assume completely correlated emulator errors within this bin
-                covar_emu = np.outer(std_bin, std_bin)
-                covar_bin += covar_emu
-                icov_bin = np.linalg.inv(covar_bin)
-                cdet = np.linalg.slogdet(covar_bin)[1]
-            else:
-                icov_bin = self.icov_bin[bb]
-                cdet = self.cdet[bb]
-            dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
-            chi2 += dcd -0.5 * cdet
-            assert 0 > chi2 > -2**31
-            assert not np.isnan(chi2)
+            chi2 += self.chi2_zbin(params, bb, okf, predicted, std, data_power, include_emu=include_emu)
         if use_meant or (use_meant is None and self.use_meant):
             # omit mean flux and flux power data correction parameters
             indi = 0
-            if self.mf_slope: indi = 2
+            if self.mf_slope:
+                indi = 2
             chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu, data_meanT=self.sim_meant)*meant_fac
-        if hprior: chi2 += self.hub_prior(params)
-        if oprior: chi2 += self.omega_prior(params)
-        if bhprior: chi2 += self.bhfeedback_prior(params, bhprior=bhprior)
+        if hprior:
+            chi2 += self.hub_prior(params)
+        if oprior:
+            chi2 += self.omega_prior(params)
+        if bhprior:
+            chi2 += self.bhfeedback_prior(params, bhprior=bhprior)
         return chi2
 
     def get_pnames(self):

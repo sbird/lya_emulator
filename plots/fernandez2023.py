@@ -429,6 +429,8 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
                 predi[bb] = predi[bb]*like.get_data_correction(okfi[bb], best_par, like.zout[bb])
             predi[bb] = okfi[bb] * predi[bb] / np.pi
             stdi[bb] = okfi[bb] * stdi[bb] / np.pi
+            chi2_bin = like.likelihood_per_zbin(like.zout[bb], best_par, include_emu=False, data_power=datapf, per_dof=True)
+            print("zz: %g chi2/dof: %g" % (like.zout[bb], chi2_bin))
         pred.append(predi)
         std.append(stdi)
 

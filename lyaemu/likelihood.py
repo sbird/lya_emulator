@@ -339,7 +339,7 @@ class LikelihoodClass:
             bh_mean = bhprior
         return -((params[bh]-bh_mean)/bh_sigma)**2
 
-    def chi2_zbin(self, params, bb, okf, predicted, std, data_power, include_emu=True):
+    def chi2_zbin(self, params, bb, okf, predicted, std, data_power, include_emu=True, per_dof=False):
         """Get the likelihood for a single bin of the flux power spectrum."""
         idp = np.where(self.kf >= okf[bb][0])
         if len(self.data_params) != 0:
@@ -363,9 +363,11 @@ class LikelihoodClass:
         chi2 = dcd -0.5 * cdet
         assert 0 > chi2 > -2**31
         assert not np.isnan(chi2)
+        if per_dof:
+            chi2 /= np.size(data_power[bb][idp])
         return chi2
 
-    def likelihood_per_zbin(self, zbin, params, include_emu=True, data_power=None):
+    def likelihood_per_zbin(self, zbin, params, include_emu=True, data_power=None, per_dof=False):
         """Get the likelihood (raw chi2 without priors) for a single redshift bin."""
         # Default data to use is BOSS data
         if data_power is None:
@@ -384,7 +386,7 @@ class LikelihoodClass:
         # Likelihood using full covariance matrix
         bb = np.argmin(np.abs(zbin - self.zout))
         assert np.abs(zbin - self.zout[bb]) < 0.1
-        chi2 = self.chi2_zbin(params, bb, okf, predicted, std, data_power, include_emu=include_emu)
+        chi2 = self.chi2_zbin(params, bb, okf, predicted, std, data_power, include_emu=include_emu, per_dof=per_dof)
         return chi2
 
     def likelihood(self, params, include_emu=True, data_power=None, hprior=False, oprior=False, bhprior=False, use_meant=None, meant_fac=9.1):

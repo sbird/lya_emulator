@@ -417,20 +417,17 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
         best_par = np.array(best_par)
         okfi, predi, stdi = like.get_predicted(best_par[:like.ndim-len(like.data_params)])
         print(chaindir, " Best: ", best_par)
-        chi2 = like.likelihood(best_par, data_power = datapf)
-        if datapf is not None:
-            dof = np.size(datapf)
-        else:
-            dof = np.size(like.BOSS_flux_power)
-        print(chaindir, "chi^2 per degree",chi2/dof)
         okf.append(okfi)
+        tot_chi2 = 0
         for bb in range(like.zout.size):
             if datacorr:
                 predi[bb] = predi[bb]*like.get_data_correction(okfi[bb], best_par, like.zout[bb])
             predi[bb] = okfi[bb] * predi[bb] / np.pi
             stdi[bb] = okfi[bb] * stdi[bb] / np.pi
             chi2_bin = like.likelihood_per_zbin(like.zout[bb], best_par, include_emu=False, data_power=datapf, per_dof=True)
+            tot_chi2 += chi2_bin
             print("zz: %g chi2/dof: %g" % (like.zout[bb], chi2_bin))
+        print(chaindir, "Total chi^2 per degree",tot_chi2/like.zout.size)
         pred.append(predi)
         std.append(stdi)
 

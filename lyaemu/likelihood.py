@@ -360,11 +360,12 @@ class LikelihoodClass:
             icov_bin = self.icov_bin[bb]
             cdet = self.cdet[bb]
         dcd = - np.dot(diff_bin, np.dot(icov_bin, diff_bin),)/2.
-        chi2 = dcd -0.5 * cdet
-        assert 0 > chi2 > -2**31
-        assert not np.isnan(chi2)
+        assert 0 > dcd > -2**31 , dcd
         if per_dof:
-            chi2 /= np.size(data_power[bb][idp])
+            chi2 = dcd / (np.size(data_power[bb][idp]) - np.size(params))
+        else:
+            chi2 = dcd -0.5 * cdet
+        assert not np.isnan(chi2)
         return chi2
 
     def likelihood_per_zbin(self, zbin, params, include_emu=True, data_power=None, per_dof=False):

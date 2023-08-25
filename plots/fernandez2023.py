@@ -333,8 +333,8 @@ def plot_correlation(correl_file = "correlation-z26-46-t0.txt"):
     plt.colorbar()
     labels = [r'$n_\mathrm{P}$', r'$A_\mathrm{P}/10^{-9}$', r'$z^{HeII}_i$', r'$z^{HeII}_f$', r'$\alpha_{q}$', r'$v_\mathrm{scale}$', r'$\Omega_M h^2$', r'$z^{HI}$', r'$\tau_0$', r'$d\tau_0$', r'$\alpha_{lls}$', r'$\alpha_{DLA}$', r'fSiIII']
     # Show all ticks and label them with the respective list entries
-    plt.set_xticks(np.arange(len(labels)), labels=labels)
-    plt.set_yticks(np.arange(len(labels)), labels=labels)
+    plt.xticks(np.arange(len(labels)), labels=labels)
+    plt.yticks(np.arange(len(labels)), labels=labels)
     # Rotate the tick labels and set their alignment.
     plt.setp(plt.gca().get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
     plt.savefig("correlation_z26_46_t0.pdf")

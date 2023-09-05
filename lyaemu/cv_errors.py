@@ -106,6 +106,7 @@ def plot_cv_error():
         plt.plot(kf, loo_error2[i,:], ls=lss[2*j+1], color=colors[2*j+1], label=r"$\sigma_{CV}$ z=%.2g" % looz[i])
         # plt.title("z=%.2g" % looz[i])
     plt.legend()
+    plt.yscale('log')
     plt.xlabel(r"$k_F$ (s/km)")
     plt.ylabel(r"Diagonal Covariance")
     plt.savefig("errors_loo.pdf")

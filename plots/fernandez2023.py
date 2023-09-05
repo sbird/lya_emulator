@@ -282,10 +282,10 @@ def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
             if simpar is not None:
                 #Because of epsilon_AGN
                 skip = pi2 > nparams-3
-                ax.axvline(x=simpar[pi2 + skip], ls='--', color=c_flatirons_l, lw=2.2)
+                ax.axvline(x=simpar[pi2 + skip], ls='--', color="black", lw=2.2)
                 if pi != pi2:
                     skip = pi > nparams-3
-                    ax.axhline(y=simpar[pi+skip], ls='--', color=c_flatirons_l, lw=2.2)
+                    ax.axhline(y=simpar[pi+skip], ls='--', color="black", lw=2.2)
     if savefile is not None:
         gdplot.export(savefile)
     plt.show()

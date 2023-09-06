@@ -74,7 +74,7 @@ def cosmo_corner(chain_dirs, savefile=None, labels=None):
     gdplot.settings.tight_layout = True
     gdplot.settings.figure_legend_loc = 'upper right'
 
-    gdplot.triangle_plot(gd_samples, params, legend_labels=labels, filled=True, contour_lws=2.5, contour_ls='-', contour_colors=[c_midnight, c_flatirons, c_sunshine, c_skyline])
+    gdplot.triangle_plot(gd_samples, params, legend_labels=labels, filled=True, contour_lws=2.5, contour_ls='-', contour_colors=[c_sunshine, c_skyline, c_flatirons, c_midnight])
     for pi in range(4):
         for pi2 in range(pi + 1):
             ax = gdplot.subplots[pi, pi2]
@@ -115,7 +115,7 @@ def astro_corner(chain_dirs, savefile=None, labels=None, bhprior=False):
     gdplot.settings.tight_layout = True
     gdplot.settings.figure_legend_loc = 'upper right'
 
-    gdplot.triangle_plot(gd_samples, params, legend_labels=labels, filled=True, contour_lws=2.5, contour_ls='-', contour_colors=[c_midnight, c_flatirons, c_sunshine, c_skyline])
+    gdplot.triangle_plot(gd_samples, params, legend_labels=labels, filled=True, contour_lws=2.5, contour_ls='-', contour_colors=[c_sunshine, c_skyline, c_flatirons, c_midnight])
     for pi in range(5):
         for pi2 in range(pi + 1):
             ax = gdplot.subplots[pi, pi2]
@@ -161,7 +161,7 @@ def temp_corner(chain_dirs, savefile=None, labels=None):
     gdplot.settings.tight_layout = True
     gdplot.settings.figure_legend_loc = 'upper right'
 
-    gdplot.triangle_plot(gd_samples, params, legend_labels=labels, filled=True, contour_lws=2.5, contour_ls='-', contour_colors=[c_midnight, c_flatirons, c_sunshine, c_skyline])
+    gdplot.triangle_plot(gd_samples, params, legend_labels=labels, filled=True, contour_lws=2.5, contour_ls='-', contour_colors=[c_sunshine, c_skyline, c_flatirons, c_midnight])
     for pi in range(5):
         for pi2 in range(pi + 1):
             ax = gdplot.subplots[pi, pi2]
@@ -270,7 +270,7 @@ def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
     gdplot.settings.tight_layout = True
     gdplot.settings.figure_legend_loc = 'upper right'
 
-    gdplot.triangle_plot(gd_samples, params, legend_labels=labels, filled=True, contour_lws=2.5, contour_ls='-', contour_colors=[c_midnight, c_flatirons, c_sunshine, c_skyline])
+    gdplot.triangle_plot(gd_samples, params, legend_labels=labels, filled=True, contour_lws=2.5, contour_ls='-', contour_colors=[c_sunshine, c_skyline, c_flatirons, c_midnight])
     for pi in range(nparams):
         for pi2 in range(pi + 1):
             ax = gdplot.subplots[pi, pi2]
@@ -444,7 +444,9 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
         std.append(stdi)
 
     nrows, ncols = 3, 2
-    colors = [c_sunshine, c_flatirons, c_skyline_ll]
+    colors = [c_sunshine, c_skyline_l, c_flatirons]
+    linestyles = ['-.', '--', '-']
+    zorders = [1,3,2]
     fig, axes = plt.subplots(figsize=(10.625*2, 11*1.75), nrows=nrows, ncols=ncols, sharex=True, gridspec_kw={'height_ratios': [1, 1, 1]})
     axes = axes.flatten()
     for mm, ax in enumerate(axes):
@@ -454,27 +456,28 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
         for m in mplot:
             for ii in range(len(pred)):
 #                 ax.errorbar(okf[ii][m], pred[ii][m], yerr=std[ii][m], fmt='-', color=colors[ii], lw=2)
-                ax.errorbar(okf[ii][m], pred[ii][m], fmt='-', color=colors[ii], lw=2)
+                ax.errorbar(okf[ii][m], pred[ii][m], color=colors[ii], lw=4, ls=linestyles[ii], zorder=zorders[ii])
             ax.plot(bosskf[m], bosspf[m], '-o', color=c_midnight, lw=2, zorder=0)
-            ax.fill_between(bosskf[m], bosspf[m]-np.sqrt(boss_err[m]), bosspf[m]+np.sqrt(boss_err[m]), color=c_midnight, alpha=0.5, zorder=0)
-        ax.text(0.002, 0.93*np.max(bosspf[np.min(mplot)]), r'z: '+str(zz[np.min(mplot)])+'-'+str(zz[np.max(mplot)]), fontsize=28)
+            ax.fill_between(bosskf[m], bosspf[m]-np.sqrt(boss_err[m]), bosspf[m]+np.sqrt(boss_err[m]), color=c_midnight, alpha=0.35, zorder=0)
+        ax.text(0.014, 1.5*np.min(bosspf[m]), r'z: '+str(zz[np.min(mplot)])+'-'+str(zz[np.max(mplot)]), fontsize=30)
         if mm % 2 == 0:
             ax.tick_params(which='both', direction='inout', right=False, labelright=False, labelleft=True, length=12)
             ax.tick_params(which='minor', length=8, labelright=False, labelleft=False)
         else:
             ax.tick_params(which='both', direction='inout', right=True, left=False, labelright=True, labelleft=False, length=12)
             ax.tick_params(which='minor', length=8, labelright=False, labelleft=False)
-        ax.set_ylim(ymin=0)
+        # ax.set_ylim(ymin=0)
 #         ax.set_yscale('log')
-#     axes[0].text(0.5e-2, 190, 'Chabanier 2019', fontsize=24, color=c_midnight)
+    panel0_label_pos = np.max(bosspf[0]+np.sqrt(boss_err[0])) * 0.935
+    axes[0].text(0.15e-2, panel0_label_pos, 'Chabanier 2019', fontsize=24, color=c_midnight)
     for ii in range(len(pred)):
-        axes[0].text(0.01, 0.1-(ii*0.05), labels[ii], fontsize=24, color=colors[ii])
+        axes[0].text(0.15e-2, panel0_label_pos-((ii+1)*0.05), labels[ii], fontsize=24, color=colors[ii])
     # add figure centered x- and y-axis labels
     fig.add_subplot(111, frameon=False)
     plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
     plt.grid(False)
-    plt.ylabel(r'$k P_F(k) / \pi$', size=26, labelpad=16.)
-    plt.xlabel('k [s/km]', size=26)
+    plt.ylabel(r'$k P_F(k) / \pi$', size=30, labelpad=25)
+    plt.xlabel('k [s/km]', size=30)
     fig.subplots_adjust(hspace=0, wspace=0)
     if savefile is not None:
         plt.savefig(savefile)
@@ -513,7 +516,7 @@ def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=
         pred.append(gpemu.predict(np.array(best_par))[0].flatten())
         std.append(gpemu.predict(np.array(best_par))[1].flatten())
 
-    colors = [c_sunshine, c_flatirons, c_skyline_ll, c_flatirons_ll]
+    colors = [c_sunshine, c_skyline_l, c_flatirons, c_flatirons_ll]
     fig, ax = plt.subplots(nrows=1,ncols=1,figsize=(10.625, 8))
     plt.setp(ax, xticks=[4.6,4.2,3.8,3.4,3.0,2.6,2.2], xlim=[4.7,2.1], ylim=[0.7,1.65])
     for ii in range(len(pred)):

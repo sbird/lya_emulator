@@ -11,13 +11,11 @@ Inputs include:
     - nsamples = int, total number of steps to take before exiting (if not converged)
     - pscale = float, scale of initial proposal scale
     - tau_thresh = float, optical depth threshold (***fps only and fps+t0)
-    - meant_fac = float, factor by which to scale T0 likelihoods (***fps+t0 runs only)
     - hprior = str ('planck' or 'shoes'), whether to include a prior on h
     - oprior, bhprior = bool, whether to include a prior on omegam h^2 or bhfeedback
     - dataset = str ('fps', 'wavelet', 'curvature', 'bpdf', or 'combined'), which data set from Gaikwad to use (***t0 only)
 
 Usage notes:
-    - To correctly determine the value for meant_fac, run a FPS only chain, and T0 only chain, and find their relative mean likelihoods.
     - Best to run with multiple chains using MPI. To do this, it is easiest to write a script with the desired inputs (above), import and call these functions using those inputs, then run that script using mpiexec or mpirun (-n 4 is a good number). Add the --bind-by core option to mpiexec/mpirun commands, to avoid using all available cores (which slows the run due to the excess overhead).
 """
 
@@ -26,11 +24,11 @@ from meanT import t0_likelihood as t0lk
 
 
 # chain using both flux power spectrum and mean temperature
-def run_chain(savefile, basedir, HRbasedir=None, traindir=None, min_z=2.2, max_z=4.6, loo_errors=True, tau_thresh=1e6, burnin=3e4, nsamples=3e5, hprior='none', oprior=False, bhprior=False, pscale=100, meant_fac=9.1):
+def run_chain(savefile, basedir, HRbasedir=None, traindir=None, min_z=2.2, max_z=4.6, loo_errors=True, tau_thresh=1e6, burnin=3e4, nsamples=3e5, hprior='none', oprior=False, bhprior=False, pscale=100):
     # get the likelihood class object
     like = lk.LikelihoodClass(basedir, tau_thresh=tau_thresh, traindir=traindir, max_z=max_z, min_z=min_z, optimise_GP=False, HRbasedir=HRbasedir, loo_errors=loo_errors, use_meant=True)
     # then run the chain -- note that savefile = None means it will not save
-    chain = like.do_sampling(savefile=savefile, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior, bhprior=hbprior, pscale=pscale, use_meant=True, meant_fac=meant_fac)
+    chain = like.do_sampling(savefile=savefile, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior, bhprior=hbprior, pscale=pscale, use_meant=True)
     return chain
 
 # chain using only the mean temperature

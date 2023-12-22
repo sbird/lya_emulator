@@ -390,7 +390,7 @@ class LikelihoodClass:
         chi2 = self.chi2_zbin(params, bb, okf, predicted, std, data_power, include_emu=include_emu, per_dof=per_dof)
         return chi2
 
-    def likelihood(self, params, include_emu=True, data_power=None, hprior=False, oprior=False, bhprior=False, use_meant=None, meant_fac=9.1):
+    def likelihood(self, params, include_emu=True, data_power=None, hprior=False, oprior=False, bhprior=False, use_meant=None):
         """A simple likelihood function for the Lyman-alpha forest.
         Assumes data is quadratic with a covariance matrix.
         The covariance for the emulator points is assumed to be
@@ -419,7 +419,7 @@ class LikelihoodClass:
             indi = 0
             if self.mf_slope:
                 indi = 2
-            chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu, data_meanT=self.sim_meant)*meant_fac
+            chi2 += self.meant_gpemu.likelihood(params[indi:self.ndim-len(self.data_params)], include_emu=include_emu, data_meanT=self.sim_meant)
         if hprior:
             chi2 += self.hub_prior(params)
         if oprior:
@@ -439,7 +439,7 @@ class LikelihoodClass:
             pnames = pnames + self.dnames
         return pnames
 
-    def make_cobaya_dict(self, *, data_power=None, burnin=1e4, nsamples=3e4, use_meant=None, meant_fac=9.1, pscale=80, emu_error=True, hprior=False, oprior=False, bhprior=False):
+    def make_cobaya_dict(self, *, data_power=None, burnin=1e4, nsamples=3e4, use_meant=None, pscale=80, emu_error=True, hprior=False, oprior=False, bhprior=False):
         """Return a dictionary that can be used to run Cobaya MCMC sampling."""
         # Parameter names
         pnames = self.get_pnames()
@@ -447,7 +447,7 @@ class LikelihoodClass:
         prange = (self.param_limits[:, 1]-self.param_limits[:, 0])
         # Build the dictionary
         info = {}
-        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "HRbasedir": self.HRbasedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z, "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value, "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr, "traindir": self.traindir, "loo_errors": self.loo_errors, "hprior": hprior, "oprior": oprior, "bhprior": bhprior, "tau_thresh": self.tau_thresh, "sim_meant": self.sim_meant, "use_meant": use_meant, "meant_fac": meant_fac, "include_emu": emu_error, "data_power": data_power}}
+        info["likelihood"] = {__name__+".CobayaLikelihoodClass": {"basedir": self.basedir, "HRbasedir": self.HRbasedir, "mean_flux": self.mean_flux, "max_z": self.max_z, "min_z": self.min_z, "emulator_class": self.emulator_class, "t0_training_value": self.t0_training_value, "optimise_GP": True, "emulator_json_file": self.emulator_json_file, "data_corr": self.data_corr, "traindir": self.traindir, "loo_errors": self.loo_errors, "hprior": hprior, "oprior": oprior, "bhprior": bhprior, "tau_thresh": self.tau_thresh, "sim_meant": self.sim_meant, "use_meant": use_meant, "include_emu": emu_error, "data_power": data_power}}
         # Each of the parameters has a prior with limits and a proposal width (the proposal covariance matrix
         # is learned, so the value given needs to be small enough for the sampler to get started)
         info["params"] = {pnames[i][0]: {'prior': {'min': self.param_limits[i, 0], 'max': self.param_limits[i, 1]}, 'proposal': prange[i]/pscale, 'latex': pnames[i][1]} for i in range(self.ndim)}
@@ -455,7 +455,7 @@ class LikelihoodClass:
         info["sampler"] = {"mcmc": {"burn_in": burnin, "max_samples": nsamples, "Rminus1_stop": 0.01, "output_every": '60s', "learn_proposal": True, "learn_proposal_Rminus1_max": 20, "learn_proposal_Rminus1_max_early": 30}}
         return info
 
-    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=80, include_emu_error=True, use_meant=None, meant_fac=9.1, hprior=False, oprior=False, bhprior=False, data_index=0):
+    def do_sampling(self, savefile=None, datadir=None, burnin=3e4, nsamples=3e5, pscale=80, include_emu_error=True, use_meant=None, hprior=False, oprior=False, bhprior=False, data_index=0):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # if use_meant not specificed, default to setting from initialization
@@ -473,7 +473,7 @@ class LikelihoodClass:
                 self.sim_meant = t0_likelihood.load_data(datadir+'/emulator_meanT.hdf5', data_params[1:], max_z=np.min([self.max_z,3.8]), min_z=self.min_z)
 
         # Construct the "info" dictionary used by Cobaya
-        info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples, use_meant=use_meant, meant_fac=meant_fac, hprior=hprior, oprior=oprior, bhprior=bhprior)
+        info = self.make_cobaya_dict(data_power=data_power, emu_error=include_emu_error, pscale=pscale, burnin=burnin, nsamples=nsamples, use_meant=use_meant, hprior=hprior, oprior=oprior, bhprior=bhprior)
 
         if savefile is not None:
             info["output"] = savefile
@@ -557,7 +557,6 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     tau_thresh: int = None
     use_meant: bool = False
     sim_meant: float = None
-    meant_fac: float = 9.1
     traindir: str = None
     data_power: float = None
     include_emu: bool = True
@@ -579,4 +578,4 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
         # self.input_params is specially recognized by Cobaya (will be the "params" section
         # of the Cobaya dictionary passed to it)
         params = np.array([params_values[p] for p in self.input_params])
-        return self.likelihood(params, include_emu=self.include_emu, data_power=self.data_power, use_meant=self.use_meant, meant_fac=self.meant_fac, hprior=self.hprior, oprior=self.oprior, bhprior=self.bhprior)
+        return self.likelihood(params, include_emu=self.include_emu, data_power=self.data_power, use_meant=self.use_meant, hprior=self.hprior, oprior=self.oprior, bhprior=self.bhprior)

@@ -33,7 +33,7 @@ def compute_cosmic_variance_fps_hub(basedir="../dtau-48-48"):
     var = np.var(flux_vectors, axis=0)
     return var
 
-def compute_cosmic_variance_ratio(basedir="../dtau-48-48", seed_flux="seed_converge.hdf5"):
+def compute_cosmic_variance(basedir="../dtau-48-48", seed_flux="seed_converge.hdf5"):
     """Estimate the cosmic variance using the ratio between two simulations with different seeds."""
     boss = lyd.BOSSData()
     kfkms = boss.get_kf()
@@ -50,6 +50,24 @@ def compute_cosmic_variance_ratio(basedir="../dtau-48-48", seed_flux="seed_conve
     #Single-element estimate of the variance!
     return np.var([data_flux_seed[:], data_flux_orig[:]], axis=0)
 
+def compute_cosmic_variance_ratio(basedir="../dtau-48-48", seed_flux="seed_converge.hdf5"):
+    """Estimate the cosmic variance using the ratio between two simulations with different seeds."""
+    boss = lyd.BOSSData()
+    kfkms = boss.get_kf()
+    with h5py.File(os.path.join(basedir,seed_flux),'r') as hh:
+        #Low-res is current.
+        flux_orig = hh["flux_powers"]["orig"][:]
+        flux_seed = hh["flux_powers"]["seed"][:]
+        kfmpc = hh["kfmpc"][:]
+        zout = hh["zout"][:]
+        #Loading an element in the training set
+        omega_m = 0.288
+        _, data_flux_ratio = rebin_power_to_kms(kfkms=kfkms, kfmpc=kfmpc, flux_powers=flux_orig/flux_seed, zbins=zout, omega_m=omega_m)
+        # _, data_flux_seed = rebin_power_to_kms(kfkms=kfkms, kfmpc=kfmpc, flux_powers=flux_seed, zbins=zout, omega_m=omega_m)
+    return np.abs(data_flux_ratio-1)
+    #Single-element estimate of the variance!
+    # return np.abs(data_flux_seed[:] / data_flux_orig[:]-1)
+
 def get_loo_errors(l1norm=True, basedir="../dtau-48-48", savefile="loo_fps.hdf5", hremu=False):
     """Get the LOO errors"""
     if hremu:
@@ -63,7 +81,7 @@ def get_loo_errors(l1norm=True, basedir="../dtau-48-48", savefile="loo_fps.hdf5"
     if l1norm:
         loo_errors = np.mean(np.abs(fpp - fpt), axis=0)
     else:
-        loo_errors = np.mean((fpp - fpt)**2, axis=0)
+        loo_errors = np.sqrt(np.mean((fpp - fpt)**2, axis=0))
     return looz, loo_errors
 
 def plot_errors():
@@ -76,17 +94,20 @@ def plot_errors():
     kf = boss.get_kf()
     boss_diag = np.sqrt(np.diag(boss.get_covar()))
     boss_diag = boss_diag.reshape(13,-1)[::-1]
+    boss_pf = (boss.get_pf()).reshape(13, -1)[::-1]
+
     for i in range(0,13):
-        plt.figure()
-        plt.plot(kf, boss_diag[i,:], ls="-", label="BOSS")
+        plt.plot(kf, boss_diag[i,:] / boss_pf[i,:], ls="-", label=r"$\mathrm{diag}(\sqrt{K_\mathrm{BOSS}})$", color="black")
+        plt.plot(kf, loo_error2[i,:]/boss_pf[i,:], ls="-.", color="blue", label=r"$\sigma_{CV}$")
         if i >=2:
-            plt.plot(kf, cv_err[i-2,:], ls="--", label="CV")
-        plt.plot(kf, loo_error2[i,:], ls="-.", label="LOO")
-        plt.plot(kf, loo_error_hr[i,:], ls=":", label="LOOHR")
+            plt.plot(kf, cv_err[i-2,:], ls="--", label=r"$|P_F(\mathrm{Seed})/P_F(\mathrm{Default})-1|$", color="brown")
+        # plt.plot(kf, loo_error_hr[i,:]/boss_pf[i,:], ls=":", label="LOOHR")
         plt.title("z=%.2g" % looz[i])
         plt.legend()
+        plt.ylim(ymin=1e-3)
+        plt.yscale('log')
         plt.xlabel(r"$k_F$ (s/km)")
-        plt.ylabel(r"Diagonal Covariance")
+        plt.ylabel(r"$\sigma / P_F(z,k)$")
         plt.savefig("err-%.2g.pdf" % looz[i])
         plt.clf()
 
@@ -95,20 +116,23 @@ def plot_cv_error():
     looz, loo_error2 = get_loo_errors(l1norm=False)
     #Get the eBOSS errors
     boss = lyd.BOSSData()
+
     kf = boss.get_kf()
     boss_diag = np.sqrt(np.diag(boss.get_covar()))
     boss_diag = boss_diag.reshape(13,-1)[::-1]
+    boss_pf = (boss.get_pf()).reshape(13, -1)[::-1]
+
     plt.figure()
     lss = ["-.", ":", "--", "-", "--", ":"]
     colors = ["black", "blue", "grey", "brown", "red", "orange"]
     for j,i in enumerate([9,6]):
-        plt.plot(kf, boss_diag[i,:], ls=lss[2*j], color=colors[2*j], label="BOSS z=%.2g" % looz[i])
-        plt.plot(kf, loo_error2[i,:], ls=lss[2*j+1], color=colors[2*j+1], label=r"$\sigma_{CV}$ z=%.2g" % looz[i])
+        plt.plot(kf, boss_diag[i,:] / boss_pf[i,:], ls=lss[2*j], color=colors[2*j], label=r"$\sqrt{K_\mathrm{BOSS}}\; z=%.2g$" % looz[i])
+        plt.plot(kf, loo_error2[i,:] / boss_pf[i,:], ls=lss[2*j+1], color=colors[2*j+1], label=r"$\sigma_{CV}$ z=%.2g" % looz[i])
         # plt.title("z=%.2g" % looz[i])
     plt.legend()
     plt.yscale('log')
     plt.xlabel(r"$k_F$ (s/km)")
-    plt.ylabel(r"Diagonal Covariance")
+    plt.ylabel(r"$\mathrm{diag}(\sqrt{K}) / P_F$")
     plt.savefig("errors_loo.pdf")
     plt.clf()
 

@@ -2,9 +2,12 @@
 
 import os.path
 import h5py
+import scipy.interpolate
 import numpy as np
 import matplotlib.pyplot as plt
-# from lyaemu.likelihood import LikelihoodClass
+from fake_spectra import fluxstatistics as fstat
+from fake_spectra import spectra
+from lyaemu.likelihood import LikelihoodClass
 from lyaemu.flux_power import rebin_power_to_kms
 from lyaemu import lyman_data as lyd
 
@@ -84,7 +87,7 @@ def get_loo_errors(l1norm=True, basedir="../dtau-48-48", savefile="loo_fps.hdf5"
         loo_errors = np.sqrt(np.mean((fpp - fpt)**2, axis=0))
     return looz, loo_errors
 
-def plot_errors():
+def plot_errors(basedir=None):
     """Plot some different error terms."""
     looz, loo_error2 = get_loo_errors(l1norm=False)
     _, loo_error_hr= get_loo_errors(l1norm=False, hremu=True)
@@ -101,6 +104,8 @@ def plot_errors():
         plt.plot(kf, loo_error2[i,:]/boss_pf[i,:], ls="-.", color="blue", label=r"$\sigma_{CV}$")
         if i >=2:
             plt.plot(kf, cv_err[i-2,:], ls="--", label=r"$|P_F(\mathrm{Seed})/P_F(\mathrm{Default})-1|$", color="brown")
+        if basedir is not None:
+            plot_axis_error(looz[i], basedir)
         # plt.plot(kf, loo_error_hr[i,:]/boss_pf[i,:], ls=":", label="LOOHR")
         plt.title("z=%.2g" % looz[i])
         plt.legend()
@@ -161,7 +166,35 @@ def plot_covar_errors():
     plt.ylabel(r"Diagonal Covariance")
     plt.savefig("covar-bossdesi.pdf")
 
+def plot_axis_error(zz, basedir):
+    """Plot the average leave-one-out axis ratio difference."""
+    base = os.path.expanduser(basedir)
+    for nn in range(4, 23):
+        try:
+            spec = spectra.Spectra(nn, base, None, None, savefile="lya_forest_spectra_grid_480.hdf5", res=None)
+        except IOError:
+            continue
+        if np.abs(spec.red - zz) > 0.04:
+            continue
+        tau = spec.get_tau("H", 1, 1215)
+        axis = spec.axis
+        flux_power = []
+        for ax in range(1,4):
+            ii = np.where(axis == ax)[0]
+            (kf, avg_flux_power) = fstat.flux_power(tau[ii,:], spec.vmax, spec_res=spec.spec_res, mean_flux_desired=None, window=False)
+            flux_power.append(avg_flux_power)
+        (kf, avg_flux_power) = fstat.flux_power(tau, spec.vmax, spec_res=spec.spec_res, mean_flux_desired=None, window=False)
+        flux = np.mean([np.abs(flux_power[i]/avg_flux_power-1) for i in range(3)], axis=0)
+        boss = lyd.BOSSData(datafile="dr14")
+        kfkms = boss.get_kf()
+        rebinned = scipy.interpolate.interp1d(kf[1:], flux[1:])
+        newflux = rebinned(kfkms)
+        plt.semilogx(kfkms, newflux, label=r"$\bar{P}_F(Axis)/P_F$", ls="--", color="grey")
+        break
+
 if __name__=="__main__":
+#     based = os.path.expanduser("~/shared/Lya_emu_spectra/emu_full/ns0.972Ap1.69e-09herei3.87heref2.65alphaq2.12hub0.722omegamh20.144hireionz7.53bhfeedback0.0507/output/")
+#     plot_errors(based)
     variance = compute_cosmic_variance_fps_hub()
     varrat, orig, seed = compute_cosmic_variance_ratio()
     with h5py.File("variance.hdf5", 'w') as hh:

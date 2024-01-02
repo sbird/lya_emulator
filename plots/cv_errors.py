@@ -100,19 +100,21 @@ def plot_errors(basedir=None):
     boss_pf = (boss.get_pf()).reshape(13, -1)[::-1]
 
     for i in range(0,13):
+        if i >=2:
+            plt.plot(kf, cv_err[i-2,:], ls="--", label=r"$|P_F(\mathrm{Seed})|$", color="brown")
         plt.plot(kf, boss_diag[i,:] / boss_pf[i,:], ls="-", label=r"$\mathrm{diag}(\sqrt{K_\mathrm{BOSS}})$", color="black")
         plt.plot(kf, loo_error2[i,:]/boss_pf[i,:], ls="-.", color="blue", label=r"$\sigma_{CV}$")
-        if i >=2:
-            plt.plot(kf, cv_err[i-2,:], ls="--", label=r"$|P_F(\mathrm{Seed})/P_F(\mathrm{Default})-1|$", color="brown")
         if basedir is not None:
             plot_axis_error(looz[i], basedir)
         # plt.plot(kf, loo_error_hr[i,:]/boss_pf[i,:], ls=":", label="LOOHR")
-        plt.title("z=%.2g" % looz[i])
-        plt.legend()
+        plt.title("z=%.2g" % looz[i], fontsize=16)
+        plt.legend(fontsize=13)
+        plt.gca().tick_params(axis='both', which='major', labelsize=14)
         plt.ylim(ymin=1e-3)
         plt.yscale('log')
-        plt.xlabel(r"$k_F$ (s/km)")
-        plt.ylabel(r"$\sigma / P_F(z,k)$")
+        plt.xlabel(r"$k_F$ (s/km)", fontsize=16)
+        plt.ylabel(r"$\sigma / P_F(z,k)$", fontsize=16)
+        plt.tight_layout()
         plt.savefig("err-%.2g.pdf" % looz[i])
         plt.clf()
 

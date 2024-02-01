@@ -564,13 +564,14 @@ class CobayaLikelihoodClass(Likelihood, LikelihoodClass):
     hprior: bool = False
     oprior: bool = False
     bhprior: bool = False
+    sdss: str = "dr14"
     # Required for Cobaya to correctly parse which parameters are for input
     input_params_prefix: str = ""
 
     def initialize(self):
         """Initialization of Cobaya likelihood using LikelihoodClass init.
         Gets the emulator by loading the flux power spectra from the simulations."""
-        LikelihoodClass.__init__(self, self.basedir, HRbasedir=self.HRbasedir, mean_flux=self.mean_flux, max_z=self.max_z, min_z=self.min_z, emulator_class=self.emulator_class, t0_training_value=self.t0_training_value, optimise_GP=self.optimise_GP, emulator_json_file=self.emulator_json_file, data_corr=self.data_corr, tau_thresh=self.tau_thresh, use_meant=self.use_meant, traindir=self.traindir, loo_errors=self.loo_errors)
+        LikelihoodClass.__init__(self, self.basedir, HRbasedir=self.HRbasedir, mean_flux=self.mean_flux, max_z=self.max_z, min_z=self.min_z, emulator_class=self.emulator_class, t0_training_value=self.t0_training_value, optimise_GP=self.optimise_GP, emulator_json_file=self.emulator_json_file, data_corr=self.data_corr, tau_thresh=self.tau_thresh, use_meant=self.use_meant, traindir=self.traindir, loo_errors=self.loo_errors, sdss=self.sdss)
 
     def logp(self, **params_values):
         """Cobaya-compatible call to the base class likelihood function.

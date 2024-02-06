@@ -765,8 +765,9 @@ if __name__ == "__main__":
                   "chains/fps-only/mf-48-dr9-z2.2-4.4"]
     labels = [r"DR14 z = $2.6$ - $4.6$",
               r"DR14 z = $2.2$ - $4.6$",
-              r"DR9 z = $2.6$ - $4.6$",
-              r"DR9 z = $2.2$ - $4.6$"]
+              r"DR9 z = $2.6$ - $4.4$",
+              r"DR9 z = $2.2$ - $4.4$"]
+    #print_latex_table(chain_dirs, labels=labels)
     full_corner(chain_dirs, "dr9_allp_corner.pdf", labels=labels)
     cosmo_corner(chain_dirs, "dr9_cosmo_corner.pdf", labels=labels)
     astro_corner(chain_dirs, "dr9_astro_corner.pdf", labels=labels)

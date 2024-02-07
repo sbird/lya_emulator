@@ -191,7 +191,7 @@ class DESIEDRData(SDSSData):
             # Read DESI flux power data.
             # Column #1 : redshift
             # Column #4: k
-            # Column #6: final power
+            # Column #6: final power (note this matches figure 8 of the paper).
             # Column #-1: total estimated error
             a = np.loadtxt(datafile)
             self.redshifts = np.array(a[:,0], dtype='float')
@@ -199,7 +199,22 @@ class DESIEDRData(SDSSData):
             self.pf = np.array(a[:, 6], dtype='float')
             self.nz = np.size(self.get_redshifts())
             self.nk = np.size(self.get_kf())
-            self.covar_diag = np.array(a[:,-1], dtype='float')
+            #e_total
+            # self.covar_diag = np.array(a[:,-1], dtype='float')
+            #Covariance matrix files in the tarball:
+            #This is the statistical covariance.
+            #desi-edrp-lya-cov-stat.txt
+            #This is very small, probably the statistical covariance in the sideband.
+            #desi-edrp-sb1-cov-stat.txt
+            #
+            #These next two have the same diagonal, identical to the square of e_total in the power spectrum file.
+            #This one has the off diagonal elements matching the statistical covariance file
+            #desi-edrp-lyasb1subt-cov-total-results.txt
+            #
+            #This one has the extra correlated off-diagonal elements.
+            #desi-edrp-lyasb1subt-cov-total-offdiag-results.txt
+            self.covar = np.loadtxt("data/desi-edrp-lyasb1subt-cov-total-offdiag-results.txt")
+            self.covar_diag = np.diag(self.covar)
         else:
             # data from the supplementary material of https://arxiv.org/pdf/2306.06311.pdf
             #here https://zenodo.org/record/8020269
@@ -216,6 +231,17 @@ class DESIEDRData(SDSSData):
             self.nz = np.size(self.get_redshifts())
             self.nk = np.size(self.get_kf())
             self.covar_diag = np.array(a[:,3], dtype='float')
+
+    def get_covar(self, zbin=None):
+        """Get the covariance matrix from DESI EDRP"""
+        if zbin is None:
+            # return the full covariance matrix (all redshifts) sorted in blocks from low to high redshift
+            return self.covar
+        # return the covariance matrix for a specified redshift
+        ii = np.where((self.redshifts < zbin + 0.01)*(self.redshifts > zbin - 0.01)) #Elements in full matrix for given z
+        rr = (np.min(ii), np.max(ii)+1)
+        covar_matrix = self.covar[rr[0]:rr[1], rr[0]:rr[1]]
+        return covar_matrix
 
     def get_covar_diag(self, zbin=None):
         """Get the diagonal of the covariance matrix"""

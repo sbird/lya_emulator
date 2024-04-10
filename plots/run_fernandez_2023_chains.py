@@ -19,7 +19,7 @@ like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=b
 #ns909 tau = 1.15
 like.do_sampling(datadir=basedir+'/hires', data_index=21, savefile=chaindir+'/simdat/mf-48-48-z2.2-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=True, oprior=False, bhprior=True, hprior=True)
 #Using a simulated LR dataset with a different seed
-#With LOO errors
+# With LOO errors
 like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=None, loo_errors=True, min_z=2.2, max_z=4.6, use_meant=False, data_corr=False)
 like.do_sampling(datadir=basedir+"/ns0.881-seed", data_index=0, savefile=chaindir+'/simdat/seed-loo-2.2-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=0.06)
 #With mean T on
@@ -54,6 +54,12 @@ like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.2-4.6', burnin=1e4, nsampl
 like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=True, min_z=2.6, max_z=4.6)
 like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.6-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=True)
 
+#With a constant 2% CV error.
+like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=0.02, min_z=2.2, max_z=4.6)
+like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.2-4.6-cv02', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=True)
+
+like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=0.02, min_z=2.6, max_z=4.6)
+like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.6-4.6-cv02', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=True)
 # increase BOSS error --- REQUIRES MANUALLY ADDING MULTIPLYING FACTOR TO BOSS ERRORS IN THE CODE
 # like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=False, min_z=2.2, max_z=4.6)
 # like.do_sampling(savefile=chaindir+'fps-only/mf-48-2xboss', burnin=1e4, nsamples=3e5, pscale=80, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=True)

@@ -758,6 +758,19 @@ if __name__ == "__main__":
     plot_1d_marginals(basedir, chain_dirs, savefile="all_1d_marginals.pdf", labels=labels)
     plot_err_dists(basedir, basedir+"/loo_fps.hdf5", chain_dirs, traindir=traindir, savefile="all_1d_best_fit.pdf", labels=labels)
     plot_err_dists(basedir, basedir+"/loo_fps.hdf5", ["chains/fps-meant/mf-48-48-z2.6-4.6", "chains/fps-meant/mf-48-48-z2.6-4.6-gpemu"], traindir=traindir, savefile="loo_vs_emu_error_wlegend.pdf", labels=["Posterior", "GPERR Posterior"])
+    #2 percent CV plot
+    chain_dirs = ["chains/fps-only/mf-48-z2.6-4.6",
+                  "chains/fps-only/mf-48-z2.2-4.6",
+                  "chains/fps-only/mf-48-z2.6-4.6-cv02",
+                  "chains/fps-only/mf-48-z2.2-4.6-cv02"]
+    labels = [r"DR14 z = $2.6$ - $4.6$",
+              r"DR14 z = $2.2$ - $4.6$",
+              r"CV 2\% z = $2.6$ - $4.4$",
+              r"CV 2\% z = $2.2$ - $4.4$"]
+    #print_latex_table(chain_dirs, labels=labels)
+    full_corner(chain_dirs, "cv02_allp_corner.pdf", labels=labels)
+    cosmo_corner(chain_dirs, "cv02_cosmo_corner.pdf", labels=labels)
+    astro_corner(chain_dirs, "cv02_astro_corner.pdf", labels=labels)
     #DR9 plot
     chain_dirs = ["chains/fps-only/mf-48-z2.6-4.6",
                   "chains/fps-only/mf-48-z2.2-4.6",

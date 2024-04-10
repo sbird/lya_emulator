@@ -132,7 +132,7 @@ class LikelihoodClass:
         self.mf_slope = False
         # get leave_one_out errors
         if loo_errors:
-            self.get_loo_errors()
+            self.get_loo_errors(loo_error=loo_errors)
         else:
             #Otherwise precompute the covariance matrices for later use
             self.precompute_inverse_cov()
@@ -210,7 +210,7 @@ class LikelihoodClass:
             assert self.min_z <= 3.8, "Emulator does not support temperatures outside 2.2 < z < 3.8"
             self.meant_gpemu = t0_likelihood.T0LikelihoodClass(self.basedir, max_z=np.min([3.8, self.max_z]), min_z=self.min_z, optimise_GP=optimise_GP, HRbasedir=self.HRbasedir, loo_errors=loo_errors)
 
-    def get_loo_errors(self, savefile="loo_fps.hdf5"):
+    def get_loo_errors(self, loo_error=True, savefile="loo_fps.hdf5"):
 #         if self.HRbasedir is None:
         filepath = os.path.join(self.basedir, savefile)
 #         else:
@@ -221,6 +221,8 @@ class LikelihoodClass:
         zinds = np.where([(looz <= self.max_z)*(looz >= self.min_z)])[1]
         # after loading the absolute difference, calculate errors including BOSS data
         loo_errors = np.sqrt(np.mean(((fpp - fpt)[:,zinds])**2, axis=0))
+        if 0 < loo_error < 0.5:
+            loo_errors = loo_error * np.ones_like(loo_errors)
 #         loo_errors = np.mean(np.abs(fpp - fpt)[:, zinds], axis=0)
         nz = np.shape(loo_errors)[0]
         self.icov_bin = []

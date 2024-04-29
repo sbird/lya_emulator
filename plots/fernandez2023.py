@@ -386,7 +386,8 @@ def plot_samples(lores_json, hires_json, savefile=None, t0_samps=None):
     """plot the samples, parameter limits"""
     # t0_samps is the indices of the samples that are to be highlighted
     # get samples
-    hires = np.array(json.load(open(hires_json, 'r'))['sample_params'])
+    if hires_json is not None:
+        hires = np.array(json.load(open(hires_json, 'r'))['sample_params'])
     lores = np.array(json.load(open(lores_json, 'r'))['sample_params'])
 
     # Difference between FPS and T0 samples
@@ -412,7 +413,8 @@ def plot_samples(lores_json, hires_json, savefile=None, t0_samps=None):
         ax[i].plot(lores[:, i], i*yy, 'x', color=c_midnight, ms=15, mew=2.5, alpha=0.66)
         if t0_samps is not None:
             ax[i].plot(t0[:, i], i*np.ones(np.shape(t0)[0]), 's', color=c_skyline_ll, ms=15, mew=3, mfc='none')
-        ax[i].plot(hires[:, i], i*np.ones(np.shape(hires)[0]), 'o', color=c_flatirons_l, ms=15, mew=3, mfc='none')
+        if hires_json is not None:
+            ax[i].plot(hires[:, i], i*np.ones(np.shape(hires)[0]), 'o', color=c_flatirons_l, ms=15, mew=3, mfc='none')
         ax[i].set_xlim(plimits[i])
         ax[i].set_xticks(plimits[i])
         ax[i].set_xticklabels(plimits[i])

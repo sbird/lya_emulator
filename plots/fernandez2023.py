@@ -63,9 +63,9 @@ def cosmo_corner(chain_dirs, savefile=None, labels=None):
     gd_samples[0].paramNames.parWithName('Ap').label = 'A_\\mathrm{P}/10^{-9}'
     gd_samples[0].paramNames.parWithName('ns').label = 'n_\\mathrm{P}'
     params = ['tau0', 'dtau0', "ns", "Ap", "omegamh2"]
-    plimits = np.array([[1.0, 1.25],[-0.35, 0.15],[0.86, 0.995], [1.2e-9, 2.0e-9], [0.14, 0.146]])
-    gticks = np.array([[1.0,1.2],[-0.2,0.0],[0.9,0.97], [1.3e-9,1.6e-9,1.9e-9], [0.141,0.144]])
-    gtlabels = np.array([['1.0','1.2'],['-0.2','0.0'],['0.9','0.97'], ['1.3','1.6','1.9'], ['0.141','0.144']])
+    plimits = np.array([[1.0, 1.25],[-0.35, 0.15],[0.86, 1.05], [1.2e-9, 2.0e-9], [0.14, 0.146]])
+    gticks = np.array([[1.0,1.2],[-0.2,0.0],[0.9,0.97,1.03], [1.3e-9,1.6e-9,1.9e-9], [0.141,0.144]])
+    gtlabels = np.array([['1.0','1.2'],['-0.2','0.0'],['0.9','0.97','1.03'], ['1.3','1.6','1.9'], ['0.141','0.144']])
 
     gdplot = gdplt.get_subplot_plotter()
     gdplot.settings.axes_fontsize = 20
@@ -104,9 +104,9 @@ def astro_corner(chain_dirs, savefile=None, labels=None, bhprior=False):
 #     gd_samples[0].paramNames.parWithName('bhfeedback').label = '\\epsilon_{AGN}'
 
     params = ["herei", "heref", "alphaq", "hireionz", "a_lls", "a_dla", "fSiIII", 'hub']
-    plimits = np.array([[3.5, 4.1], [2.6, 3.2], [1.4, 2.5], [6.5, 8.0],[-0.2, 0.25], [-0.035, 0.035], [0.006, 0.013],[0.65, 0.75]])
-    gticks = np.array([[3.7,3.9], [2.8,3.0], [1.8,2.2], [7,7.5], [-0.1,0.1], [-0.02,0.02], [0.008,0.011], [0.68,0.72]])
-    gtlabels = np.array([['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['7.0','7.5'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011'], [0.68,0.72]])
+    plimits = np.array([[3.5, 4.5], [2.2, 3.2], [1.3, 3.0], [6.5, 8.0],[-0.2, 0.25], [-0.035, 0.035], [0.006, 0.013],[0.65, 0.75]])
+    gticks = np.array([[3.6,4.0,4.4], [2.4,2.7,3.0], [1.8,2.3,2.8], [7,7.5], [-0.1,0.1], [-0.02,0.02], [0.008,0.011], [0.68,0.72]])
+    gtlabels = np.array([['3.6','4.0','4.4'], ['2.4','2.7','3.0'], ['1.8','2.3','2.8'], ['7.0','7.5'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011'], [0.68,0.72]])
 
     gdplot = gdplt.get_subplot_plotter()
     gdplot.settings.axes_fontsize = 20
@@ -253,9 +253,9 @@ def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
     gd_samples[0].paramNames.parWithName('tau0').label = '\\tau_0'
 
     params = np.array(["ns", "Ap", "herei", "heref", "alphaq", "hub", "omegamh2", "hireionz", 'tau0', 'dtau0',"a_lls", "a_dla", "fSiIII"])
-    plimits = np.array([[0.8, 0.995], [1.2e-9, 2.6e-9], [3.5, 4.1], [2.6, 3.2], [1.3, 2.5], [0.65, 0.75], [0.14, 0.146], [6.5, 8.0], [0.92, 1.28],[-0.4, 0.25],[-0.2, 0.25],  [-0.035, 0.035], [0.006, 0.013]])
-    gticks = np.array([[0.85,0.95], [1.6e-9,2.2e-9], [3.7,3.9], [2.8,3.0], [1.8,2.2], [0.68,0.72], [0.141,0.144], [7,7.5], [1.0,1.2],[-0.2,0.1], [-0.1,0.1], [-0.02,0.02], [0.008,0.011]])
-    gtlabels = np.array([['0.85','0.95'], ['1.6','2.2'], ['3.7','3.9'], ['2.8','3.0'], ['1.8','2.2'], ['0.68','0.72'], ['0.141','0.144'], ['7.0','7.5'], ['1.0','1.2'],['-0.2','0.1'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011']])
+    plimits = np.array([[0.8, 1.05], [1.2e-9, 2.6e-9], [3.5, 4.5], [2.2, 3.2], [1.3, 3.0], [0.65, 0.75], [0.14, 0.146], [6.5, 8.0], [0.92, 1.28],[-0.4, 0.25],[-0.2, 0.25],  [-0.035, 0.035], [0.006, 0.013]])
+    gticks = np.array([[0.9,1.03], [1.6e-9,2.2e-9], [3.6,4.0,4.4], [2.4,2.7,3.0], [1.8,2.3,2.8], [0.68,0.72], [0.141,0.144], [7,7.5], [1.0,1.2],[-0.2,0.1], [-0.1,0.1], [-0.02,0.02], [0.008,0.011]])
+    gtlabels = np.array([['0.9','1.03'], ['1.6','2.2'], ['3.6','4.0','4.4'], ['2.4','2.7','3.0'], ['1.8','2.2','2.8'], ['0.68','0.72'], ['0.141','0.144'], ['7.0','7.5'], ['1.0','1.2'],['-0.2','0.1'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011']])
     if simpar is not None:
         params = params[:-3]
         plimits = plimits[:-3]
@@ -290,41 +290,6 @@ def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
         gdplot.export(savefile)
     plt.show()
 
-
-# post-processing parameters corner plot
-def pp_corner(chain_dirs, savefile=None, labels=None):
-    gd_samples = []
-    for chain_dir in chain_dirs:
-        nn, gr = np.loadtxt(os.path.abspath(chain_dir+'.progress'), usecols=(0, 3)).T
-        gd_samples.append(loadMCSamples(chain_dir, settings={'ignore_rows':nn[np.where(gr < 1)[0][0]]/nn[-1]}))
-    for gd_sample in gd_samples:
-        print('Using', gd_sample.numrows, 'samples')
-
-    params = np.array(["dtau0", "tau0", "a_lls", "a_dla", "fSiIII"])
-    plimits = np.array([[-0.4, 0.25], [0.92, 1.28], [-0.2, 0.25], [-0.035, 0.035], [0.006, 0.013]])
-    gticks = np.array([[-0.2,0.1], [1.0,1.2], [-0.1,0.1], [-0.02,0.02], [0.008,0.011]])
-    gtlabels = np.array([['-0.2','0.1'], ['1.0','1.2'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011']])
-    nparams = np.size(params)
-
-    gdplot = gdplt.get_subplot_plotter()
-    gdplot.settings.axes_fontsize = 20
-    gdplot.settings.axes_labelsize = 28
-    gdplot.settings.legend_fontsize = 24
-    gdplot.settings.tight_layout = True
-    gdplot.settings.figure_legend_loc = 'upper right'
-
-    gdplot.triangle_plot(gd_samples, params, legend_labels=labels, filled=True, contour_lws=2.5, contour_ls='-', contour_colors=[c_midnight, c_sunshine, c_flatirons, c_skyline])
-    for pi in range(nparams):
-        for pi2 in range(pi + 1):
-            ax = gdplot.subplots[pi, pi2]
-            if pi != pi2:
-                ax.set_ylim(plimits[pi])
-                ax.set_yticks(gticks[pi], gtlabels[pi])
-            ax.set_xlim(plimits[pi2])
-            ax.set_xticks(gticks[pi2], gtlabels[pi2])
-    if savefile is not None:
-        gdplot.export(savefile)
-    plt.show()
 
 def plot_correlation(correl_file = "correlation-z26-46-t0.txt"):
     """Plot a heat map of the correlation matrix"""
@@ -712,7 +677,7 @@ if __name__ == "__main__":
     savefile = basedir+'hires/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
     simpar1 = np.concatenate([get_params(savefile, data_index=21), [1.15, 0.]])
     #Do plot
-    full_corner(["chains/like-test2/mf-48-48-z2.2-4.6",], "simdat.pdf", labels=["LOO"], simpar=simpar1)
+    full_corner(["chains/simdat/mf-48-48-z2.2-4.6",], "simdat.pdf", labels=["LOO"], simpar=simpar1)
     #Get simulation parameters
     savefile = basedir+'/ns0.881-seed/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
     simpar2 = np.concatenate([get_params(savefile), [1.0, 0.]])

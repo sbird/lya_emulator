@@ -171,6 +171,11 @@ class LikelihoodClass:
         # Load the parameters, etc. associated with this emulator (overwrite defaults)
         self.emulator.load(dumpfile=emulator_json_file)
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
+        herei = self.emulator.param_names["herei"]
+        heref = self.emulator.param_names["heref"]
+        #Reset the extended parameter limits to their original values as the extended emulator was not accurate enough
+        self.param_limits[herei][1] = 4.1
+        self.param_limits[heref][0] = 2.6
         if mean_flux == 's':
             # Add a slope to the parameter limits
             self.param_limits = np.vstack([t0_slope, self.param_limits])
@@ -191,6 +196,7 @@ class LikelihoodClass:
         self.ndim = np.shape(self.param_limits)[0]
         assert np.shape(self.param_limits)[1] == 2
 
+        print(self.param_limits, flush=True)
         # Set up MPI protections (as suggested in Cobaya documentation)
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()

@@ -124,6 +124,7 @@ class LikelihoodClass:
         # Default data is flux power from Chabanier 2019 (BOSS DR14),
         # pass datafile='dr9' to use data from Palanque-Delabrouille 2013
         self.sdss = lyman_data.BOSSData(datafile=sdss)
+        print("SDSS "+sdss,flush=True)
         self.kf = self.sdss.get_kf()
         # Load BOSS data vector
         zbins = np.where((self.sdss.get_redshifts() <= self.max_z)*(self.sdss.get_redshifts() >= self.min_z))

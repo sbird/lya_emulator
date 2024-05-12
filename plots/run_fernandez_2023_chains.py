@@ -40,10 +40,6 @@ like.do_sampling(savefile=chaindir+'fps-meant/mf-48-48-z2.6-4.6-gpemu', burnin=1
 
 like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=True, min_z=2.2, max_z=4.6, use_meant=True)
 like.do_sampling(savefile=chaindir+'fps-meant/mf-48-48-z2.2-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=True, hprior=True, oprior=False, bhprior=True)
-like.do_sampling(savefile=chaindir+'fps-meant/mf-48-48-z2.2-4.6-gpemu', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=True, hprior=True, oprior=False, bhprior=True)
-
-like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=True, min_z=2.4, max_z=4.6, use_meant=True)
-like.do_sampling(savefile=chaindir+'fps-meant/mf-48-48-z2.4-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=True, hprior=True, oprior=False, bhprior=True)
 
 ##################
 ######### FPS
@@ -51,18 +47,13 @@ like.do_sampling(savefile=chaindir+'fps-meant/mf-48-48-z2.4-4.6', burnin=1e4, ns
 # main fps only runs
 like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=True, min_z=2.2, max_z=4.6)
 like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.2-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=True)
-like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.2-4.6-gpemu', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=False, hprior=True, oprior=False, bhprior=True)
-like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=True, min_z=2.4, max_z=4.6)
-like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.4-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=True)
 
 like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=True, min_z=2.6, max_z=4.6)
 like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.6-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=True)
 
-like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.6-4.6-gpemu', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=False, hprior=True, oprior=False, bhprior=True)
-
 #With a constant 2% CV error.
-like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=0.02, min_z=2.2, max_z=4.6)
-like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.2-4.6-cv02', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=True)
+# like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=0.02, min_z=2.2, max_z=4.6)
+# like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.2-4.6-cv02', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=True)
 
 like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=0.02, min_z=2.6, max_z=4.6)
 like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.6-4.6-cv02', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=True)
@@ -73,11 +64,9 @@ like.do_sampling(savefile=chaindir+'fps-only/mf-48-z2.6-4.6-cv02', burnin=1e4, n
 # DR9 checks
 like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=True, min_z=2.6, max_z=4.4, sdss="dr9")
 like.do_sampling(savefile=chaindir+'fps-only/mf-48-dr9-z2.6-4.4', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=True)
-like.do_sampling(savefile=chaindir+'fps-only/mf-48-dr9-z2.6-4.4-gpemu', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=False, hprior=True, oprior=False, bhprior=True)
 
 like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=basedir+'/hires', loo_errors=True, min_z=2.2, max_z=4.4, sdss="dr9")
 like.do_sampling(savefile=chaindir+'fps-only/mf-48-dr9-z2.2-4.4', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=True)
-like.do_sampling(savefile=chaindir+'fps-only/mf-48-dr9-z2.2-4.4-gpemu', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=False, hprior=True, oprior=False, bhprior=True)
 
 ####################
 ######### meant only

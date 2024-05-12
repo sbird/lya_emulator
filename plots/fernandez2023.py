@@ -674,6 +674,7 @@ if __name__ == "__main__":
     #Get simulation parameters
     tau_thresh=1e6
     basedir="../dtau-48-48/"
+    traindir=basedir+"/trained_mf"
     savefile = basedir+'hires/mf_emulator_flux_vectors_tau'+str(int(tau_thresh))+".hdf5"
     simpar1 = np.concatenate([get_params(savefile, data_index=21), [1.15, 0.]])
     #Do plot
@@ -708,9 +709,9 @@ if __name__ == "__main__":
               r"FPS, z = $2.2$ - $4.6$"]
     full_corner(chain_dirs, "allp_corner24_fpsonly.pdf", labels=labels)
     #Main results
-    chain_dirs = ["chains/fps-only/mf-48-z2.2-4.6-gpemu",
-                  "chains/fps-only/mf-48-z2.6-4.6-gpemu",
-                  "chains/fps-meant/mf-48-48-z2.6-4.6-gpemu"]
+    chain_dirs = ["chains/fps-only/mf-48-z2.2-4.6",
+                  "chains/fps-only/mf-48-z2.6-4.6",
+                  "chains/fps-meant/mf-48-48-z2.6-4.6"]
     labels = [r"FPS z = $2.2$ - $4.6$",
               r"FPS z = $2.6$ - $4.6$",
               r"FPS + $T_0$, z = $2.6$ - $4.6$"]
@@ -719,30 +720,25 @@ if __name__ == "__main__":
     astro_corner(chain_dirs, "astro_corner.pdf", labels=labels)
     plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=basedir+'/hires', savefile="fps_data_fit.pdf", labels=labels)
     plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=basedir+'/hires', savefile="t0_best_fit.pdf", labels=labels)
-    print_latex_table(chain_dirs, labels=labels)
+#     print_latex_table(chain_dirs, labels=labels)
     plot_correlation(correl_file = "correlation-z26-46-t0.txt")
     plot_1d_marginals(basedir, chain_dirs, savefile="all_1d_marginals.pdf", labels=labels)
     plot_err_dists(basedir, basedir+"/loo_fps.hdf5", chain_dirs, traindir=traindir, savefile="all_1d_best_fit.pdf", labels=labels)
     plot_err_dists(basedir, basedir+"/loo_fps.hdf5", ["chains/fps-meant/mf-48-48-z2.6-4.6", "chains/fps-meant/mf-48-48-z2.6-4.6-gpemu"], traindir=traindir, savefile="loo_vs_emu_error_wlegend.pdf", labels=["Posterior", "GPERR Posterior"])
-    plot_err_dists(basedir, basedir+"/loo_fps.hdf5", ["chains/fps-only/mf-48-z2.6-4.6", "chains/fps-only/mf-48-z2.6-4.6-gpemu"], traindir=traindir, savefile="loo_vs_emu_error_wlegend_fpsonly.pdf", labels=["Posterior", "GPERR Posterior"])
     #2 percent CV plot
     chain_dirs = ["chains/fps-only/mf-48-z2.6-4.6",
-                  "chains/fps-only/mf-48-z2.2-4.6",
-                  "chains/fps-only/mf-48-z2.6-4.6-cv02",
-                  "chains/fps-only/mf-48-z2.2-4.6-cv02"]
+                  "chains/fps-only/mf-48-z2.6-4.6-cv02"]
     labels = [r"DR14 z = $2.6$ - $4.6$",
-              r"DR14 z = $2.2$ - $4.6$",
-              r"CV 2\% z = $2.6$ - $4.4$",
-              r"CV 2\% z = $2.2$ - $4.4$"]
+              r"CV 2\% z = $2.6$ - $4.4$"]
     #print_latex_table(chain_dirs, labels=labels)
     full_corner(chain_dirs, "cv02_allp_corner.pdf", labels=labels)
     cosmo_corner(chain_dirs, "cv02_cosmo_corner.pdf", labels=labels)
     astro_corner(chain_dirs, "cv02_astro_corner.pdf", labels=labels)
     #DR9 plot
-    chain_dirs = ["chains/fps-only/mf-48-z2.6-4.6-gpemu",
-                  "chains/fps-only/mf-48-z2.2-4.6-gpemu",
-                  "chains/fps-only/mf-48-dr9-z2.6-4.4-gpemu",
-                  "chains/fps-only/mf-48-dr9-z2.2-4.4-gpemu"]
+    chain_dirs = ["chains/fps-only/mf-48-z2.6-4.6",
+                  "chains/fps-only/mf-48-z2.2-4.6",
+                  "chains/fps-only/mf-48-dr9-z2.6-4.4",
+                  "chains/fps-only/mf-48-dr9-z2.2-4.4"]
     labels = [r"DR14 z = $2.6$ - $4.6$",
               r"DR14 z = $2.2$ - $4.6$",
               r"DR9 z = $2.6$ - $4.4$",

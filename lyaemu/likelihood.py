@@ -172,8 +172,9 @@ class LikelihoodClass:
         # Load the parameters, etc. associated with this emulator (overwrite defaults)
         self.emulator.load(dumpfile=emulator_json_file)
         self.param_limits = self.emulator.get_param_limits(include_dense=True)
-        herei = self.emulator.param_names["herei"]
-        heref = self.emulator.param_names["heref"]
+        ndense = np.shape(mf.get_limits())[0]
+        herei = self.emulator.param_names["herei"] + ndense
+        heref = self.emulator.param_names["heref"] + ndense
         #Reset the extended parameter limits to their original values as the extended emulator was not accurate enough
         self.param_limits[herei][1] = 4.1
         self.param_limits[heref][0] = 2.6

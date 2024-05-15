@@ -104,9 +104,9 @@ def astro_corner(chain_dirs, savefile=None, labels=None, bhprior=False):
 #     gd_samples[0].paramNames.parWithName('bhfeedback').label = '\\epsilon_{AGN}'
 
     params = ["herei", "heref", "alphaq", "hireionz", "a_lls", "a_dla", "fSiIII", 'hub']
-    plimits = np.array([[3.5, 4.5], [2.2, 3.2], [1.3, 3.0], [6.5, 8.0],[-0.2, 0.25], [-0.035, 0.035], [0.006, 0.013],[0.65, 0.75]])
-    gticks = np.array([[3.6,4.0,4.4], [2.4,2.7,3.0], [1.8,2.3,2.8], [7,7.5], [-0.1,0.1], [-0.02,0.02], [0.008,0.011], [0.68,0.72]])
-    gtlabels = np.array([['3.6','4.0','4.4'], ['2.4','2.7','3.0'], ['1.8','2.3','2.8'], ['7.0','7.5'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011'], [0.68,0.72]])
+    plimits = np.array([[3.5, 4.1], [2.6, 3.2], [1.3, 3.0], [6.5, 8.0],[-0.2, 0.25], [-0.035, 0.035], [0.006, 0.013],[0.65, 0.75]])
+    gticks = np.array([[3.6,3.8,4.0], [2.7,2.9,3.1], [1.8,2.3,2.8], [7,7.5], [-0.1,0.1], [-0.02,0.02], [0.008,0.011], [0.68,0.72]])
+    gtlabels = np.array([['3.6','3.8','4.0'], ['2.7','2.9','3.1'], ['1.8','2.3','2.8'], ['7.0','7.5'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011'], [0.68,0.72]])
 
     gdplot = gdplt.get_subplot_plotter()
     gdplot.settings.axes_fontsize = 20
@@ -253,9 +253,9 @@ def full_corner(chain_dirs, savefile=None, labels=None, simpar=None):
     gd_samples[0].paramNames.parWithName('tau0').label = '\\tau_0'
 
     params = np.array(["ns", "Ap", "herei", "heref", "alphaq", "hub", "omegamh2", "hireionz", 'tau0', 'dtau0',"a_lls", "a_dla", "fSiIII"])
-    plimits = np.array([[0.8, 1.05], [1.2e-9, 2.6e-9], [3.5, 4.5], [2.2, 3.2], [1.3, 3.0], [0.65, 0.75], [0.14, 0.146], [6.5, 8.0], [0.92, 1.28],[-0.4, 0.25],[-0.2, 0.25],  [-0.035, 0.035], [0.006, 0.013]])
-    gticks = np.array([[0.9,1.03], [1.6e-9,2.2e-9], [3.6,4.0,4.4], [2.4,2.7,3.0], [1.8,2.3,2.8], [0.68,0.72], [0.141,0.144], [7,7.5], [1.0,1.2],[-0.2,0.1], [-0.1,0.1], [-0.02,0.02], [0.008,0.011]])
-    gtlabels = np.array([['0.9','1.03'], ['1.6','2.2'], ['3.6','4.0','4.4'], ['2.4','2.7','3.0'], ['1.8','2.2','2.8'], ['0.68','0.72'], ['0.141','0.144'], ['7.0','7.5'], ['1.0','1.2'],['-0.2','0.1'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011']])
+    plimits = np.array([[0.8, 1.05], [1.2e-9, 2.6e-9], [3.5, 4.1], [2.6, 3.2], [1.3, 3.0], [0.65, 0.75], [0.14, 0.146], [6.5, 8.0], [0.92, 1.28],[-0.4, 0.25],[-0.2, 0.25],  [-0.035, 0.035], [0.006, 0.013]])
+    gticks = np.array([[0.9,1.03], [1.6e-9,2.2e-9], [3.6,4.0], [2.7,3.0], [1.8,2.3,2.8], [0.68,0.72], [0.141,0.144], [7,7.5], [1.0,1.2],[-0.2,0.1], [-0.1,0.1], [-0.02,0.02], [0.008,0.011]])
+    gtlabels = np.array([['0.9','1.03'], ['1.6','2.2'], ['3.6','4.0'], ['2.7','3.0'], ['1.8','2.2','2.8'], ['0.68','0.72'], ['0.141','0.144'], ['7.0','7.5'], ['1.0','1.2'],['-0.2','0.1'], ['-0.1','0.1'], ['-0.02','0.02'], ['0.008','0.011']])
     if simpar is not None:
         params = params[:-3]
         plimits = plimits[:-3]
@@ -588,6 +588,8 @@ def plot_err_dists(basedir, loo_file, chains, traindir=None, savefile=None, labe
         gd_sample.append(loadMCSamples(chainfile, settings={'ignore_rows':nn[np.where(gr < 1)[0][0]]/nn[-1]}))
     # get parameter limits, adjust Ap scale for plotting
     plimits = np.array(json.load(open(basedir+'/emulator_params.json', 'r'))['param_limits'])
+    plimits[2,1] = 4.1
+    plimits[3,0] = 2.6
 
     # get the emulator errors across each parameter space
     like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=True, traindir=traindir, HRbasedir=basedir+'/hires')
@@ -687,27 +689,26 @@ if __name__ == "__main__":
     labels = ["Seed FPS", "Seed FPS+GPERR",r"Seed FPS+$T_0$" ]
     full_corner(chain_dirs, "simdat-seed.pdf", labels=labels, simpar=simpar2)
     #Make a plot of the best-fit P_F(k) with a different seed
-    traindir=basedir+"/trained_mf"
     with h5py.File(savefile, 'r') as data_hdf5:
             datapf = data_hdf5["flux_vectors"][:]
             datapf=datapf.reshape(13, -1)
     plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=None, savefile="seed-best-fit.pdf", labels=labels, datapf=datapf)
     plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile="seed-best-fit-t0.pdf", labels=labels, datadir=basedir+'ns0.881-seed', dataparams=None)
     #Make corner plot of best-fit P_F(k)
-    chain_dirs = ["chains/fps-meant/mf-48-48-z2.6-4.6-gpemu",
-                  "chains/fps-meant/mf-48-48-z2.4-4.6",
-                  "chains/fps-meant/mf-48-48-z2.2-4.6-gpemu"]
-    labels = [r"FPS + $T_0$, z = $2.6$ - $4.6$",
-              r"FPS + $T_0$, z = $2.4$ - $4.6$",
-              r"FPS + $T_0$, z = $2.2$ - $4.6$"]
-    full_corner(chain_dirs, "allp_corner24.pdf", labels=labels)
-    chain_dirs = ["chains/fps-only/mf-48-z2.6-4.6-gpemu",
-                  "chains/fps-only/mf-48-z2.4-4.6",
-                  "chains/fps-only/mf-48-z2.2-4.6-gpemu"]
-    labels = [r"FPS, z = $2.6$ - $4.6$",
-              r"FPS, z = $2.4$ - $4.6$",
-              r"FPS, z = $2.2$ - $4.6$"]
-    full_corner(chain_dirs, "allp_corner24_fpsonly.pdf", labels=labels)
+#     chain_dirs = ["chains/fps-meant/mf-48-48-z2.6-4.6",
+#                   "chains/fps-meant/mf-48-48-z2.4-4.6",
+#                   "chains/fps-meant/mf-48-48-z2.2-4.6"]
+#     labels = [r"FPS + $T_0$, z = $2.6$ - $4.6$",
+#               r"FPS + $T_0$, z = $2.4$ - $4.6$",
+#               r"FPS + $T_0$, z = $2.2$ - $4.6$"]
+#     full_corner(chain_dirs, "allp_corner24.pdf", labels=labels)
+#     chain_dirs = ["chains/fps-only/mf-48-z2.6-4.6",
+#                   "chains/fps-only/mf-48-z2.4-4.6",
+#                   "chains/fps-only/mf-48-z2.2-4.6"]
+#     labels = [r"FPS, z = $2.6$ - $4.6$",
+#               r"FPS, z = $2.4$ - $4.6$",
+#               r"FPS, z = $2.2$ - $4.6$"]
+#     full_corner(chain_dirs, "allp_corner24_fpsonly.pdf", labels=labels)
     #Main results
     chain_dirs = ["chains/fps-only/mf-48-z2.2-4.6",
                   "chains/fps-only/mf-48-z2.6-4.6",
@@ -720,7 +721,7 @@ if __name__ == "__main__":
     astro_corner(chain_dirs, "astro_corner.pdf", labels=labels)
     plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=basedir+'/hires', savefile="fps_data_fit.pdf", labels=labels)
     plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=basedir+'/hires', savefile="t0_best_fit.pdf", labels=labels)
-#     print_latex_table(chain_dirs, labels=labels)
+    print_latex_table(chain_dirs, labels=labels)
     plot_correlation(correl_file = "correlation-z26-46-t0.txt")
     plot_1d_marginals(basedir, chain_dirs, savefile="all_1d_marginals.pdf", labels=labels)
     plot_err_dists(basedir, basedir+"/loo_fps.hdf5", chain_dirs, traindir=traindir, savefile="all_1d_best_fit.pdf", labels=labels)

@@ -22,13 +22,10 @@ like.do_sampling(datadir=basedir+'/hires', data_index=21, savefile=chaindir+'/si
 # With LOO errors
 like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=None, loo_errors=True, min_z=2.2, max_z=4.6, use_meant=False, data_corr=False)
 like.do_sampling(datadir=basedir+"/ns0.881-seed", data_index=0, savefile=chaindir+'/simdat/seed-loo-2.2-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=False, hprior=True, oprior=False, bhprior=0.06)
+like.do_sampling(datadir=basedir+"/ns0.881-seed", data_index=0, savefile=chaindir+'/simdat/seed-gperr-2.2-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=False, hprior=True, oprior=False, bhprior=0.06)
 #With mean T on
 like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=None, loo_errors=True, min_z=2.2, max_z=4.6, use_meant=True, data_corr=False)
 like.do_sampling(datadir=basedir+"/ns0.881-seed", data_index=0, savefile=chaindir+'/simdat/seed-meant-loo-2.2-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=False, use_meant=True, hprior=True, oprior=False, bhprior=0.06)
-like.do_sampling(datadir=basedir+"/ns0.881-seed", data_index=0, savefile=chaindir+'/simdat/seed-meant-loo-gperr-2.2-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=True, hprior=True, oprior=False, bhprior=0.06)
-#With GP errors
-like = lk.LikelihoodClass(basedir, tau_thresh=1e6, optimise_GP=False, traindir=basedir+'/trained_mf', HRbasedir=None, loo_errors=True, min_z=2.2, max_z=4.6, use_meant=False, data_corr=False)
-like.do_sampling(datadir=basedir+"/ns0.881-seed", data_index=0, savefile=chaindir+'/simdat/seed-gperr-2.2-4.6', burnin=1e4, nsamples=3e5, pscale=100, include_emu_error=True, use_meant=False, hprior=True, oprior=False, bhprior=0.06)
 
 ##################
 ######### FPS + T0

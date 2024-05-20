@@ -446,7 +446,7 @@ def plot_fps_obs_pred(basedir, chain_dirs, traindir=None, HRbasedir=None, savefi
     fig.subplots_adjust(hspace=0, wspace=0)
     if savefile is not None:
         plt.savefig(savefile)
-    plt.show()
+    plt.clf()
 
 def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=None, datadir=None, dataparams=None):
     """Plot the mean temperature observations, and some max posterior prediction"""
@@ -496,9 +496,10 @@ def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=
     ax.tick_params(which='minor', length=8, labelright=False, labelleft=False)
     ax.set_xlabel("Redshift", fontsize=26)
     ax.set_ylabel(r"Temperature ($\times 10^4$)", fontsize=26)
+    plt.tight_layout()
     if savefile is not None:
         plt.savefig(savefile, bbox_inches='tight', pad_inches=0)
-    plt.show()
+    plt.clf()
 
 
 def plot_1d_marginals(basedir, chains, savefile=None, labels=None):

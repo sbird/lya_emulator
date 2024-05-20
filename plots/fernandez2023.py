@@ -483,7 +483,7 @@ def plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=None, savefile=None, labels=
 
     colors = [c_sunshine, c_skyline_l, c_flatirons, c_flatirons_ll]
     fig, ax = plt.subplots(nrows=1,ncols=1,figsize=(10.625, 8))
-    plt.setp(ax, xticks=[4.6,4.2,3.8,3.4,3.0,2.6,2.2], xlim=[4.7,2.1], ylim=[0.7,1.65])
+    plt.setp(ax, xticks=[4.6,4.2,3.8,3.4,3.0,2.6,2.2], xlim=[4.6,2.2], ylim=[0.7,1.65])
     for ii in range(len(pred)):
         ax.plot(temu.myspec.zout[4:], pred[ii]/1e4, linestyle='--', color=colors[ii], linewidth=4., alpha=0.95)
     ax.plot(gaikwad[0], gaikwad[7]/1e4, color=c_midnight, linestyle='-', marker='o', lw=2.5)

@@ -178,12 +178,24 @@ def find_sigma8(spectralp, ap, h0, omh2):
     preparams = {'h':h0, 'Omega_cdm':ocdm,'Omega_b':omegab, 'Omega_k': 0, 'n_s': spectralp}
     preparams['A_s'] = (0.4/(2*np.pi))**(spectralp - 1) * ap
     #Pass options for the power spectrum
-    preparams.update({'output': 'mPk', 'z_pk': 0})
+    preparams.update({'output': 'mPk', 'z_pk': [3,0]})
     #Make the power spectra module
     engine = CLASS.ClassEngine(preparams)
     powspec = CLASS.Spectra(engine)
-#     print("sigma_8(z=0) = ", powspec.sigma8, "A_s = ",powspec.A_s, 'Ap ',ap, 'np', spectralp, flush=True)
-    return powspec.sigma8
+    #Find the dimensionless amplitude of the linear power at k_P = 0.009 s/km and z_P = 3.
+    #This is k^3 P_L(k_P = 0.009, z_P = 3) / 2 \pi^2
+    #Convert pivot scale from km/s to mpc units
+    # This is in km/s/Mpc
+    velfac = 1./(1+3) * 100.0*np.sqrt(omh2*(1 + 3)**3 + (h0**2-omh2))
+    # s/km * km / s/ Mpc = 1 / Mpc
+    kpmpc = 0.009 * velfac
+    pk_lin = powspec.get_pklin(k=kpmpc, z=3)
+    delta_lin = kpmpc**3 * pk_lin / (2 * np.pi**2)
+    pk_lin_d = powspec.get_pklin(k=kpmpc*1.01, z=3)
+    #d log k = (logkd - logk) = log(kd/k) = log(1.01)
+    neff = (np.log(pk_lin_d) - np.log(pk_lin)) / np.log(1.01)
+    print("sigma_8(z=0) = ", powspec.sigma8, "A_s = ",powspec.A_s, 'd_L = ', delta_lin, '', neff, 'Ap ',ap, 'np', spectralp, flush=True)
+    return (powspec.sigma8, delta_lin, neff)
 
 def print_latex_table(chain_dirs, labels):
     """
@@ -205,9 +217,15 @@ def print_latex_table(chain_dirs, labels):
         gd_sample.thin(40)
         AsVec = (0.4/(2*np.pi))**(gd_sample['ns']-1) * gd_sample['Ap'] * 1e9
         gd_sample.addDerived(paramVec=AsVec, name=r"A_\mathrm{s}/10^{-9}")
+        AsVec = (0.4/(2*np.pi))**(gd_sample['ns']-1) * gd_sample['Ap'] * 1e9
+        gd_sample.addDerived(paramVec=AsVec, name=r"A_\mathrm{s}/10^{-9}")
+
         print("samples ",np.size(AsVec),flush=True)
-        sigmaVec = [find_sigma8(np, ap, h0, omh2) for (np, ap, h0, omh2) in zip(gd_sample['ns'], gd_sample['Ap'], gd_sample['hub'], gd_sample['omegamh2'])]
+        derivedtuple = [find_sigma8(np, ap, h0, omh2) for (np, ap, h0, omh2) in zip(gd_sample['ns'], gd_sample['Ap'], gd_sample['hub'], gd_sample['omegamh2'])]
+        (sigmaVec, deltaVec, neffVec) = zip(*derivedtuple)
         gd_sample.addDerived(paramVec=sigmaVec, name=r"\sigma_8")
+        gd_sample.addDerived(paramVec=deltaVec, name=r"\Delta_L^2")
+        gd_sample.addDerived(paramVec=neffVec, name=r"n_\mathrm{eff}")
         gd_samples.append(gd_sample)
 
     # This does not work, despite docs: Traceback (most recent call last):

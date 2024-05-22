@@ -1,22 +1,16 @@
 """Functions to create the figures presented in Fernandez et al 2023."""
 
-import os.path as path
+import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 import json
-import glob
-import matplotlib
 import sys
 sys.path.append('../')
-from lyaemu import coarse_grid as cg
-from lyaemu import gpemulator as gp
 from lyaemu import likelihood as lk
 from lyaemu import lyman_data as ld
 from lyaemu.meanT import t0_likelihood as tlk
 from lyaemu.meanT import t0_coarse_grid as tcg
-from lyaemu.meanT import t0_gpemulator as tgp
-import itertools as it
 import getdist.plots as gdplt
 from getdist.mcsamples import loadMCSamples
 import os
@@ -175,8 +169,7 @@ def temp_corner(chain_dirs, savefile=None, labels=None):
     plt.show()
 
 def find_sigma8(spectralp, ap, h0, omh2):
-    """Get sigma8 for a power spectrum
-    ."""
+    """Get sigma8 for a power spectrum."""
     #Precision
     #pre_params = {'tol_background_integration': 1e-9, 'tol_perturb_integration' : 1.e-7, 'tol_thermo_integration':1.e-5, 'k_per_decade_for_pk': 50, 'k_bao_width': 8, 'k_per_decade_for_bao':  200, 'neglect_CMB_sources_below_visibility' : 1.e-30, 'transfer_neglect_late_source': 3000., 'l_max_g' : 50, 'l_max_ur':150}
     #Class takes omega_m h^2 as parameters

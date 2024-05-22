@@ -175,10 +175,16 @@ def find_sigma8(spectralp, ap, h0, omh2):
     #Class takes omega_m h^2 as parameters
     omegab = 0.0486
     ocdm = omh2/h0**2 - omegab
-    preparams = {'h':h0, 'Omega_cdm':ocdm,'Omega_b':omegab, 'Omega_k': 0, 'n_s': spectralp}
+    # This is in km/s/Mpc
+    velfac = 1./(1+3) * 100.0*np.sqrt(omh2*(1 + 3)**3 + (h0**2-omh2))
+    # s/km * km / s/ Mpc = 1 / Mpc
+    kpmpc = 0.009 * velfac
+#     print(kpmpc,flush=True)
+    preparams = {'h':h0, 'Omega_cdm':ocdm,'Omega_b':omegab, 'Omega_k': 0, 'n_s': spectralp,'P_k_max_h/Mpc' : kpmpc*1.02/h0, "z_max_pk" : 69 }
     preparams['A_s'] = (0.4/(2*np.pi))**(spectralp - 1) * ap
     #Pass options for the power spectrum
     preparams.update({'output': 'mPk', 'z_pk': [3,0]})
+#     print(preparams, flush=True)
     #Make the power spectra module
     engine = CLASS.ClassEngine(preparams)
     powspec = CLASS.Spectra(engine)
@@ -194,7 +200,7 @@ def find_sigma8(spectralp, ap, h0, omh2):
     pk_lin_d = powspec.get_pklin(k=kpmpc*1.01, z=3)
     #d log k = (logkd - logk) = log(kd/k) = log(1.01)
     neff = (np.log(pk_lin_d) - np.log(pk_lin)) / np.log(1.01)
-    print("sigma_8(z=0) = ", powspec.sigma8, "A_s = ",powspec.A_s, 'd_L = ', delta_lin, '', neff, 'Ap ',ap, 'np', spectralp, flush=True)
+#     print("sigma_8(z=0) = ", powspec.sigma8, "A_s = ",powspec.A_s, 'd_L = ', delta_lin, '', neff, 'Ap ',ap, 'np', spectralp, flush=True)
     return (powspec.sigma8, delta_lin, neff)
 
 def print_latex_table(chain_dirs, labels):
@@ -217,9 +223,6 @@ def print_latex_table(chain_dirs, labels):
         gd_sample.thin(40)
         AsVec = (0.4/(2*np.pi))**(gd_sample['ns']-1) * gd_sample['Ap'] * 1e9
         gd_sample.addDerived(paramVec=AsVec, name=r"A_\mathrm{s}/10^{-9}")
-        AsVec = (0.4/(2*np.pi))**(gd_sample['ns']-1) * gd_sample['Ap'] * 1e9
-        gd_sample.addDerived(paramVec=AsVec, name=r"A_\mathrm{s}/10^{-9}")
-
         print("samples ",np.size(AsVec),flush=True)
         derivedtuple = [find_sigma8(np, ap, h0, omh2) for (np, ap, h0, omh2) in zip(gd_sample['ns'], gd_sample['Ap'], gd_sample['hub'], gd_sample['omegamh2'])]
         (sigmaVec, deltaVec, neffVec) = zip(*derivedtuple)

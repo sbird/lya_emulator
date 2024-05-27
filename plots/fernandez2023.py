@@ -175,31 +175,27 @@ def find_sigma8(spectralp, ap, h0, omh2):
     #Class takes omega_m h^2 as parameters
     omegab = 0.0486
     ocdm = omh2/h0**2 - omegab
+    #Convert pivot scale from km/s to mpc units
     # This is in km/s/Mpc
-    velfac = 1./(1+3) * 100.0*np.sqrt(omh2*(1 + 3)**3 + (h0**2-omh2))
+    hz = lambda z: 100.0*np.sqrt(omh2*(1 + z)**3 + (h0**2-omh2))/(1+z)
+    velfac = hz(3)
     # s/km * km / s/ Mpc = 1 / Mpc
     kpmpc = 0.009 * velfac
-#     print(kpmpc,flush=True)
-    preparams = {'h':h0, 'Omega_cdm':ocdm,'Omega_b':omegab, 'Omega_k': 0, 'n_s': spectralp,'P_k_max_h/Mpc' : kpmpc*1.02/h0, "z_max_pk" : 69 }
+#     print('kp ',kpmpc,' hz ', velfac,' h0 ', hz(0), flush=True)
+    preparams = {'h':h0, 'Omega_cdm':ocdm,'Omega_b':omegab, 'Omega_k': 0, 'n_s': spectralp,'P_k_max_h/Mpc' : kpmpc*1.10/h0, "z_max_pk" : 69, 'output':'mPk', 'z_pk': [3,0]}
     preparams['A_s'] = (0.4/(2*np.pi))**(spectralp - 1) * ap
-    #Pass options for the power spectrum
-    preparams.update({'output': 'mPk', 'z_pk': [3,0]})
 #     print(preparams, flush=True)
     #Make the power spectra module
     engine = CLASS.ClassEngine(preparams)
     powspec = CLASS.Spectra(engine)
     #Find the dimensionless amplitude of the linear power at k_P = 0.009 s/km and z_P = 3.
     #This is k^3 P_L(k_P = 0.009, z_P = 3) / 2 \pi^2
-    #Convert pivot scale from km/s to mpc units
-    # This is in km/s/Mpc
-    velfac = 1./(1+3) * 100.0*np.sqrt(omh2*(1 + 3)**3 + (h0**2-omh2))
-    # s/km * km / s/ Mpc = 1 / Mpc
-    kpmpc = 0.009 * velfac
-    pk_lin = powspec.get_pklin(k=kpmpc, z=3)
-    delta_lin = kpmpc**3 * pk_lin / (2 * np.pi**2)
-    pk_lin_d = powspec.get_pklin(k=kpmpc*1.01, z=3)
+    kpmpch = kpmpc / h0
+    pk_lin = powspec.get_pklin(k=kpmpch, z=3)
+    delta_lin = kpmpch**3 * pk_lin / (2 * np.pi**2)
+    pk_lin_d = powspec.get_pklin(k=kpmpch*1.001, z=3)
     #d log k = (logkd - logk) = log(kd/k) = log(1.01)
-    neff = (np.log(pk_lin_d) - np.log(pk_lin)) / np.log(1.01)
+    neff = (np.log(pk_lin_d) - np.log(pk_lin)) / np.log(1.001)
 #     print("sigma_8(z=0) = ", powspec.sigma8, "A_s = ",powspec.A_s, 'd_L = ', delta_lin, '', neff, 'Ap ',ap, 'np', spectralp, flush=True)
     return (powspec.sigma8, delta_lin, neff)
 

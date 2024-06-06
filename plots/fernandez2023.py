@@ -237,6 +237,7 @@ def print_latex_table(chain_dirs, labels):
         print(label)
         print(gd.getTable(columns=1, limit=1).tableTex())
         print(gd.getTable(columns=1, limit=2).tableTex())
+        print(gd.getCorrelationMatrix())
         print(gd.PCA(params))
 #         print(gd.getLikeStats())
 

@@ -199,6 +199,58 @@ def find_sigma8(spectralp, ap, h0, omh2):
 #     print("sigma_8(z=0) = ", powspec.sigma8, "A_s = ",powspec.A_s, 'd_L = ', delta_lin, '', neff, 'Ap ',ap, 'np', spectralp, flush=True)
     return (powspec.sigma8, delta_lin, neff)
 
+def plot_dL_nl(chain_dirs, savefile=None, labels=None):
+    """
+    Print Latex table of the 1 and 2 sigma contours.
+    """
+    gd_samples = []
+    for chain_dir in chain_dirs:
+        nn, gr = np.loadtxt(os.path.abspath(chain_dir+'.progress'), usecols=(0, 3)).T
+        gd_sample = loadMCSamples(chain_dir, settings={'ignore_rows':nn[np.where(gr < 1)[0][0]]/nn[-1]})
+        gd_sample.paramNames.parWithName('Ap').label = r'A_\mathrm{P}/10^{-9}'
+        gd_sample.paramNames.parWithName('ns').label = r'n_\mathrm{P}'
+        gd_sample.paramNames.parWithName('herei').label = r'z^{HeII}_i'
+        gd_sample.paramNames.parWithName('heref').label = r'z^{HeII}_f'
+        gd_sample.paramNames.parWithName('alphaq').label = r'\alpha_{q}'
+        gd_sample.paramNames.parWithName('hireionz').label = r'z^{HI}'
+        gd_sample.paramNames.parWithName('hub').label = r'v_\mathrm{scale}'
+        gd_sample.paramNames.parWithName('tau0').label = '\\tau_0'
+        gd_sample.thin(40)
+        AsVec = (0.4/(2*np.pi))**(gd_sample['ns']-1) * gd_sample['Ap'] * 1e9
+        gd_sample.addDerived(paramVec=AsVec, name=r"A_\mathrm{s}/10^{-9}")
+        print("samples ",np.size(AsVec),flush=True)
+        derivedtuple = [find_sigma8(np, ap, h0, omh2) for (np, ap, h0, omh2) in zip(gd_sample['ns'], gd_sample['Ap'], gd_sample['hub'], gd_sample['omegamh2'])]
+        (sigmaVec, deltaVec, neffVec) = zip(*derivedtuple)
+        gd_sample.addDerived(paramVec=sigmaVec, name=r"\sigma_8")
+        gd_sample.addDerived(paramVec=deltaVec, name=r"\Delta_L^2")
+        gd_sample.addDerived(paramVec=neffVec, name=r"n_\mathrm{eff}")
+        gd_samples.append(gd_sample)
+
+    params = np.array([r"\Delta_L^2", r"n_\mathrm{eff}"])
+    plimits = np.array([[0.2,0.4],[-2.35,-2.2]])
+    gticks = np.array([[0.2,0.25,0.3,0.35,0.4],[-2.35,-2.3,-2.25,-2.2]])
+    gtlabels = np.array([['0.2','0.25','0.3','0.35','0.4'],['-2.35','-2.3','-2.25','-2.2']])
+
+    gdplot = gdplt.get_subplot_plotter()
+    gdplot.settings.axes_fontsize = 20
+    gdplot.settings.axes_labelsize = 28
+    gdplot.settings.legend_fontsize = 24
+    gdplot.settings.tight_layout = True
+    gdplot.settings.figure_legend_loc = 'upper right'
+
+    gdplot.triangle_plot(gd_samples, params, legend_labels=labels, filled=True, contour_lws=2.5, contour_ls='-', contour_colors=[c_sunshine, c_skyline, c_flatirons, c_midnight])
+    for pi in range(2):
+        for pi2 in range(pi + 1):
+            ax = gdplot.subplots[pi, pi2]
+            if pi != pi2:
+                ax.set_ylim(plimits[pi])
+                ax.set_yticks(gticks[pi], gtlabels[pi])
+            ax.set_xlim(plimits[pi2])
+            ax.set_xticks(gticks[pi2], gtlabels[pi2])
+    if savefile is not None:
+        gdplot.export(savefile)
+    plt.show()
+
 def print_latex_table(chain_dirs, labels):
     """
     Print Latex table of the 1 and 2 sigma contours.

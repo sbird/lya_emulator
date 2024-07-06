@@ -226,15 +226,15 @@ def plot_dL_nl(chain_dirs, savefile=None, labels=None):
         gd_sample.addDerived(paramVec=neffVec, name=r"n_\mathrm{eff}")
         gd_samples.append(gd_sample)
 
-    params = np.array([r"\Delta_L^2", r"n_\mathrm{eff}"])
-    plimits = np.array([[0.2,0.4],[-2.35,-2.2]])
-    gticks = np.array([[0.2,0.25,0.3,0.35,0.4],[-2.35,-2.3,-2.25,-2.2]])
-    gtlabels = np.array([['0.2','0.25','0.3','0.35','0.4'],['-2.35','-2.3','-2.25','-2.2']])
+    params = [r"\Delta_L^2", r"n_\mathrm{eff}"]
+    plimits = np.array([[0.2,0.4],[-2.40,-2.2]])
+    gticks = np.array([[0.2,0.25,0.3,0.35,0.4],[-2.4,-2.35,-2.3,-2.25,-2.2]])
+    gtlabels = np.array([['0.2','0.25','0.3','0.35','0.4'],['-2.40','-2.35','-2.3','-2.25','-2.2']])
 
     gdplot = gdplt.get_subplot_plotter()
-    gdplot.settings.axes_fontsize = 20
-    gdplot.settings.axes_labelsize = 28
-    gdplot.settings.legend_fontsize = 24
+    gdplot.settings.axes_fontsize = 13
+    gdplot.settings.axes_labelsize = 18
+    gdplot.settings.legend_fontsize = 13
     gdplot.settings.tight_layout = True
     gdplot.settings.figure_legend_loc = 'upper right'
 
@@ -242,11 +242,14 @@ def plot_dL_nl(chain_dirs, savefile=None, labels=None):
     for pi in range(2):
         for pi2 in range(pi + 1):
             ax = gdplot.subplots[pi, pi2]
+            ax.set_xlim(plimits[pi2])
+            ax.set_xticks(gticks[pi2], gtlabels[pi2])
             if pi != pi2:
                 ax.set_ylim(plimits[pi])
                 ax.set_yticks(gticks[pi], gtlabels[pi])
-            ax.set_xlim(plimits[pi2])
-            ax.set_xticks(gticks[pi2], gtlabels[pi2])
+            else:
+                ax.remove()
+    plt.tight_layout()
     if savefile is not None:
         gdplot.export(savefile)
     plt.show()

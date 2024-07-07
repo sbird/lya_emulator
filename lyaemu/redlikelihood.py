@@ -23,7 +23,6 @@ class ReducedLymanAlpha(Likelihood):
     neff: float
     sigmaneff: float
     correlation: float
-    chabanier: bool
     # Required for Cobaya to correctly parse which parameters are for input
     input_params_prefix: str = ""
 
@@ -35,13 +34,6 @@ class ReducedLymanAlpha(Likelihood):
         self.neff = -2.288
         self.sigmaneff = 0.02
         self.correlation = 0.4
-        #Results from the fit to Chabanier (2303.00746, Table 1)
-        if self.chabanier:
-            self.deltal = 0.31
-            self.sigmadeltal = 0.02
-            self.neff = -2.34
-            self.sigmaneff = 0.006
-            self.correlation = 0.512
 
     def logp(self, **params_values):
         """Cobaya-compatible call to the base class likelihood function.
@@ -54,12 +46,12 @@ class ReducedLymanAlpha(Likelihood):
         logl = -1 * (deltadl**2 - 2 * self.correlation * deltadl * deltaneff + deltaneff**2) / (2 * (1 - self.correlation**2))
         return logl
 
-    def do_sampling(self, savefile=None, burnin=3e2, nsamples=3e3, pscale=80, chabanier = False):
+    def do_sampling(self, savefile=None, burnin=3e2, nsamples=3e3, pscale=80):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # Construct the "info" dictionary used by Cobaya
         info = {}
-        info["likelihood"] = {__name__+".ReducedLymanAlpha": {"chabanier": chabanier}}
+        info["likelihood"] = {__name__+".ReducedLymanAlpha": {}}
         # Each of the parameters has a prior with limits and a proposal width (the proposal covariance matrix
         # is learned, so the value given needs to be small enough for the sampler to get started)
         info["params"] = {"deltal": {'prior': {'min': 0.2, 'max': 0.7}, 'proposal': (0.7-0.2)/pscale, 'latex': r"$\Delta^2_L$"},
@@ -84,3 +76,13 @@ class ReducedLymanAlpha(Likelihood):
             raise LoggedError("Sampling failed!")
         all_chains = comm.gather(sampler.products()["sample"], root=0)
         return sampler, all_chains
+
+class ChabReducedLymanAlpha(ReducedLymanAlpha):
+    """Subclass to use the fit to Chabanier (2303.00746, Table 1)"""
+    def initialize(self):
+        """Results from the fit to Chabanier (2303.00746, Table 1)"""
+        self.deltal = 0.31
+        self.sigmadeltal = 0.02
+        self.neff = -2.34
+        self.sigmaneff = 0.006
+        self.correlation = 0.512

@@ -1,12 +1,23 @@
-"""Module for computing the reduced likelihood function for the Lyman-alpha forest."""
+"""Module for computing the reduced likelihood function for the Lyman-alpha forest.
+This is a 2D Gaussian likelihood, which is an approximation to the full likelihood used in likelihood.py.
+Be warned that marginalisation effects means that the contours are not fully Gaussian, so this will not be entirely accurate.
+
+Input parameters are the amplitude and slope of the linear matter power spectrum at z_P=3 and k_P = 0.009 s/km = 1 Mpc^-1.
+
+In reality this Lyman alpha forest dataset is sensitive to redshifts z=4.6 - 2.6 and scales k = 10^-3 - 2x10^-2 s/km.
+In Mpc units these translate to k = 0.1 - 2.6 Mpc^-1 (redshift dependent! 0.13 - 2.6 Mpc^-1 at z=4.6 and (0.1 - 2.1) Mpc^-1 at z=2.6."""
 from cobaya.likelihood import Likelihood
 from cobaya.run import run as cobaya_run
 from cobaya.log import LoggedError
 from mpi4py import MPI
 
 class ReducedLymanAlpha(Likelihood):
-    """Class inheriting Cobaya functionality, designed to sample the reduced Lyman alpha likelihood at z=3, k = 1 / Mpc via a Gaussian fit.
-    The chain fit to is eBOSS FPS + T0 z >= 2.6."""
+    """Class inheriting Cobaya functionality, designed to sample the reduced Lyman alpha likelihood at z=3, k = 1 / Mpc via a (inaccurate) 2D Gaussian fit.
+    The chain fit to is eBOSS FPS + T0 z >= 2.6.
+
+    Input parameters are the amplitude and slope of the linear matter power spectrum at z_P=3 and k_P = 0.009 s/km = 1 Mpc^-1.
+
+    Sensitive to redshifts z=4.6 - 2.6 and scales k = 10^-3 - 2x10^-2 s/km, or k = 0.1 - 2.6 Mpc^-1."""
     deltal: float
     sigmadeltal: float
     neff: float
@@ -43,7 +54,7 @@ class ReducedLymanAlpha(Likelihood):
         logl = -1 * (deltadl**2 - 2 * self.correlation * deltadl * deltaneff + deltaneff**2) / (2 * (1 - self.correlation**2))
         return logl
 
-    def do_sampling(self, savefile=None, burnin=3e4, nsamples=3e5, pscale=80, chabanier = False):
+    def do_sampling(self, savefile=None, burnin=3e2, nsamples=3e3, pscale=80, chabanier = False):
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # Construct the "info" dictionary used by Cobaya

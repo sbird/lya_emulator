@@ -226,6 +226,12 @@ def plot_dL_nl(chain_dirs, savefile=None, labels=None):
         gd_sample.addDerived(paramVec=neffVec, name=r"n_\mathrm{eff}")
         gd_samples.append(gd_sample)
 
+    for chain_dir in ("reduced-me", "reduced-chab"):
+        nn, gr = np.loadtxt(os.path.abspath(chain_dir+'.progress'), usecols=(0, 3)).T
+        gd_sample = loadMCSamples(chain_dir, settings={'ignore_rows':nn[np.where(gr < 1)[0][0]]/nn[-1]})
+        gd_samples.append(gd_sample)
+    labels = labels + ["Reduced", "Chabanier"]
+
     params = [r"\Delta_L^2", r"n_\mathrm{eff}"]
     plimits = np.array([[0.2,0.4],[-2.40,-2.2]])
     gticks = np.array([[0.2,0.25,0.3,0.35,0.4],[-2.4,-2.35,-2.3,-2.25,-2.2]])

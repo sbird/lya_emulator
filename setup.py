@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name="lyaemu",
-    version='1.0.0',
+    version='1.0.1',
     author="Simeon Bird, Martin Fernandez and Keir Rogers",
     author_email="spb@ucr.edu",
     url="http://github.com/sbird/lya_emulator",

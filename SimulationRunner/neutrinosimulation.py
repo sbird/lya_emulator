@@ -1,6 +1,5 @@
 """Specialization of the Simulation class to Lyman-alpha forest simulations."""
 
-import numpy as np
 from . import simulationics
 
 class NeutrinoPartICs(simulationics.SimulationICs):

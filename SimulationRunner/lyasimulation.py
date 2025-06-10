@@ -5,7 +5,10 @@ import os.path
 import numpy as np
 import scipy.interpolate as interp
 from . import HeII_input_file_maker as heii
-from . import make_HI_reionization_table as hi
+try:
+    from . import make_HI_reionization_table as hi
+except ModuleNotFoundError:
+    hi = None
 from . import simulationics
 
 class LymanAlphaSim(simulationics.SimulationICs):
@@ -91,6 +94,11 @@ class LymanAlphaSim(simulationics.SimulationICs):
         """Overload the genic file to also generate an HI table."""
         (genic_output, genic_param) = super().genicfile(camb_output)
         uvffile = os.path.join(self.outdir, "UVFluctuationFile")
+        #If we could not load the HI reionization table code, try to import the modules here so that we know which one failed to load.
+        if hi is None:
+            from pmesh.pm import ParticleMesh
+            from fastpm.core import Solver
+            from nbodykit.cosmology import Cosmology, LinearPower
         hi.generate_zreion_file(os.path.join(self.outdir, genic_param), uvffile, self.hireionz, 1.0)
         return (genic_output, genic_param)
 

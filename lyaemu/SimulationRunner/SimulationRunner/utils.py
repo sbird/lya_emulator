@@ -1,5 +1,4 @@
 """Module to store some utility functions."""
-import glob
 import os
 import os.path
 import subprocess

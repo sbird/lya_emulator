@@ -9,8 +9,8 @@ import shutil
 import importlib
 import numpy as np
 import configobj
-import classylss
-import classylss.binding as CLASS
+import classy
+from classy import Class
 from . import utils
 from . import clusters
 from . import read_uvb_tab
@@ -21,9 +21,9 @@ class SimulationICs:
     Class for creating the initial conditions for a simulation.
     There are a few things this class needs to do:
 
-    - Generate CAMB input files
-    - Generate MP-GenIC input files (to use CAMB output)
-    - Run CAMB and MP-GenIC to generate ICs
+    - Generate linear input files
+    - Generate MP-GenIC input files (to use linear output)
+    - Run CLASS and MP-GenIC to generate ICs
 
     The class will store the parameters of the simulation.
     We also save a copy of the input and enough information to reproduce the resutls exactly in SimulationICs.json.
@@ -44,7 +44,7 @@ class SimulationICs:
     m_nu - neutrino mass
     unitary - if true, do not scatter modes, but use a unitary gaussian amplitude.
     """
-    def __init__(self, *, outdir, box, npart, seed = 9281110, redshift=99, redend=0, separate_gas=True, omega0=0.288, omegab=0.0472, hubble=0.7, scalar_amp=2.427e-9, ns=0.97, rscatter=False, m_nu=0, nu_hierarchy='degenerate', uvb="fg20", cluster_class=clusters.FronteraClass, nu_acc=1e-5, unitary=True, timelimit=2, nnode=2):
+    def __init__(self, *, outdir, box, npart, seed = 9281110, redshift=99, redend=0, separate_gas=True, omega0=0.288, omegab=0.0472, hubble=0.7, scalar_amp=2.427e-9, ns=0.97, alpha_s: float = 0, rscatter=False, m_nu=0, nu_hierarchy='degenerate', uvb="fg20", cluster_class=clusters.FronteraClass, nu_acc=1e-5, unitary=True, timelimit=2, nnode=2):
         #Check that input is reasonable and set parameters
         #In Mpc/h
         assert box < 20000
@@ -67,6 +67,8 @@ class SimulationICs:
         self.scalar_amp = scalar_amp
         assert 2 > ns > 0
         self.ns = ns
+        assert alpha_s > -1 and alpha_s < 1
+        self.alpha_s = alpha_s
         self.unitary = unitary
         #Neutrino accuracy for CLASS
         self.nu_acc = nu_acc
@@ -111,13 +113,13 @@ class SimulationICs:
         self.gadget_dir = os.path.expanduser("~/codes/MP-Gadget/")
 
     def cambfile(self):
-        """Generate the IC power spectrum using classylss."""
+        """Generate the IC power spectrum using classy."""
         #Load high precision defaults
-        pre_params = {'tol_background_integration': 1e-9, 'tol_perturb_integration' : 1.e-7, 'tol_thermo_integration':1.e-5, 'k_per_decade_for_pk': 50,'k_bao_width': 8, 'k_per_decade_for_bao':  200, 'neglect_CMB_sources_below_visibility' : 1.e-30, 'transfer_neglect_late_source': 3000., 'l_max_g' : 50, 'l_max_ur':150, 'extra metric transfer functions': 'y'}
+        pre_params = {'k_per_decade_for_pk': 50,'k_bao_width': 8, 'k_per_decade_for_bao':  200, 'neglect_CMB_sources_below_visibility' : 1.e-30, 'transfer_neglect_late_source': 3000., 'l_max_g' : 50, 'l_max_ur':150, 'extra metric transfer functions': 'y'}
         #Set the neutrino density and subtract it from omega0
         omeganu = self.m_nu/93.14/self.hubble**2
         omcdm = (self.omega0 - self.omegab) - omeganu
-        gparams = {'h':self.hubble, 'Omega_cdm':omcdm,'Omega_b': self.omegab, 'Omega_k':0, 'n_s': self.ns, 'A_s': self.scalar_amp}
+        gparams = {'h':self.hubble, 'Omega_cdm':omcdm,'Omega_b': self.omegab, 'Omega_k':0, 'n_s': self.ns, 'A_s': self.scalar_amp, 'alpha_s': self.alpha_s}
         #Lambda is computed self-consistently
         gparams['Omega_fld'] = 0
         numass = get_neutrino_masses(self.m_nu, self.nu_hierarchy)
@@ -160,8 +162,9 @@ class SimulationICs:
         classconf['z_pk'] = camb_zz
         classconf.write()
 
-        engine = CLASS.ClassEngine(pre_params)
-        powspec = CLASS.Spectra(engine)
+        powspec = Class()
+        powspec.set(pre_params)
+        powspec.compute()
         #Save directory
         camb_output = "camb_linear/"
         camb_outdir = os.path.join(self.outdir,camb_output)
@@ -173,11 +176,14 @@ class SimulationICs:
         #Get and save the transfer functions
         for zz in camb_zz:
             trans = powspec.get_transfer(z=zz)
-            #fp-roundoff
-            trans['k'][-1] *= 0.9999
             transferfile = os.path.join(camb_outdir, "ics_transfer_"+self._camb_zstr(zz)+".dat")
             save_transfer(trans, transferfile)
-            pk_lin = powspec.get_pklin(k=trans['k'], z=zz)
+            khmpc = trans['k (h/Mpc)']
+            khmpc[-1] *= 0.9999
+            #Note pk lin has no h unit! But the file we want to save should have it.
+            kmpc = khmpc * pre_params['h']
+            #Get and save the matter power spectrum. We want (Mpc/h)^3 units but the default is Mpc^3.
+            pk_lin = np.array([powspec.pk_lin(k=kk, z=zz) for kk in kmpc])*pre_params['h']**3
             pkfile = os.path.join(camb_outdir, "ics_matterpow_"+self._camb_zstr(zz)+".dat")
             np.savetxt(pkfile, np.vstack([trans['k'], pk_lin]).T)
 
@@ -441,10 +447,10 @@ class SimulationICs:
 
     def make_simulation(self, pkaccuracy=0.05, do_build=False):
         """Wrapper function to make the simulation ICs."""
-        #First generate the input files for CAMB
+        #First generate the input files for CLASS
         camb_output = self.cambfile()
-        #Then run CAMB
-        self.camb_git = classylss.__version__
+        #Then run CLASS
+        self.camb_git = classy.__version__
         #Change the power spectrum file on disc if we want to do that
         self._alter_power(os.path.join(self.outdir,camb_output))
         #Now generate the GenIC parameters
@@ -463,7 +469,11 @@ class SimulationICs:
         if do_build:
             subprocess.check_call([os.path.join(os.path.join(self.gadget_dir, "genic"),self.genicexe), genic_param],cwd=self.outdir)
             zstr = self._camb_zstr(self.redshift)
-            cambpower.check_ic_power_spectra(genic_output, camb_zstr=zstr, m_nu=self.m_nu, outdir=self.outdir, accuracy=pkaccuracy)
+            try:
+                cambpower.check_ic_power_spectra(genic_output, camb_zstr=zstr, m_nu=self.m_nu, outdir=self.outdir, accuracy=pkaccuracy)
+            except ModuleNotFoundError:
+                print("Not checking IC power spectra, Nbodykit not installed")
+                pass
             self.do_gadget_build(gadget_config)
         return gadget_config
 
@@ -478,9 +488,15 @@ d_tot stands for (delta rho_tot/rho_tot)(k,z) with rho_Lambda NOT included in rh
  quantities divided by -k^2 with k in Mpc^-1; use format=camb to match CAMB)
 t_i   stands for theta_i(k,z) with above normalization
 t_tot stands for (sum_i [rho_i+p_i] theta_i)/(sum_i [rho_i+p_i]))(k,z)
+If some neutrino species are massless, or degenerate, the d_ncdm and t_ncdm columns may be missing below.
 1:k (h/Mpc)              2:d_g                    3:d_b                    4:d_cdm                  5:d_ur        6:d_ncdm[0]              7:d_ncdm[1]              8:d_ncdm[2]              9:d_tot                 10:phi     11:psi                   12:h                     13:h_prime               14:eta                   15:eta_prime     16:t_g                   17:t_b                   18:t_ur        19:t_ncdm[0]             20:t_ncdm[1]             21:t_ncdm[2]             22:t_tot"""
     #This format matches the default output by CLASS command line.
-    np.savetxt(transferfile, transfer, header=header)
+    if "d_ncdm[0]" in transfer.keys():
+        wanted_trans_keys = ['k (h/Mpc)', 'd_g', 'd_b', 'd_cdm', 'd_ur', "d_ncdm[0]", "d_ncdm[1]", "d_ncdm[2]", 'd_tot', 'phi', 'psi', 'h', 'h_prime', 'eta', 'eta_prime', 't_g', 't_b', 't_ur', 't_ncdm[0]', 't_ncdm[1]', 't_ncdm[2]', 't_tot']
+    else:
+        wanted_trans_keys = ['k (h/Mpc)', 'd_g', 'd_b', 'd_cdm', 'd_ur', 'd_tot', 'phi', 'psi', 'h', 'h_prime', 'eta', 'eta_prime', 't_g', 't_b', 't_ur', 't_tot']
+    transferarr = np.vstack([transfer[kk] for kk in wanted_trans_keys]).T
+    np.savetxt(transferfile, transferarr, header=header)
 
 def get_neutrino_masses(total_mass, hierarchy):
     """Get the three neutrino masses, including the mass splittings.
@@ -494,7 +510,7 @@ def get_neutrino_masses(total_mass, hierarchy):
         nu_M32 = nu_M32n
         #If the total mass is below that allowed by the hierarchy,
         #assign one active neutrino.
-        if total_mass < np.sqrt(nu_M32n) + np.sqrt(nu_M21):
+        if total_mass < 0.06:
             return np.array([total_mass, 0, 0])
     elif hierarchy == 'inverted':
         nu_M32 = -nu_M32i

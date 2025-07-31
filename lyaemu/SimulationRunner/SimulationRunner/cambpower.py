@@ -7,7 +7,10 @@ import numpy as np
 import matplotlib
 matplotlib.use("PDF")
 import matplotlib.pyplot as plt
-from nbodykit.lab import BigFileCatalog,FFTPower
+try:
+    from nbodykit.lab import BigFileCatalog,FFTPower
+except ModuleNotFoundError:
+    FFTPower = None
 
 def modecount_rebin(kk, pk, modes, pkc, minmodes=250, ndesired=200):
     """Rebins a power spectrum so that there are sufficient modes in each bin"""
@@ -92,6 +95,8 @@ def check_ic_power_spectra(genicfileout, camb_zstr, outdir=".", accuracy=0.07, m
     """Generate the power spectrum for each particle type from the generated simulation files
     and check that it matches the input. This is a consistency test on each simulation output."""
     #Generate power spectra
+    if FFTPower is None:
+        raise ModuleNotFoundError
     output = os.path.join(outdir, genicfileout)
     #Now check that they match what we put into the simulation, from CAMB
     #Reload the CAMB files from disc, just in case something went wrong writing them.

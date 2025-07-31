@@ -84,3 +84,4 @@ def test_neutrino_mass_spec():
     assert np.abs(numass[0]+numass[1]+numass[2] - 0.11) < 1e-4
     assert np.abs(numass[0]**2 - numass[1]**2 + M32n) < 1e-4
     assert np.abs(numass[1]**2 - numass[2]**2 - M21) < 1e-4
+    numass = simulationics.get_neutrino_masses(0.058333333, 'normal')

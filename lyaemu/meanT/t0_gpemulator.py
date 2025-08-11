@@ -1,10 +1,14 @@
 """Building a surrogate using a Gaussian Process."""
 import numpy as np
 from ..latin_hypercube import map_to_unit_cube, map_to_unit_cube_list
-import GPy
-from emukit.model_wrappers import GPyMultiOutputWrapper
-from emukit.multi_fidelity.kernels import LinearMultiFidelityKernel
-from emukit.multi_fidelity.convert_lists_to_array import convert_xy_lists_to_arrays
+try:
+    import GPy
+    from emukit.model_wrappers import GPyMultiOutputWrapper
+    from emukit.multi_fidelity.kernels import LinearMultiFidelityKernel
+    from emukit.multi_fidelity.convert_lists_to_array import convert_xy_lists_to_arrays
+except ModuleNotFoundError:
+    print("Could not import GPy")
+    pass
 
 
 class T0MultiBinGP:

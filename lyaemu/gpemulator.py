@@ -10,10 +10,14 @@ from .latin_hypercube import map_to_unit_cube,map_to_unit_cube_list
 #get another backend when we import GPy.
 import matplotlib
 matplotlib.use('PDF')
-import GPy
-from emukit.model_wrappers import GPyMultiOutputWrapper
-from emukit.multi_fidelity.kernels import LinearMultiFidelityKernel
-from emukit.multi_fidelity.convert_lists_to_array import convert_xy_lists_to_arrays
+try:
+    import GPy
+    from emukit.model_wrappers import GPyMultiOutputWrapper
+    from emukit.multi_fidelity.kernels import LinearMultiFidelityKernel
+    from emukit.multi_fidelity.convert_lists_to_array import convert_xy_lists_to_arrays
+except ModuleNotFoundError:
+    print("Could not import GPy")
+    pass
 
 class MultiBinGP:
     """A wrapper around the emulator that constructs a separate emulator for each redshift bin.

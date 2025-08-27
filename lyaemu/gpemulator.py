@@ -1,23 +1,11 @@
 """Building a surrogate using a Gaussian Process."""
-# from datetime import datetime
-import copy as cp
 import numpy as np
 import os
-import json
 import h5py
-from .latin_hypercube import map_to_unit_cube,map_to_unit_cube_list
-#Make sure that we don't accidentally
-#get another backend when we import GPy.
-import matplotlib
-matplotlib.use('PDF')
-try:
-    import GPy
-    from emukit.model_wrappers import GPyMultiOutputWrapper
-    from emukit.multi_fidelity.kernels import LinearMultiFidelityKernel
-    from emukit.multi_fidelity.convert_lists_to_array import convert_xy_lists_to_arrays
-except ModuleNotFoundError:
-    print("Could not import GPy")
-    pass
+from .latin_hypercube import map_to_unit_cube_list
+import torch
+import gpytorch
+from gpytorch.kernels import RBFKernel, LinearKernel
 
 class MultiBinGP:
     """A wrapper around the emulator that constructs a separate emulator for each redshift bin.
@@ -33,7 +21,7 @@ class MultiBinGP:
         assert np.shape(powers)[1] % self.nk == 0
         self.nz = zout.size
         if HRdat is None:
-            gp = lambda i: SkLearnGP(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits=param_limits, traindir=traindir, zbin=zout[i])
+            gp = lambda i: GaussianProcess(params=params, powers=powers[:,i*self.nk:(i+1)*self.nk], param_limits=param_limits, traindir=traindir, zbin=zout[i])
         else:
             gp = lambda i: SingleBinAR1(LRparams=params, HRparams=HRdat[0], LRfps=powers[:,i*self.nk:(i+1)*self.nk], HRfps=HRdat[1][:,i*self.nk:(i+1)*self.nk], param_limits=param_limits, traindir=traindir, zbin=zout[i])
         print('Number of redshifts for emulator generation=%d nk= %d' % (self.nz, self.nk))
@@ -59,12 +47,25 @@ class MultiBinGP:
         """Get the originally input training data so we can easily rebuild the GP"""
         return self.params, self.kf, self.powers
 
-    def add_to_training_set(self, new_params):
-        """Add to training set and update emulator (without re-training) -- for all redshifts"""
-        for i in range(self.nz): #Loop over redshifts
-            self.gps[i].add_to_training_set(new_params)
+class ExactGPModel(gpytorch.models.ExactGP):
+    """Subclass the exact inference GP with the kernel we want."""
+    def __init__(self, train_x, train_y, likelihood):
+        super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
+        self.mean_module = gpytorch.means.ConstantMean()
+        #Standard squared-exponential kernel with a different length scale for each parameter, as
+        #they may have very different physical properties.
+        self.covar_module = LinearKernel() + RBFKernel()
+        #What is a ScaleKernel?
+#        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
 
-class SkLearnGP:
+    def forward(self, x):
+        """Takes n x d data (where d is the number of input parameters and n is the number of outputs)
+        and returns the prior mean and covariance of the GP."""
+        mean_x = self.mean_module(x)
+        covar_x = self.covar_module(x)
+        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+
+class GaussianProcess:
     """An emulator wrapping a GP code.
        Parameters: params is a list of parameter vectors (shape nsims,params).
                    powers is a list of flux power spectra (shape nsims,nk).
@@ -86,7 +87,7 @@ class SkLearnGP:
             self._check_interp(powers)
             self._test_interp = False
 
-    def _get_interp(self, flux_vectors):
+    def _get_interp(self, flux_vectors, training_iter=50):
         """Build the actual interpolator."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         nparams = np.shape(self.params)[1]
@@ -102,33 +103,50 @@ class SkLearnGP:
         self.paramzero = params_cube[medind,:]
         #Normalise by the median value
         normspectra = flux_vectors/self.scalefactors -1.
-
-        #Standard squared-exponential kernel with a different length scale for each parameter, as
-        #they may have very different physical properties.
-        kernel = GPy.kern.Linear(nparams, ARD=True)
-        kernel += GPy.kern.RBF(nparams, ARD=True)
-        self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
+        self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
+        self.gp = ExactGPModel(params_cube, normspectra)
+        #kernel = GPy.kern.Linear(nparams, ARD=True) + GPy.kern.RBF(nparams, ARD=True)
+        #self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
+        #Save file for this model
+        zbin_file = os.path.join(os.path.abspath(self.traindir), 'zbin'+str(self.zbin)+".pth")
         # try to load previously saved trained GPs
-        try:
-            zbin_file = os.path.join(os.path.abspath(self.traindir), 'zbin'+str(self.zbin))
-            load_gp = json.load(open(zbin_file+'.json', 'r'))
-            self.gp.from_dict(load_gp)
+        if os.path.exists(zbin_file):
+            state_dict = torch.load(zbin_file)
+            self.gp.load_state_dict(state_dict)
             print('Loading pre-trained GP for z:'+str(self.zbin))
         # need to train from scratch
-        except:
+        else:
             print('Optimizing GP for z:'+str(self.zbin))
-            status = self.gp.optimize(messages=False)
-            #print('Gradients of model hyperparameters [after optimisation] =', self.gp.gradient)
-            #Let's check that hyperparameter optimisation is converged
-            if status.status != 'Converged':
-                print("Restarting optimization")
-                self.gp.optimize_restarts(num_restarts=10)
-            #print('Gradients of model hyperparameters [after second optimisation (x 10)] =', self.gp.gradient)
-            if self.traindir != None: # if a traindir was requested, but not populated, save it
+            # Find optimal model hyperparameters
+            self.gp.train()
+            self.likelihood.train()
+
+            # Use the adam optimizer
+            optimizer = torch.optim.Adam(self.gp.parameters(), lr=0.1)  # Includes GaussianLikelihood parameters
+
+            # "Loss" for GPs - the marginal log likelihood
+            mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.likelihood, self.gp)
+            # Training loop
+            for i in range(training_iter):
+                # Zero gradients from previous iteration
+                optimizer.zero_grad()
+                # Output from model
+                output = self.gp(params_cube)
+                # Calc loss and backprop gradients
+                loss = -mll(output, normspectra)
+                loss.backward()
+                print('Iter %d/%d - Loss: %.3f   lengthscale: %.3f   noise: %.3f' % (
+                    i + 1, training_iter, loss.item(),
+                    self.gp.covar_module.base_kernel.lengthscale.item(),
+                    self.gp.likelihood.noise.item()
+                ))
+                optimizer.step()
+
+            if self.traindir is not None: # if a traindir was requested, but not populated, save it
                 print('Saving GP to', zbin_file)
-                if not os.path.exists(self.traindir): os.makedirs(self.traindir)
-                with open(zbin_file+'.json', 'w') as jfile:
-                    json.dump(self.gp.to_dict(), jfile)
+                if not os.path.exists(self.traindir):
+                    os.makedirs(self.traindir)
+                torch.save(self.gp.state_dict(), zbin_file)
 
     def _check_interp(self, flux_vectors):
         """Check we reproduce the input"""
@@ -139,25 +157,14 @@ class SkLearnGP:
                 print("Bad interpolation at:", np.where(worst > np.max(worst)*0.9), np.max(worst))
                 assert np.max(worst) < self.intol
 
-    def add_to_training_set(self, new_params):
-        """Add to training set and update emulator (without re-training). Takes a single set of new parameters"""
-        gp_new = cp.deepcopy(self.gp)
-        mean_flux_training_samples = np.unique(self.gp.X[:, 0]).reshape(-1, 1)
-        #Note mean flux excluded from param_limits
-        new_params_unit_cube = map_to_unit_cube(new_params, self.param_limits[-1 * new_params.shape[0]:])
-        new_params_unit_cube_expand = np.tile(new_params_unit_cube, (mean_flux_training_samples.shape[0], 1))
-        new_params_unit_cube_mean_flux = np.hstack((mean_flux_training_samples, new_params_unit_cube_expand))
-        #new_params_mean_flux = map_from_unit_cube_list(new_params_unit_cube_mean_flux, self.param_limits)
-        gp_updated_X_new = np.vstack((gp_new.X, new_params_unit_cube_mean_flux))
-        gp_updated_Y_new = np.vstack((gp_new.Y, self.gp.predict(new_params_unit_cube_mean_flux)[0]))
-        gp_new.set_XY(X=gp_updated_X_new, Y=gp_updated_Y_new)
-        self.gp = gp_new
-
     def predict(self, params):
         """Get the predicted flux at a parameter value (or list of parameter values)."""
         #Map the parameters onto a unit cube so that all the variations are similar in magnitude
         params_cube = map_to_unit_cube_list(params, self.param_limits)
-        flux_predict, var = self.gp.predict(params_cube)
+        #This is a distribution over a function f
+        f_predicts = self.gp(params_cube)
+        #Need the mean and variance
+        flux_predict, var = f_predicts.mean, f_predicts.variance
         mean = (flux_predict+1)*self.scalefactors
         std = np.sqrt(var) * self.scalefactors
         return mean, std

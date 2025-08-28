@@ -100,12 +100,13 @@ class GaussianProcess:
             assert np.min(params_cube[:,i]) < 0.2
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
-        medind = np.argsort(np.mean(flux_vectors, axis=1))[np.shape(flux_vectors)[0]//2]
+        ntasks = np.shape(flux_vectors)[0]
+        medind = np.argsort(np.mean(flux_vectors, axis=1))[ntasks//2]
         self.scalefactors = flux_vectors[medind,:]
         self.paramzero = params_cube[medind,:]
         #Normalise by the median value
         normspectra = flux_vectors/self.scalefactors -1.
-        self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-10))
+        self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks = ntasks, noise_constraint=gpytorch.constraints.GreaterThan(1e-10))
         self.gp = ExactGPModel(params_cube, normspectra, self.likelihood)
         #Save file for this model
         zbin_file = os.path.join(os.path.abspath(self.traindir), 'zbin'+str(self.zbin)+".pth")

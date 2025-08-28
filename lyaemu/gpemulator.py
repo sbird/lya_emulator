@@ -51,18 +51,21 @@ class ExactGPModel(gpytorch.models.ExactGP):
     """Subclass the exact inference GP with the kernel we want."""
     def __init__(self, train_x, train_y, likelihood):
         super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ConstantMean()
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
         nparam = np.shape(train_x)[1]
-        self.covar_module = kern.LinearKernel(ard_num_dims=nparam) + kern.ScaleKernel(kern.RBFKernel(ard_num_dims=nparam))
+        #Each dimension of the output vector is called a task in GPyTorch
+        ntask = np.shape(train_y)[0]
+        self.mean_module = gptorch.means.MultitaskMean(gpytorch.means.ConstantMean(), num_tasks=ntask)
+        singletaskkernel = kern.LinearKernel(ard_num_dims=nparam) + kern.ScaleKernel(kern.RBFKernel(ard_num_dims=nparam))
+        self.covar_module = kern.MultitaskKernel(singletaskkernel, num_tasks=ntask)
 
     def forward(self, x):
         """Takes n x d data (where d is the number of input parameters and n is the number of outputs)
         and returns the prior mean and covariance of the GP."""
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+        return gpytorch.distributions.MultitaskMultivariateNormal(mean_x, covar_x)
 
 class GaussianProcess:
     """An emulator wrapping a GP code.

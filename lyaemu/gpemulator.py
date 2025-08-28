@@ -5,7 +5,7 @@ import h5py
 from .latin_hypercube import map_to_unit_cube_list
 import torch
 import gpytorch
-from gpytorch.kernels import RBFKernel, LinearKernel
+import gpytorch.kernels as kern
 
 class MultiBinGP:
     """A wrapper around the emulator that constructs a separate emulator for each redshift bin.
@@ -54,9 +54,8 @@ class ExactGPModel(gpytorch.models.ExactGP):
         self.mean_module = gpytorch.means.ConstantMean()
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
-        self.covar_module = LinearKernel() + RBFKernel()
-        #What is a ScaleKernel?
-#        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+        nparam = np.shape(train_x)[1]
+        self.covar_module = kern.LinearKernel(ard_num_dims=nparam) + kern.ScaleKernel(kern.RBFKernel(ard_num_dims=nparam))
 
     def forward(self, x):
         """Takes n x d data (where d is the number of input parameters and n is the number of outputs)
@@ -103,10 +102,8 @@ class GaussianProcess:
         self.paramzero = params_cube[medind,:]
         #Normalise by the median value
         normspectra = flux_vectors/self.scalefactors -1.
-        self.likelihood = gpytorch.likelihoods.GaussianLikelihood()
+        self.likelihood = gpytorch.likelihoods.GaussianLikelihood(noise_constraint=gpytorch.constraints.GreaterThan(1e-10))
         self.gp = ExactGPModel(params_cube, normspectra)
-        #kernel = GPy.kern.Linear(nparams, ARD=True) + GPy.kern.RBF(nparams, ARD=True)
-        #self.gp = GPy.models.GPRegression(params_cube, normspectra,kernel=kernel, noise_var=1e-10)
         #Save file for this model
         zbin_file = os.path.join(os.path.abspath(self.traindir), 'zbin'+str(self.zbin)+".pth")
         # try to load previously saved trained GPs

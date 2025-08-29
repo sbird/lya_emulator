@@ -13,7 +13,7 @@ Useful submodules:
 lyaemu.coarse_grid: handles the emulator generation.
 lyaemu.likelihood: handles the likelihood sampling using cobaya.
 lyaemu.latin_hypercube: generates points on a unit cube in a maximin latin hypercube
-lyaemu.gpemulator: fits the interpolation using GPy.
+lyaemu.gpemulator: fits the interpolation using a GP
 lyaemu.mean_flux: models for the redshift evolution of the forest mean flux.
 lyaemu.bayesian_opt: perform Bayesian optimization (acquisition function) on an emulator.
 
@@ -34,8 +34,7 @@ plots/make_emulators.py gives an example of how to generate an emulator
 lyaemu/tests: Some simple unit tests.
 
 Dependencies:
-- Python 3
-- GPy
+- GPyTorch
 - numpy
 - scipy
 - h5py

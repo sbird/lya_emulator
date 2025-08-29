@@ -469,7 +469,8 @@ class LikelihoodClass:
         """Run MCMC using Cobaya. Cobaya supports MPI, with a separate chain for each process (for HPCC, 4-6 chains recommended).
         burnin and nsamples are per chain. If savefile is None, the chain will not be saved."""
         # if use_meant not specificed, default to setting from initialization
-        if use_meant is None: use_meant = self.use_meant
+        if use_meant is None:
+            use_meant = self.use_meant
 
         # If datadir is None, default is to use the flux power data from BOSS (dr14 or dr9)
         data_power = None
@@ -496,7 +497,7 @@ class LikelihoodClass:
             # Run the sampler, Cobaya MCMC -- resume will only work if a savefile is given (so it can load previous chain)
             updated_info, sampler = cobaya_run(info, resume=True)
             success = True
-        except LoggedError as err:
+        except LoggedError:
             pass
         success = all(comm.allgather(success))
         if not success:

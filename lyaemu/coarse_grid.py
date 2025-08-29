@@ -4,7 +4,6 @@ import os
 import os.path
 import shutil
 import glob
-import string
 import json
 import math
 import numpy as np

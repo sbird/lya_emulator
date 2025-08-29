@@ -1,6 +1,6 @@
 """Modules to get the matter power spectrum from a simulation box and build a simple test emulator."""
-from __future__ import print_function
 import os.path
+import math
 import numpy as np
 import scipy.interpolate
 from .coarse_grid import Emulator

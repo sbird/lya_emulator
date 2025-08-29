@@ -28,7 +28,7 @@ def run_chain(savefile, basedir, HRbasedir=None, traindir=None, min_z=2.2, max_z
     # get the likelihood class object
     like = lk.LikelihoodClass(basedir, tau_thresh=tau_thresh, traindir=traindir, max_z=max_z, min_z=min_z, optimise_GP=False, HRbasedir=HRbasedir, loo_errors=loo_errors, use_meant=True)
     # then run the chain -- note that savefile = None means it will not save
-    chain = like.do_sampling(savefile=savefile, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior, bhprior=hbprior, pscale=pscale, use_meant=True)
+    chain = like.do_sampling(savefile=savefile, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior, bhprior=bhprior, pscale=pscale, use_meant=True)
     return chain
 
 # chain using only the mean temperature
@@ -36,7 +36,7 @@ def run_t0chain(savefile, basedir, HRbasedir=None, min_z=2.2, max_z=3.8, loo_err
     # get the likelihood class object
     like = t0lk.T0LikelihoodClass(basedir, max_z=max_z, min_z=min_z, optimise_GP=False, HRbasedir=HRbasedir, dataset=dataset, loo_errors=loo_errors)
     # then run the chain -- note that savefile = None means it will not save
-    chain = like.do_sampling(savefile=savefile, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior, bhprior=hbprior, dataset=dataset, pscale=pscale)
+    chain = like.do_sampling(savefile=savefile, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior, bhprior=bhprior, dataset=dataset, pscale=pscale)
     return chain
 
 # chain using only the flux power spectrum
@@ -44,5 +44,5 @@ def run_fpschain(savefile, basedir, HRbasedir=None, traindir=None, min_z=2.2, ma
     # get the likelihood class object
     like = lk.LikelihoodClass(basedir, tau_thresh=tau_thresh, traindir=traindir, max_z=max_z, min_z=min_z, optimise_GP=False, HRbasedir=HRbasedir, loo_errors=loo_errors)
     # then run the chain -- note that savefile = None means it will not save
-    chain = like.do_sampling(savefile=savefile, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior, bhprior=hbprior, pscale=pscale)
+    chain = like.do_sampling(savefile=savefile, burnin=burnin, nsamples=nsamples, hprior=hprior, oprior=oprior, bhprior=bhprior, pscale=pscale)
     return chain

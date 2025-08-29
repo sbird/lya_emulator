@@ -13,7 +13,8 @@ def rebin_power_to_kms(kfkms, kfmpc, flux_powers, zbins, omega_m, omega_l=None):
     """Rebins a power spectrum to constant km/s bins.
     Bins larger than the box are discarded. The return type is thus a list,
     with each redshift bin having potentially different lengths."""
-    if omega_l is None: omega_l = 1 - omega_m
+    if omega_l is None:
+        omega_l = 1 - omega_m
     nz = np.size(zbins)
     assert np.size(flux_powers) == nz * np.size(kfmpc)
     # conversion factor from mpc to kms units

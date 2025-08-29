@@ -314,8 +314,8 @@ class GaussianProcessAR1:
             normspectra = np.concatenate([normspectra, HRnormspectra], axis=0)
 
         #Convert to tensors
-        tense_params_cube = torch.from_numpy(params_cube)
-        tense_normspectra = torch.from_numpy(normspectra)
+        tense_params_cube = torch.from_numpy(params_cube).float()
+        tense_normspectra = torch.from_numpy(normspectra).float()
         # Move to GPU if available
         #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         #tense_params_cube = tense_params_cube.to(device)
@@ -356,9 +356,8 @@ class GaussianProcessAR1:
                 # Calc loss and backprop gradients
                 loss = -mll(output, tense_normspectra)
                 loss.backward()
-                print('Iter %d/%d - Loss: %.3f   lengthscale: %.3f   noise: %.3f' % (
+                print('Iter %d/%d - Loss: %.3f noise: %.3f' % (
                     i + 1, training_iter, loss.item(),
-                    self.gp.covar_module.base_kernel.lengthscale.item(),
                     self.gp.likelihood.noise.item()
                 ))
                 optimizer.step()

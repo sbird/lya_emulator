@@ -4,6 +4,7 @@ import os
 import re
 import configobj
 from SimulationRunner import simulationics
+from SimulationRunner import clusters
 
 def test_full_integration():
     """Create a full simulation snapshot and check it corresponds to the saved results"""
@@ -20,8 +21,8 @@ def test_full_integration():
 def test_only_DM():
     """Create a full simulation with no gas"""
     outdir = os.path.join(os.path.dirname(__file__),"tests/test2")
-    Sim = simulationics.SimulationICs(outdir=outdir, box = 256, npart = 96, redshift = 99, separate_gas=False, redend=0,hubble=0.71)
-    Sim.make_simulation(pkaccuracy=0.07)
+    Sim = simulationics.SimulationICs(outdir=outdir, box = 256, npart = 96, redshift = 99, separate_gas=False, redend=0,hubble=0.71, cluster_class=clusters.ClusterClass)
+    Sim.make_simulation(pkaccuracy=0.07, do_build=True)
     assert os.path.exists(outdir)
 
     Sim2 = simulationics.SimulationICs(outdir=outdir, box=128, npart=128)

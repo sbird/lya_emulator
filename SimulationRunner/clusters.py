@@ -297,7 +297,7 @@ class FronteraClass(StampedeClass):
     def cluster_optimize(self):
         """Compiler optimisation options for frontera.
         Only MP-Gadget pays attention to this."""
-        return "-fopenmp -O3 -g -Wall -xCORE-AVX2 -Zp16 -fp-model fast=1"
+        return "-fopenmp -O3 -g -Wall -xCORE-AVX512 -fp-model fast=1 -ipo -qopt-mem-layout-trans=4"
 
 class HypatiaClass(ClusterClass):
     """Subclass for Hypatia cluster in UCL"""

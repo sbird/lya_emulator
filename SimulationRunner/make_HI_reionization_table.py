@@ -89,7 +89,7 @@ def get_lpt(pm,z, cosmology, seed):
     a = 1/(1+z)
     Plin = LinearPower(cosmology, redshift=0, transfer='EisensteinHu')
     solver = Solver(pm, cosmology, B=1)
-    Q = pm.generate_uniform_particle_grid()
+    Q = pm.generate_uniform_particle_grid(shift=0.5)
 
     wn = solver.whitenoise(seed)
     dlin = solver.linear(wn, Plin)

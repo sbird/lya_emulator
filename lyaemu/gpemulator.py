@@ -280,7 +280,7 @@ class GaussianProcessAR1:
     def __init__(self, *, params, powers, param_limits, zbin, HRparams=None, HRpowers=None, traindir=None, training_iter=50):
         self.params = params
         self.param_limits = param_limits
-        self.use_ar1_kernel = (self.HRparams is not None)
+        self.use_ar1_kernel = (HRparams is not None)
         self.traindir = traindir
         self.zbin = np.round(zbin, 1)
 
@@ -315,7 +315,9 @@ class GaussianProcessAR1:
         self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks = ntasks, noise_constraint=gpytorch.constraints.GreaterThan(1e-10))
         self.gp = ExactGPAR1(params_cube, normspectra, self.likelihood, use_ar1_kernel=self.use_ar1_kernel)
         #Save file for this model
-        zbin_file = os.path.join(os.path.abspath(self.traindir), 'zbin'+str(self.zbin))
+        zbin_file = 'zbin'+str(self.zbin)
+        if self.traindir is not None:
+            zbin_file = os.path.join(os.path.abspath(self.traindir), zbin_file)
         if self.use_ar1_kernel:
             zbin_file+="_ar1_"
         zbin_file+=".pth"

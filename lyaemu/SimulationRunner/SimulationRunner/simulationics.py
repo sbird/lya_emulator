@@ -76,9 +76,9 @@ class SimulationICs:
         self.uvb = uvb
         self.rscatter = rscatter
         outdir = os.path.realpath(os.path.expanduser(outdir))
-        #Make the output directory: will fail if parent does not exist
+        #Make the output directory
         if not os.path.exists(outdir):
-            os.mkdir(outdir)
+            os.makedirs(outdir)
         else:
             if os.listdir(outdir) != []:
                 print("Warning: ",outdir," is non-empty")
@@ -97,6 +97,10 @@ class SimulationICs:
         #For repeatability, we store git hashes of Gadget, GenIC, CAMB and ourselves
         #at time of running.
         self.simulation_git = utils.get_git_hash(os.path.dirname(__file__))
+        try:
+            self.simulation_git = utils.get_git_hash(os.path.dirname(__file__))
+        except Exception:
+            self.simulation_git = '00000000'
 
     def _set_default_paths(self):
         """Default paths and parameter names."""
@@ -168,10 +172,7 @@ class SimulationICs:
         #Save directory
         camb_output = "camb_linear/"
         camb_outdir = os.path.join(self.outdir,camb_output)
-        try:
-            os.mkdir(camb_outdir)
-        except FileExistsError:
-            pass
+        os.makedirs(camb_outdir, exist_ok=True)
         #Save directory
         #Get and save the transfer functions
         for zz in camb_zz:
@@ -185,7 +186,7 @@ class SimulationICs:
             #Get and save the matter power spectrum. We want (Mpc/h)^3 units but the default is Mpc^3.
             pk_lin = np.array([powspec.pk_lin(k=kk, z=zz) for kk in kmpc])*pre_params['h']**3
             pkfile = os.path.join(camb_outdir, "ics_matterpow_"+self._camb_zstr(zz)+".dat")
-            np.savetxt(pkfile, np.vstack([trans['k'], pk_lin]).T)
+            np.savetxt(pkfile, np.vstack([khmpc, pk_lin]).T)
 
         return camb_output
 
@@ -203,10 +204,7 @@ class SimulationICs:
         config.filename = os.path.join(self.outdir, self.genicout)
         config['BoxSize'] = self.box*1000
         genicout = "ICS"
-        try:
-            os.mkdir(os.path.join(self.outdir, genicout))
-        except FileExistsError:
-            pass
+        os.makedirs(os.path.join(self.outdir, genicout), exist_ok=True)
         config['OutputDir'] = genicout
         #Is this enough information, or should I add a short hash?
         genicfile = str(self.box)+"_"+str(self.npart)+"_"+str(self.redshift)
@@ -237,10 +235,6 @@ class SimulationICs:
         config['MNum'] = numass[1]
         config['MNut'] = numass[0]
         config['SavePrePos'] = 0
-        assert config['WhichSpectrum'] == '2'
-        assert config['RadiationOn'] == '1'
-        assert config['DifferentTransferFunctions'] == '1'
-        assert config['InputPowerRedshift'] == '-1'
         config['Seed'] = self.seed
         config = self._genicfile_child_options(config)
         config.update(self._cluster.cluster_runtime())
@@ -327,10 +321,7 @@ class SimulationICs:
         config.filename = filename
         config['InitCondFile'] = genicfileout
         config['OutputDir'] = "output"
-        try:
-            os.mkdir(os.path.join(self.outdir, "output"))
-        except FileExistsError:
-            pass
+        os.makedirs(os.path.join(self.outdir, "output"), exist_ok=True)
         config['TimeLimitCPU'] = int(60*60*self._cluster.timelimit-300)
         config['TimeMax'] = 1./(1+self.redend)
         config['Omega0'] = self.omega0

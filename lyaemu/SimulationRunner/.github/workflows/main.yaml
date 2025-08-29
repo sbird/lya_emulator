@@ -1,0 +1,39 @@
+# main test workflow; ported from .travis.yaml
+
+name: main
+
+on:
+  push:
+    branches: [ '*', $default-branch ]
+    tags: ['[0-9]*']   # anything looks like a version.
+  pull_request:
+    branches: [ $default-branch ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [ '3.8', '3.13' ]
+    steps:
+    - name: Checkout source code
+      uses: actions/checkout@v4
+    - name: Setup test env
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential libopenmpi-dev openmpi-bin python3-numpy python3-scipy python3-mpi4py python3-h5py libgsl-dev python3-matplotlib
+        python -m pip install --upgrade pip
+        python -m pip install build pytest bigfile classy configobj
+    - name: Get MPGadget
+      run: |
+        cd ../
+        mkdir code
+        cd code
+        git clone "https://github.com/MP-Gadget/MP-Gadget.git"
+    - name: Build
+      run: |
+        python -m build
+    - name: Python Unit tests
+      run: |
+        python -m pytest

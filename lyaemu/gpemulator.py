@@ -312,8 +312,16 @@ class GaussianProcessAR1:
             params_cube = convert_parameter_fidelity_list([params_cube, HRparams_cube])
             normspectra = np.concatenate([normspectra, HRnormspectra], axis=0)
 
-        self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks = ntasks, noise_constraint=gpytorch.constraints.GreaterThan(1e-10))
-        self.gp = ExactGPAR1(params_cube, normspectra, self.likelihood, use_ar1_kernel=self.use_ar1_kernel)
+        #Convert to tensors
+        tense_params_cube = torch.from_numpy(params_cube)
+        tense_normspectra = torch.from_numpy(normspectra)
+        # Move to GPU if available
+        #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        #tense_params_cube = tense_params_cube.to(device)
+        #tense_normspectra = tense_normspectra.to(device)
+
+        self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=ntasks, noise_constraint=gpytorch.constraints.GreaterThan(1e-10))
+        self.gp = ExactGPAR1(tense_params_cube, tense_normspectra, self.likelihood, use_ar1_kernel=self.use_ar1_kernel)
         #Save file for this model
         zbin_file = 'zbin'+str(self.zbin)
         if self.traindir is not None:
@@ -343,9 +351,9 @@ class GaussianProcessAR1:
                 # Zero gradients from previous iteration
                 optimizer.zero_grad()
                 # Output from model
-                output = self.gp(params_cube)
+                output = self.gp(tense_params_cube)
                 # Calc loss and backprop gradients
-                loss = -mll(output, normspectra)
+                loss = -mll(output, tense_normspectra)
                 loss.backward()
                 print('Iter %d/%d - Loss: %.3f   lengthscale: %.3f   noise: %.3f' % (
                     i + 1, training_iter, loss.item(),

@@ -368,6 +368,9 @@ class GaussianProcessAR1:
                     os.makedirs(self.traindir)
                 torch.save(self.gp.state_dict(), zbin_file)
 
+        #Get into evaluation mode so we can make predictions
+        self.gp.eval()
+        self.likelihood.eval()
         #Test the built emulator
         self._check_interp(powers)
 
@@ -392,9 +395,10 @@ class GaussianProcessAR1:
             assert res == 0 or res == 1
             params_cube = np.concatenate([params_cube[0], np.ones(1)*res]).reshape(1,-1)
         #This is a distribution over a function f
+        params_cube = torch.from_numpy(params_cube).float()
         f_predicts = self.gp(params_cube)
         #Need the mean and variance
         flux_predict, var = f_predicts.mean, f_predicts.variance
-        mean = (flux_predict+1)*self.scalefactors
-        std = np.sqrt(var) * self.scalefactors
+        mean = (flux_predict.detach().numpy()+1)*self.scalefactors
+        std = np.sqrt(var.detach().numpy()) * self.scalefactors
         return mean, std

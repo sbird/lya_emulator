@@ -237,21 +237,21 @@ class LinearMultiFidelityKernel(gpytorch.kernels.Kernel):
 
 class ExactGPAR1(gpytorch.models.ExactGP):
     """Subclass the exact inference GP with the kernel we want."""
-    def __init__(self, train_x, train_y, likelihood, use_ar1_kernel=False):
+    def __init__(self, train_x, train_y, likelihood, num_tasks=1, use_ar1_kernel=False):
         super().__init__(train_x, train_y, likelihood)
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
         nparam = np.shape(train_x)[1]
         #Each dimension of the output vector is called a task in GPyTorch
-        ntask = np.shape(train_y)[0]
-        self.mean_module = gpytorch.means.MultitaskMean(gpytorch.means.ConstantMean(), num_tasks=ntask)
+        assert num_tasks == np.shape(train_y)[1]
+        self.mean_module = gpytorch.means.MultitaskMean(gpytorch.means.ConstantMean(), num_tasks=num_tasks)
         if use_ar1_kernel:
             kernel_l = kern.LinearKernel(ard_num_dims=nparam) + kern.ScaleKernel(kern.RBFKernel(ard_num_dims=nparam))
             kernel_delta = kern.RBFKernel()
             singletaskkernel = LinearMultiFidelityKernel(kernel_l, kernel_delta)
         else:
             singletaskkernel = kern.LinearKernel(ard_num_dims=nparam) + kern.ScaleKernel(kern.RBFKernel(ard_num_dims=nparam))
-        self.covar_module = kern.MultitaskKernel(singletaskkernel, num_tasks=ntask)
+        self.covar_module = kern.MultitaskKernel(singletaskkernel, num_tasks=num_tasks)
 
     def forward(self, x):
         """Takes n x d data (where d is the number of input parameters and n is the number of outputs)
@@ -294,8 +294,9 @@ class GaussianProcessAR1:
             assert np.min(params_cube[:,i]) < 0.2
         #Normalise the flux vectors by the median power spectrum.
         #This ensures that the GP prior (a zero-mean input) is close to true.
-        ntasks = np.shape(powers)[0]
-        medind = np.argsort(np.mean(powers, axis=1))[ntasks//2]
+        ntasks = np.shape(powers)[1]
+        ninput = np.shape(powers)[0]
+        medind = np.argsort(np.mean(powers, axis=1))[ninput//2]
         self.scalefactors = powers[medind,:]
         self.paramzero = params_cube[medind,:]
         #Normalise by the median value
@@ -321,7 +322,7 @@ class GaussianProcessAR1:
         #tense_normspectra = tense_normspectra.to(device)
 
         self.likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=ntasks, noise_constraint=gpytorch.constraints.GreaterThan(1e-10))
-        self.gp = ExactGPAR1(tense_params_cube, tense_normspectra, self.likelihood, use_ar1_kernel=self.use_ar1_kernel)
+        self.gp = ExactGPAR1(tense_params_cube, tense_normspectra, self.likelihood, num_tasks=ntasks, use_ar1_kernel=self.use_ar1_kernel)
         #Save file for this model
         zbin_file = 'zbin'+str(self.zbin)
         if self.traindir is not None:

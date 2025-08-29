@@ -9,7 +9,7 @@ Fits the change in the flux power spectrum with a quadratic function.
 import math
 import numpy as np
 from .coarse_grid import Emulator
-from .gpemulator import SkLearnGP
+from .gpemulator import MultiBinGP
 from . import flux_power
 
 def Hubble(zz, om, H0):
@@ -17,7 +17,7 @@ def Hubble(zz, om, H0):
     #Conversion factor between s/km and h/Mpc is (1+z)/H(z)
     return 100*H0*math.sqrt(om*(1+zz)**3+(1-om))
 
-class QuadraticPoly(SkLearnGP):
+class QuadraticPoly(MultiBinGP):
     """
     Given a set of simulations with different parameters, produce the expected quantity interpolated to a new set of parameters.
     Takes as arguments:

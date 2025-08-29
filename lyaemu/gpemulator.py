@@ -1,7 +1,6 @@
 """Building a surrogate using a Gaussian Process."""
 import numpy as np
 import os
-import h5py
 from .latin_hypercube import map_to_unit_cube_list
 import torch
 import gpytorch
@@ -47,17 +46,206 @@ class MultiBinGP:
         """Get the originally input training data so we can easily rebuild the GP"""
         return self.params, self.kf, self.powers
 
-class ExactGPModel(gpytorch.models.ExactGP):
+class LinearMultiFidelityKernel(gpytorch.kernels.Kernel):
+    """
+    Linear Multi-Fidelity Kernel (Kennedy & O’Hagan, 2000).
+
+    This kernel models the high-fidelity function as:
+
+        f_H(x) = ρ * f_L(x) + δ(x)
+
+    where:
+        - f_L(x) is a Gaussian process modeling the low-fidelity function.
+        - δ(x) is an independent GP modeling discrepancies.
+        - ρ is a learnable scaling factor.
+
+    The covariance matrix has a block structure:
+
+        K =
+        [  K_LL   K_LH  ]
+        [  K_HL   K_HH  ]
+
+    where:
+        - K_LL = Covariance matrix for low-fidelity points.
+        - K_LH = K_HL^T = Scaled cross-covariance.
+        - K_HH = Scaled LF + discrepancy covariance.
+
+    Parameters:
+        - kernel_L: GP kernel for the low-fidelity function.
+        - kernel_delta: GP kernel for the discrepancy.
+        - num_output_dims: The number of independent outputs (Y.shape[1]).
+    """
+    # The multi-fidelity kernels depend only on the difference
+    # between two parameters and not their absolute values.
+    is_stationary = True
+
+    def __init__(self, kernel_L, kernel_delta, num_output_dims=1, batch_shape=torch.Size([]), active_dims=None, **kwargs):
+        super().__init__(batch_shape=batch_shape, active_dims=active_dims, **kwargs)
+
+        self.kernel_L = kernel_L  # Kernel for low-fidelity function
+        self.kernel_delta = kernel_delta  # Kernel for discrepancy
+
+        self.num_output_dims = num_output_dims
+
+        #Should have shape ((num_output_dims, 1) so one rho for each output dimension
+        self.register_parameter(
+            name='raw_rho', parameter=torch.nn.Parameter(torch.ones(*self.batch_shape, num_output_dims, 1))
+        )
+
+        # register the constraint
+        self.register_constraint("raw_rho", gpytorch.constrains.Positive())
+
+    # now set up the 'actual' parameter
+    @property
+    def rho(self):
+        # when accessing the parameter, apply the constraint transform
+        return self.raw_rho_constraint.transform(self.raw_rho)
+
+    @rho.setter
+    def rho(self, value):
+        return self._set_rho(value)
+
+    def _set_rho(self, value):
+        if not torch.is_tensor(value):
+            value = torch.as_tensor(value).to(self.raw_rho)
+        # when setting the paramater, transform the actual value to a raw one by applying the inverse transform
+        self.initialize(raw_rho=self.raw_rho_constraint.inverse_transform(value))
+
+    def forward(self, x1, x2, diag=False, last_dim_is_batch=False, **params):
+        """
+        Constructs the full covariance matrix for multi-fidelity modeling.
+
+        Args:
+            x1: First input tensor (n1 x d+1), where last column is fidelity indicator
+            x2: Second input tensor (n2 x d+1), where last column is fidelity indicator
+            diag: If True, return only diagonal elements
+            last_dim_is_batch: If True, treat the last dimension as batch dimension
+            **params: Additional parameters
+
+        Returns:
+            Covariance matrix or diagonal elements
+        """
+        if last_dim_is_batch:
+            raise NotImplementedError("Batch mode not implemented")
+
+        if diag:
+            return self._diag(x1)
+
+        # Ensure x2 is not None
+        if x2 is None:
+            x2 = x1
+
+        # Extract fidelity indicators (last column)
+        fidelity_1 = x1[..., -1]
+        fidelity_2 = x2[..., -1]
+
+        # Create masks for low and high fidelity points
+        mask_L1 = fidelity_1 == 0
+        mask_H1 = fidelity_1 == 1
+        mask_L2 = fidelity_2 == 0
+        mask_H2 = fidelity_2 == 1
+
+        # Extract data without fidelity column
+        x1_data = x1[..., :-1]
+        x2_data = x2[..., :-1]
+
+        # Extract LF and HF data
+        x1_L = x1_data[mask_L1]
+        x1_H = x1_data[mask_H1]
+        x2_L = x2_data[mask_L2]
+        x2_H = x2_data[mask_H2]
+
+        # Initialize full covariance matrix
+        n1 = x1.shape[0]
+        n2 = x2.shape[0]
+        K_full = torch.zeros(n1, n2, dtype=x1.dtype, device=x1.device)
+
+        # Compute covariance components
+        if x1_L.numel() > 0 and x2_L.numel() > 0:
+            K_LL = self.kernel_L(x1_L, x2_L).evaluate()
+            # Use advanced indexing to place values
+            idx1 = torch.where(mask_L1)[0].unsqueeze(1)
+            idx2 = torch.where(mask_L2)[0].unsqueeze(0)
+            K_full[idx1, idx2] = K_LL
+
+        if x1_L.numel() > 0 and x2_H.numel() > 0:
+            K_LH = self.kernel_L(x1_L, x2_H).evaluate() * self.rho
+            idx1 = torch.where(mask_L1)[0].unsqueeze(1)
+            idx2 = torch.where(mask_H2)[0].unsqueeze(0)
+            K_full[idx1, idx2] = K_LH
+
+        if x1_H.numel() > 0 and x2_L.numel() > 0:
+            K_HL = self.kernel_L(x1_H, x2_L).evaluate() * self.rho
+            idx1 = torch.where(mask_H1)[0].unsqueeze(1)
+            idx2 = torch.where(mask_L2)[0].unsqueeze(0)
+            K_full[idx1, idx2] = K_HL
+
+        if x1_H.numel() > 0 and x2_H.numel() > 0:
+            K_HH_L = self.kernel_L(x1_H, x2_H).evaluate() * (self.rho ** 2)
+            K_HH_delta = self.kernel_delta(x1_H, x2_H).evaluate()
+            K_HH = K_HH_L + K_HH_delta
+            idx1 = torch.where(mask_H1)[0].unsqueeze(1)
+            idx2 = torch.where(mask_H2)[0].unsqueeze(0)
+            K_full[idx1, idx2] = K_HH
+
+        return K_full
+
+    def _diag(self, x):
+        """
+        Computes the diagonal elements of the covariance matrix.
+
+        Args:
+            x: Input tensor (n x d+1), where last column is fidelity indicator
+
+        Returns:
+            Diagonal elements of the covariance matrix
+        """
+        # Extract fidelity indicators
+        fidelity = x[..., -1]
+
+        # Create masks
+        mask_L = fidelity == 0
+        mask_H = fidelity == 1
+
+        # Extract data without fidelity column
+        x_data = x[..., :-1]
+        x_L = x_data[mask_L]
+        x_H = x_data[mask_H]
+
+        # Initialize diagonal vector
+        n = x.shape[0]
+        K_diag_full = torch.zeros(n, dtype=x.dtype, device=x.device)
+
+        # Compute diagonal elements for low-fidelity points
+        if x_L.numel() > 0:
+            K_diag_L = self.kernel_L(x_L, x_L, diag=True).evaluate()
+            K_diag_full[mask_L] = K_diag_L
+
+        # Compute diagonal elements for high-fidelity points
+        if x_H.numel() > 0:
+            K_diag_H_L = self.kernel_L(x_H, x_H, diag=True).evaluate() * (self.rho ** 2)
+            K_diag_H_delta = self.kernel_delta(x_H, x_H, diag=True).evaluate()
+            K_diag_H = K_diag_H_L + K_diag_H_delta
+            K_diag_full[mask_H] = K_diag_H
+
+        return K_diag_full
+
+class ExactGPAR1(gpytorch.models.ExactGP):
     """Subclass the exact inference GP with the kernel we want."""
-    def __init__(self, train_x, train_y, likelihood):
-        super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
+    def __init__(self, train_x, train_y, likelihood, use_ar1_kernel=False):
+        super().__init__(train_x, train_y, likelihood)
         #Standard squared-exponential kernel with a different length scale for each parameter, as
         #they may have very different physical properties.
         nparam = np.shape(train_x)[1]
         #Each dimension of the output vector is called a task in GPyTorch
         ntask = np.shape(train_y)[0]
-        self.mean_module = gptorch.means.MultitaskMean(gpytorch.means.ConstantMean(), num_tasks=ntask)
-        singletaskkernel = kern.LinearKernel(ard_num_dims=nparam) + kern.ScaleKernel(kern.RBFKernel(ard_num_dims=nparam))
+        self.mean_module = gpytorch.means.MultitaskMean(gpytorch.means.ConstantMean(), num_tasks=ntask)
+        if use_ar1_kernel:
+            kernel_l = kern.LinearKernel(ard_num_dims=nparam) + kern.ScaleKernel(kern.RBFKernel(ard_num_dims=nparam))
+            kernel_delta = kern.RBFKernel()
+            singletaskkernel = LinearMultiFidelityKernel(kernel_l, kernel_delta)
+        else:
+            singletaskkernel = kern.LinearKernel(ard_num_dims=nparam) + kern.ScaleKernel(kern.RBFKernel(ard_num_dims=nparam))
         self.covar_module = kern.MultitaskKernel(singletaskkernel, num_tasks=ntask)
 
     def forward(self, x):

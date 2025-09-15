@@ -98,7 +98,7 @@ class LinearMultiFidelityKernel(gpytorch.kernels.Kernel):
         )
 
         # register the constraint
-        self.register_constraint("raw_rho", gpytorch.constrains.Positive())
+        self.register_constraint("raw_rho", gpytorch.constraints.Positive())
 
     # now set up the 'actual' parameter
     @property
@@ -246,7 +246,8 @@ class ExactGPAR1(gpytorch.models.ExactGP):
         assert num_tasks == np.shape(train_y)[1]
         self.mean_module = gpytorch.means.MultitaskMean(gpytorch.means.ConstantMean(), num_tasks=num_tasks)
         if use_ar1_kernel:
-            kernel_l = kern.LinearKernel(ard_num_dims=nparam) + kern.ScaleKernel(kern.RBFKernel(ard_num_dims=nparam))
+            #The final dimension is the flag specifying the fidelity.
+            kernel_l = kern.LinearKernel(ard_num_dims=nparam-1) + kern.ScaleKernel(kern.RBFKernel(ard_num_dims=nparam-1))
             kernel_delta = kern.RBFKernel()
             singletaskkernel = LinearMultiFidelityKernel(kernel_l, kernel_delta)
         else:

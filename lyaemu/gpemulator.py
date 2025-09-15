@@ -167,31 +167,31 @@ class LinearMultiFidelityKernel(gpytorch.kernels.Kernel):
 
         # Compute covariance components
         if x1_L.numel() > 0 and x2_L.numel() > 0:
-            K_LL = self.kernel_L(x1_L, x2_L).evaluate()
+            K_LL = self.kernel_L.forward(x1_L, x2_L, **params)
             # Use advanced indexing to place values
             idx1 = torch.where(mask_L1)[0].unsqueeze(1)
             idx2 = torch.where(mask_L2)[0].unsqueeze(0)
-            K_full[idx1, idx2] = K_LL
+            K_full[idx1, idx2] = K_LL.to_dense()
 
         if x1_L.numel() > 0 and x2_H.numel() > 0:
-            K_LH = self.kernel_L(x1_L, x2_H).evaluate() * self.rho
+            K_LH = self.kernel_L.forward(x1_L, x2_H, **params) * self.rho
             idx1 = torch.where(mask_L1)[0].unsqueeze(1)
             idx2 = torch.where(mask_H2)[0].unsqueeze(0)
-            K_full[idx1, idx2] = K_LH
+            K_full[idx1, idx2] = K_LH.to_dense()
 
         if x1_H.numel() > 0 and x2_L.numel() > 0:
-            K_HL = self.kernel_L(x1_H, x2_L).evaluate() * self.rho
+            K_HL = self.kernel_L.forward(x1_H, x2_L, **params) * self.rho
             idx1 = torch.where(mask_H1)[0].unsqueeze(1)
             idx2 = torch.where(mask_L2)[0].unsqueeze(0)
-            K_full[idx1, idx2] = K_HL
+            K_full[idx1, idx2] = K_HL.to_dense()
 
         if x1_H.numel() > 0 and x2_H.numel() > 0:
-            K_HH_L = self.kernel_L(x1_H, x2_H).evaluate() * (self.rho ** 2)
-            K_HH_delta = self.kernel_delta(x1_H, x2_H).evaluate()
+            K_HH_L = self.kernel_L.forward(x1_H, x2_H, **params) * (self.rho ** 2)
+            K_HH_delta = self.kernel_delta.forward(x1_H, x2_H, **params)
             K_HH = K_HH_L + K_HH_delta
             idx1 = torch.where(mask_H1)[0].unsqueeze(1)
             idx2 = torch.where(mask_H2)[0].unsqueeze(0)
-            K_full[idx1, idx2] = K_HH
+            K_full[idx1, idx2] = K_HH.to_dense()
 
         return K_full
 
@@ -223,15 +223,15 @@ class LinearMultiFidelityKernel(gpytorch.kernels.Kernel):
 
         # Compute diagonal elements for low-fidelity points
         if x_L.numel() > 0:
-            K_diag_L = self.kernel_L(x_L, x_L, diag=True).evaluate()
-            K_diag_full[mask_L] = K_diag_L
+            K_diag_L = self.kernel_L.forward(x_L, x_L, diag=True)
+            K_diag_full[mask_L] = K_diag_L.to_dense()
 
         # Compute diagonal elements for high-fidelity points
         if x_H.numel() > 0:
-            K_diag_H_L = self.kernel_L(x_H, x_H, diag=True).evaluate() * (self.rho ** 2)
-            K_diag_H_delta = self.kernel_delta(x_H, x_H, diag=True).evaluate()
+            K_diag_H_L = self.kernel_L.forward(x_H, x_H, diag=True) * (self.rho ** 2)
+            K_diag_H_delta = self.kernel_delta.forward(x_H, x_H, diag=True)
             K_diag_H = K_diag_H_L + K_diag_H_delta
-            K_diag_full[mask_H] = K_diag_H
+            K_diag_full[mask_H] = K_diag_H.to_dense()
 
         return K_diag_full
 

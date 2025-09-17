@@ -199,7 +199,7 @@ def find_sigma8(spectralp, ap, h0, omh2):
 #     print("sigma_8(z=0) = ", powspec.sigma8, "A_s = ",powspec.A_s, 'd_L = ', delta_lin, '', neff, 'Ap ',ap, 'np', spectralp, flush=True)
     return (powspec.sigma8, delta_lin, neff)
 
-def plot_dL_nl(chain_dirs, savefile=None, labels=None):
+def plot_dL_nl(chain_dirs, chain_dirs2, savefile=None, labels=None, labels2=None):
     """
     Print Latex table of the 1 and 2 sigma contours.
     """
@@ -215,24 +215,28 @@ def plot_dL_nl(chain_dirs, savefile=None, labels=None):
         gd_sample.paramNames.parWithName('hireionz').label = r'z^{HI}'
         gd_sample.paramNames.parWithName('hub').label = r'v_\mathrm{scale}'
         gd_sample.paramNames.parWithName('tau0').label = '\\tau_0'
-        gd_sample.thin(40)
+        gd_sample.thin(200)
         AsVec = (0.4/(2*np.pi))**(gd_sample['ns']-1) * gd_sample['Ap'] * 1e9
         gd_sample.addDerived(paramVec=AsVec, name=r"A_\mathrm{s}/10^{-9}")
         print("samples ",np.size(AsVec),flush=True)
         derivedtuple = [find_sigma8(np, ap, h0, omh2) for (np, ap, h0, omh2) in zip(gd_sample['ns'], gd_sample['Ap'], gd_sample['hub'], gd_sample['omegamh2'])]
         (sigmaVec, deltaVec, neffVec) = zip(*derivedtuple)
         gd_sample.addDerived(paramVec=sigmaVec, name=r"\sigma_8")
-        gd_sample.addDerived(paramVec=deltaVec, name=r"\Delta_L^2")
-        gd_sample.addDerived(paramVec=neffVec, name=r"n_\mathrm{eff}")
+        gd_sample.addDerived(paramVec=deltaVec, name=r"deltal", label=r'\Delta_L^2')
+        gd_sample.addDerived(paramVec=neffVec, name=r"neff", label=r'n_\mathrm{eff}')
         gd_samples.append(gd_sample)
 
-    for chain_dir in ("reduced-me", "reduced-chab"):
+    for chain_dir in chain_dirs2:
         nn, gr = np.loadtxt(os.path.abspath(chain_dir+'.progress'), usecols=(0, 3)).T
         gd_sample = loadMCSamples(chain_dir, settings={'ignore_rows':nn[np.where(gr < 1)[0][0]]/nn[-1]})
+        gd_sample.paramNames.parWithName('deltal').label = r'\Delta_L^2'
+        gd_sample.paramNames.parWithName('neff').label = r'n_\mathrm{eff}'
         gd_samples.append(gd_sample)
-    labels = labels + ["Reduced", "Chabanier"]
 
-    params = [r"\Delta_L^2", r"n_\mathrm{eff}"]
+    labels = labels + labels2
+    labels=None
+
+    params = ["deltal", "neff"]
     plimits = np.array([[0.2,0.4],[-2.40,-2.2]])
     gticks = np.array([[0.2,0.25,0.3,0.35,0.4],[-2.4,-2.35,-2.3,-2.25,-2.2]])
     gtlabels = np.array([['0.2','0.25','0.3','0.35','0.4'],['-2.40','-2.35','-2.3','-2.25','-2.2']])
@@ -240,9 +244,9 @@ def plot_dL_nl(chain_dirs, savefile=None, labels=None):
     gdplot = gdplt.get_subplot_plotter()
     gdplot.settings.axes_fontsize = 13
     gdplot.settings.axes_labelsize = 18
-    gdplot.settings.legend_fontsize = 13
+    #gdplot.settings.legend_fontsize = 13
     gdplot.settings.tight_layout = True
-    gdplot.settings.figure_legend_loc = 'upper right'
+    #gdplot.settings.figure_legend_loc = 'upper right'
 
     gdplot.triangle_plot(gd_samples, params, legend_labels=labels, filled=True, contour_lws=2.5, contour_ls='-', contour_colors=[c_sunshine, c_skyline, c_flatirons, c_midnight])
     for pi in range(2):
@@ -382,7 +386,8 @@ def plot_samples(lores_json, hires_json, savefile=None, t0_samps=None):
     """plot the samples, parameter limits"""
     # t0_samps is the indices of the samples that are to be highlighted
     # get samples
-    hires = np.array(json.load(open(hires_json, 'r'))['sample_params'])
+    if hires_json is not None:
+        hires = np.array(json.load(open(hires_json, 'r'))['sample_params'])
     lores = np.array(json.load(open(lores_json, 'r'))['sample_params'])
 
     # Difference between FPS and T0 samples
@@ -408,7 +413,8 @@ def plot_samples(lores_json, hires_json, savefile=None, t0_samps=None):
         ax[i].plot(lores[:, i], i*yy, 'x', color=c_midnight, ms=15, mew=2.5, alpha=0.66)
         if t0_samps is not None:
             ax[i].plot(t0[:, i], i*np.ones(np.shape(t0)[0]), 's', color=c_skyline_ll, ms=15, mew=3, mfc='none')
-        ax[i].plot(hires[:, i], i*np.ones(np.shape(hires)[0]), 'o', color=c_flatirons_l, ms=15, mew=3, mfc='none')
+        if hires_json is not None:
+            ax[i].plot(hires[:, i], i*np.ones(np.shape(hires)[0]), 'o', color=c_flatirons_l, ms=15, mew=3, mfc='none')
         ax[i].set_xlim(plimits[i])
         ax[i].set_xticks(plimits[i])
         ax[i].set_xticklabels(plimits[i])
@@ -794,6 +800,12 @@ if __name__ == "__main__":
     astro_corner(chain_dirs, "astro_corner.pdf", labels=labels)
     plot_fps_obs_pred(basedir, chain_dirs, traindir=traindir, HRbasedir=basedir+'/hires', savefile="fps_data_fit.pdf", labels=labels)
     plot_t0_obs_pred(basedir, chain_dirs, HRbasedir=basedir+'/hires', savefile="t0_best_fit.pdf", labels=labels)
+    reduced = ("chains/reduced-planck", )
+    plot_dL_nl([chain_dirs[2],], chain_dirs2=reduced, savefile="dl_nl_corner_simple.pdf", labels=labels, labels2=["Planck", ])
+    reduced = ("chains/reduced-planck", "chains/reduced-chab")
+    plot_dL_nl(chain_dirs, chain_dirs2=reduced, savefile="dl_nl_corner.pdf", labels=labels, labels2=["Planck", "Chabanier"])
+    reduced = ["chains/reduced-me", ]
+    plot_dL_nl([chain_dirs[2],], chain_dirs2=reduced, savefile="dl_nl_corner_red.pdf", labels=labels, labels2=["Reduced",])
     print_latex_table(chain_dirs, labels=labels)
     plot_correlation(correl_file = "correlation-z26-46-t0.txt")
     plot_1d_marginals(basedir, chain_dirs, savefile="all_1d_marginals.pdf", labels=labels)

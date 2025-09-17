@@ -6,7 +6,6 @@ from . import coarse_grid
 from . import flux_power
 from . import lyman_data
 from . import mean_flux as mflux
-from .quadratic_emulator import QuadraticEmulator
 from cobaya.likelihood import Likelihood
 from cobaya.run import run as cobaya_run
 from cobaya.log import LoggedError
@@ -162,10 +161,6 @@ class LikelihoodClass:
         # Select emulator type
         if emulator_class == "standard":
             self.emulator = coarse_grid.Emulator(basedir, kf=self.kf, mf=mf, tau_thresh=tau_thresh)
-        elif emulator_class == "knot":
-            self.emulator = coarse_grid.KnotEmulator(basedir, kf=self.kf, mf=mf)
-        elif emulator_class == "quadratic":
-            self.emulator = QuadraticEmulator(basedir, kf=self.kf, mf=mf)
         else:
             raise ValueError("Emulator class not recognised")
 

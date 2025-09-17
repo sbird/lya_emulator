@@ -5,6 +5,7 @@ setup(
     version='1.0.1',
     author="Simeon Bird, Martin Fernandez and Keir Rogers",
     author_email="spb@ucr.edu",
+    license = "mit",
     url="http://github.com/sbird/lya_emulator",
     description="Module for easily generating emulators for the lyman alpha forest from simulations",
     long_description="Module for easily generating emulators for the lyman alpha forest from simulations",
@@ -17,7 +18,6 @@ setup(
     classifiers = ["Development Status :: 4 - Beta",
                    "Intended Audience :: Developers",
                    "Intended Audience :: Science/Research",
-                   "License :: OSI Approved :: MIT License",
                    "Programming Language :: Python :: 3",
                    "Topic :: Scientific/Engineering :: Astronomy",
                    "Topic :: Scientific/Engineering :: Visualization"]

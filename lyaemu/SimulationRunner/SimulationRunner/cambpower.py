@@ -91,7 +91,7 @@ def plot_ic_power(kk_ic, Pk_ic, Pk_camb, npart, sp=1, outdir="."):
     error = Pk_ic[imin:imax]/Pk_camb[imin:imax] -1
     return error
 
-def check_ic_power_spectra(genicfileout, camb_zstr, outdir=".", accuracy=0.07, m_nu=0):
+def check_ic_power_spectra(genicfileout, camb_zstr, outdir=".", accuracy=0.02, m_nu=0):
     """Generate the power spectrum for each particle type from the generated simulation files
     and check that it matches the input. This is a consistency test on each simulation output."""
     #Generate power spectra
@@ -116,7 +116,7 @@ def check_ic_power_spectra(genicfileout, camb_zstr, outdir=".", accuracy=0.07, m
     cambpow = CLASSPowerSpectrum(matterpow, transfer,omega0=omega0, omegab=omegab, omeganu=m_nu/93.14/hubble**2)
     for sp in cats.keys():
         #GenPK output is at PK-[nu,by,DM]-basename(genicfileout)
-        cats[sp].to_mesh(Nmesh=npart*2, window='cic', compensated=True, interlaced=True)
+        cats[sp].to_mesh(Nmesh=npart*2, resampler='cic', compensated=True, interlaced=True)
         pk = FFTPower(cats[sp], mode='1d', Nmesh=npart*2, dk=5.0e-6)
         #GenPK output is at PK-[nu,by,DM]-basename(genicfileout)
         #Load the power spectra

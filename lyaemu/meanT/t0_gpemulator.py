@@ -31,7 +31,7 @@ class ExactGPAR1(gpytorch.models.ExactGP):
 
 class T0MultiBinAR1:
     """
-    A wrapper around GPy that constructs a multi-fidelity emulator for the mean temperature over all redshifts.
+    A wrapper that constructs a multi-fidelity emulator for the mean temperature over all redshifts.
     Parameters: LRparams, HRparams are the input parameter sets (nsims, nparams)
                 LRtemps, HRtemps are the corresponding temperatures (nsims, nz)
                 param_limits is a list of parameter limits (nparams, 2)
@@ -122,7 +122,7 @@ class T0MultiBinAR1:
         return mean, std
 
 class T0MultiBinGP(T0MultiBinAR1):
-    """A wrapper around GPy that constructs an emulator for the mean temperature over all redshifts.
+    """A wrapper that constructs an emulator for the mean temperature over all redshifts.
         Parameters: params is a list of parameter vectors.
                     temps is a list of mean temperatures (shape nsims, nz).
                     param_limits is a list of parameter limits (shape params, 2)."""
